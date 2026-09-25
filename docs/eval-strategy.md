@@ -1,0 +1,273 @@
+# Eval and QA Strategy
+
+## Goal
+
+Prove the automation is safe and useful before it can trigger a downstream pricing action.
+
+Testing is split into three layers so deterministic behaviour, model-dependent behaviour, and human judgment are not conflated.
+
+## 1. Deterministic automated tests
+
+Use Vitest for behaviour that should always be repeatable:
+
+- Zod schemas
+- business rules
+- routing precedence
+- state transitions
+- duplicate detection
+- idempotency
+- API contracts
+- pricing-gateway guard
+- retry/failure behaviour
+
+## 2. Agent and workflow evals
+
+Use Mastra eval/experiment tooling for model-dependent behaviour:
+
+- field extraction
+- semantic site association
+- conflict interpretation
+- route outcome on reasoning-dependent cases
+- evidence quality
+- regression comparison after model/prompt changes
+
+## 3. Manual QA
+
+Before an interview release, manually inspect representative cases even when automated evals pass.
+
+Evals reduce risk. They do not replace domain review.
+
+## Ground-truth dataset
+
+Target V1 dataset: **60 to 100 synthetic tender cases**.
+
+Start with a smaller hand-authored golden set, then expand with reproducible synthetic fixtures.
+
+```ts
+export type EvalCase = {
+  id: string
+  category: string
+  tender: TenderFixture
+  expected: {
+    route: TenderRoute
+    flags: string[]
+    facts?: Record<string, unknown>
+  }
+}
+```
+
+## Dataset categories
+
+Include a balanced mix of:
+
+- clean single-site tenders
+- clean multi-site tenders
+- missing consumption
+- missing contract date
+- missing meter identifier
+- malformed values
+- exact duplicates
+- semantically similar but non-duplicate submissions
+- conflicting contract dates
+- conflicting meter/site associations
+- ambiguous broker notes
+- differently formatted company names
+- document-to-site ambiguity
+- unsupported or unprocessable synthetic documents
+- multiple simultaneous issues
+- previous regression failures
+
+Avoid a dataset dominated by easy happy paths.
+
+## Primary classification metrics
+
+For each route, measure:
+
+- precision
+- recall
+- false positives
+- false negatives
+
+Particular attention goes to `READY_FOR_PRICING` and `HUMAN_REVIEW`.
+
+### READY_FOR_PRICING precision
+
+Of all cases the system marked ready, how many actually matched the labelled ready state?
+
+### HUMAN_REVIEW recall
+
+Of all labelled cases that required review, how many did the system successfully stop and escalate?
+
+## Primary safety metric
+
+### Unsafe auto-proceed rate
+
+An unsafe auto-proceed occurs when a labelled case requiring `HUMAN_REVIEW`, `NEEDS_INFORMATION`, or `DUPLICATE` is incorrectly routed to `READY_FOR_PRICING`.
+
+This failure is treated as more serious than over-escalating a safe case.
+
+Initial golden safety-set target:
+
+> **0 unsafe auto-proceed cases**
+
+This is a prototype threshold, not a claim about a production requirement elsewhere.
+
+## Secondary metrics
+
+Where useful, record:
+
+- critical-field extraction accuracy
+- conflict-detection accuracy
+- human-escalation rate
+- average model calls per case
+- token/cost per case
+- processing latency
+- percentage of cases requiring OpenAI at all
+
+The final metric is useful because deterministic-first design should avoid unnecessary model calls.
+
+## Initial release gates
+
+| Metric | Initial demo threshold |
+| --- | ---: |
+| Unsafe auto-proceed on golden safety set | 0 cases |
+| `HUMAN_REVIEW` recall | >= 95% |
+| Critical-field extraction accuracy | >= 95% |
+| Regression vs accepted baseline | No material safety regression |
+
+Thresholds should live in versioned configuration rather than being scattered across test files.
+
+## PR suite vs release suite
+
+### Pull request smoke suite
+
+Run a smaller representative set when reasoning behaviour changes.
+
+Purpose:
+
+- fast feedback
+- lower model cost
+- catch obvious regressions
+
+Candidate size: 10 to 20 labelled cases.
+
+### Full release suite
+
+Run all labelled cases before the stable interview release.
+
+Purpose:
+
+- full regression comparison
+- final precision/recall reporting
+- safety-threshold verification
+
+## Regression policy
+
+For each accepted release, store:
+
+- model configuration
+- prompt/workflow version
+- dataset version
+- metric results
+- git SHA
+
+A change that improves aggregate accuracy but materially worsens a safety-critical class should fail release.
+
+Example:
+
+```text
+Extraction accuracy: 94% → 97%  PASS
+READY precision:      99% → 99%  PASS
+Review recall:        98% → 89%  FAIL
+
+Release verdict: BLOCK
+```
+
+## Manual QA checklist
+
+Before a stable release, manually inspect a stratified sample including:
+
+- [ ] clean happy path
+- [ ] multi-site happy path
+- [ ] missing-information case
+- [ ] duplicate case
+- [ ] contract-date conflict
+- [ ] site-association ambiguity
+- [ ] model uncertainty case
+- [ ] previous regression failure
+- [ ] technical retry/replay case
+- [ ] pricing gateway guard
+
+For each case verify:
+
+- evidence is understandable
+- route matches expected operational behaviour
+- hidden prompt logic does not contradict domain rules
+- human-review cases expose enough context to resolve the issue
+- downstream actions are correct and idempotent
+
+## Human feedback loop
+
+When a reviewer overrides a model/system outcome, capture:
+
+```text
+original route
+corrected route
+reason
+relevant evidence
+model version
+prompt/workflow version
+human action timestamp
+```
+
+High-value disagreements become new labelled regression fixtures.
+
+```mermaid
+flowchart LR
+    A["Case"] --> B["System decision"]
+    B --> C["Human correction"]
+    C --> D["New eval fixture"]
+    D --> E["Rule / prompt / model change"]
+    E --> F["Regression suite"]
+    F --> A
+```
+
+## CI behaviour
+
+### Pull requests
+
+```text
+format
+→ lint
+→ typecheck
+→ deterministic tests
+→ integration tests
+→ eval smoke suite when reasoning changes
+→ build
+```
+
+### Stable release
+
+```text
+full eval suite
+→ metric gate
+→ manual QA sign-off
+→ deploy
+→ smoke test
+```
+
+## Deployment blockers
+
+Release should fail if:
+
+- deterministic tests fail
+- any non-ready route can reach pricing
+- idempotency tests fail
+- the golden safety set contains an unsafe auto-proceed
+- critical eval thresholds are missed
+- required manual QA is incomplete
+- build or infrastructure validation fails
+
+## Principle
+
+> We do not ship an agent because a handful of examples look convincing. We ship when deterministic tests, labelled evals, and manual QA jointly show that the system clears an explicit bar.
