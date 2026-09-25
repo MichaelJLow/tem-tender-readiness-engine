@@ -89,16 +89,16 @@ docs/
 
 ### Tasks
 
-- [ ] Implement Zod schemas for tender, broker, customer, site, and document.
-- [ ] Implement processing states.
-- [ ] Implement business routes.
-- [ ] Implement `RuleResult` and evidence structures.
-- [ ] Implement routing-policy interface.
-- [ ] Implement `TDR-001` through `TDR-012`.
-- [ ] Make rule precedence explicit.
-- [ ] Create deterministic fixtures for clean, missing, conflict, and duplicate cases.
-- [ ] Unit-test rules and routing precedence.
-- [ ] Test rejection of invalid external payloads.
+- [x] Implement Zod schemas for tender, broker, customer, site, and document.
+- [x] Implement processing states.
+- [x] Implement business routes.
+- [x] Implement `RuleResult` and evidence structures.
+- [x] Implement routing-policy interface.
+- [x] Implement `TDR-001` through `TDR-012`.
+- [x] Make rule precedence explicit.
+- [x] Create deterministic fixtures for clean, missing, conflict, and duplicate cases.
+- [x] Unit-test rules and routing precedence.
+- [x] Test rejection of invalid external payloads.
 
 ### Acceptance criteria
 
