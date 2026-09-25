@@ -55,98 +55,104 @@ Rules should be independently testable and free of AWS, UI, n8n, and model-provi
 
 ### TDR-001 - Customer legal name required
 
-**Input:** normalized customer record  
-**Condition:** legal name is empty after normalization  
-**Route:** `NEEDS_INFORMATION`  
-**Reason:** tender cannot be associated reliably with a customer  
+**Input:** normalized customer record \
+**Condition:** legal name is empty after normalization \
+**Route:** `NEEDS_INFORMATION` \
+**Reason:** tender cannot be associated reliably with a customer \
 **Tests:** blank, whitespace, valid legal name
 
 ### TDR-002 - At least one site required
 
-**Input:** tender sites  
-**Condition:** zero sites  
-**Route:** `NEEDS_INFORMATION`  
-**Reason:** there is no supply location to assess  
+**Input:** tender sites \
+**Condition:** zero sites \
+**Route:** `NEEDS_INFORMATION` \
+**Reason:** there is no supply location to assess \
 **Tests:** zero, one, multiple sites
 
 ### TDR-003 - Each site requires a meter identifier
 
-**Input:** each site  
-**Condition:** meter identifier missing  
-**Route:** `NEEDS_INFORMATION`  
-**Reason:** site cannot be uniquely associated with a meter for the synthetic pricing handoff  
+**Input:** each site \
+**Condition:** meter identifier missing \
+**Route:** `NEEDS_INFORMATION` \
+**Reason:** site cannot be uniquely associated with a meter for the synthetic pricing handoff \
 **Tests:** all present, one missing in a multi-site case
 
 ### TDR-004 - Annual consumption required
 
-**Input:** each site  
-**Condition:** annual consumption missing or non-positive  
-**Route:** `NEEDS_INFORMATION`  
-**Reason:** synthetic pricing readiness requires a usable consumption figure  
+**Input:** each site \
+**Condition:** annual consumption missing or non-positive \
+**Route:** `NEEDS_INFORMATION` \
+**Reason:** synthetic pricing readiness requires a usable consumption figure \
 **Tests:** missing, zero, negative, positive
 
 ### TDR-005 - Contract end date required and parseable
 
-**Input:** site contract end date  
-**Condition:** missing or cannot be normalized to an accepted date  
-**Route:** `NEEDS_INFORMATION`  
-**Reason:** timing is required for the synthetic downstream handoff  
+**Input:** site contract end date \
+**Condition:** missing or cannot be normalized to an accepted date \
+**Route:** `NEEDS_INFORMATION` \
+**Reason:** timing is required for the synthetic downstream handoff \
 **Tests:** ISO date, normalized UK date, malformed date, missing
+
+The prototype accepts strict `YYYY-MM-DD`, `DD/MM/YYYY`, and `DD-MM-YYYY` calendar dates and compares normalized ISO dates. These are demonstration formats, not a discovered production input contract.
 
 ### TDR-006 - Conflicting critical dates
 
-**Input:** normalized date facts from credible sources  
-**Condition:** two facts refer to the same site/field but disagree  
-**Route:** `HUMAN_REVIEW`  
-**Reason:** system can identify the disagreement but cannot invent source authority  
-**Tests:** matching dates, conflicting dates, dates belonging to different sites
+**Input:** normalized date facts from credible sources and the structured site record \
+**Condition:** credible facts disagree with each other or with the structured date for the same site; a credible date is malformed or refers to an unknown site \
+**Route:** `HUMAN_REVIEW` \
+**Reason:** system can identify the disagreement but cannot invent source authority \
+**Tests:** matching dates, conflict with the structured date, conflicting dates, malformed dates, and dates belonging to different sites or unknown sites
 
 ### TDR-007 - Unresolved document-to-site association
 
-**Input:** extracted document facts and site candidates  
-**Condition:** supporting evidence cannot be associated with a single site under the agreed policy  
-**Route:** `HUMAN_REVIEW`  
-**Reason:** applying information to the wrong site can create a false readiness decision  
+**Input:** extracted document facts and site candidates \
+**Condition:** supporting evidence cannot be associated with a single site under the agreed policy \
+**Route:** `HUMAN_REVIEW` \
+**Reason:** applying information to the wrong site can create a false readiness decision \
 **Tests:** explicit site ID, strong match, ambiguous multi-site case
 
 ### TDR-008 - Conflicting meter/site association
 
-**Input:** meter facts, addresses, and site associations  
-**Condition:** the same meter identifier appears associated with incompatible sites or evidence conflicts materially  
-**Route:** `HUMAN_REVIEW`  
-**Reason:** critical identity conflict  
+**Input:** meter facts, addresses, and site associations \
+**Condition:** the same meter identifier appears associated with incompatible sites or evidence conflicts materially \
+**Route:** `HUMAN_REVIEW` \
+**Reason:** critical identity conflict \
 **Tests:** consistent, duplicate formatting, genuine conflict
 
 ### TDR-009 - Duplicate tender
 
-**Input:** normalized customer/site/contract-period identity plus idempotency key  
-**Condition:** an active matching tender already exists or the intake event was already processed  
-**Route:** `DUPLICATE`  
-**Reason:** prevent duplicate operational cases and downstream actions  
+**Input:** normalized customer/site/contract-period identity plus idempotency key \
+**Condition:** an active matching tender already exists or the intake event was already processed \
+**Route:** `DUPLICATE` \
+**Reason:** prevent duplicate operational cases and downstream actions \
 **Tests:** repeated webhook, same tender ID, similar customer but different period
 
 ### TDR-010 - Critical extraction below safety threshold
 
-**Input:** agent-derived critical fact  
-**Condition:** required fact is ambiguous or does not satisfy the configured evidence/safety policy  
-**Route:** `HUMAN_REVIEW`  
-**Reason:** uncertainty on a critical extracted field should not become an automatic pricing handoff  
+**Input:** agent-derived critical fact \
+**Condition:** required fact is ambiguous or does not satisfy the configured evidence/safety policy \
+**Route:** `HUMAN_REVIEW` \
+**Reason:** uncertainty on a critical extracted field should not become an automatic pricing handoff \
 **Tests:** high-quality evidence, ambiguous evidence, contradictory evidence
+
+The initial synthetic configuration uses a minimum confidence of `0.95`; callers can provide a different threshold. This value is a prototype assumption and must be agreed with domain owners before any real use.
 
 ### TDR-011 - Required document cannot be processed
 
-**Input:** document-processing result  
-**Condition:** required document is unreadable, unsupported, corrupted, or parsing fails terminally  
-**Route:** `HUMAN_REVIEW`  
-**Reason:** system cannot establish enough evidence to proceed safely  
+**Input:** document-processing result \
+**Condition:** required document is unreadable, unsupported, corrupted, or parsing fails terminally \
+**Route:** `HUMAN_REVIEW` \
+**Reason:** system cannot establish enough evidence to proceed safely \
 **Tests:** valid text PDF, corrupted file, unsupported fixture
+
+Required documents with `PENDING` processing remain in technical `PROCESSING` and receive no final business route. Only terminal processing failures route to `HUMAN_REVIEW`.
 
 ### TDR-012 - Readiness satisfied
 
-**Input:** aggregate rule results  
-**Condition:** no duplicate, no review rule, no missing-information rule, all mandatory checks satisfied  
-**Route:** `READY_FOR_PRICING`  
-**Reason:** tender is complete and consistent according to V1 synthetic policy  
+**Input:** aggregate rule results \
+**Condition:** no duplicate, no review rule, no missing-information rule, all mandatory checks satisfied \
+**Route:** `READY_FOR_PRICING` \
+**Reason:** tender is complete and consistent according to V1 synthetic policy \
 **Tests:** canonical happy path, multi-site happy path
 
 ## AI output is evidence, not policy
@@ -174,6 +180,10 @@ V1 deliberately does not invent a universal source hierarchy. If two credible so
 > **No case may invoke the pricing gateway unless the final business route is `READY_FOR_PRICING`.**
 
 This invariant must be enforced in code and covered by automated tests.
+
+## Domain input boundary
+
+The domain evaluator accepts validated tender records plus explicit evidence signals for duplicate matches, extracted date facts, document/site associations, meter/site associations, and critical-fact confidence. These signals are inputs to deterministic policy; they do not select a route themselves. The current implementation has no model, persistence, or integration dependency.
 
 ## Idempotency invariant
 
