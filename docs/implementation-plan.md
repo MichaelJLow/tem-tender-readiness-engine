@@ -50,15 +50,15 @@ Technical failure     → FAILED / recoverable
 
 ### Tasks
 
-- [ ] Initialise TypeScript workspace/monorepo.
-- [ ] Enable strict TypeScript.
-- [ ] Configure package-manager scripts.
-- [ ] Add ESLint and formatting.
-- [ ] Add Vitest.
-- [ ] Add Zod.
-- [ ] Add `.env.example` and secure `.gitignore`.
+- [x] Initialise TypeScript workspace/monorepo.
+- [x] Enable strict TypeScript.
+- [x] Configure package-manager scripts.
+- [x] Add ESLint and formatting.
+- [x] Add Vitest.
+- [x] Add Zod.
+- [x] Add `.env.example` and secure `.gitignore`.
 - [x] Establish public README and engineering docs.
-- [ ] Create top-level implementation structure:
+- [x] Create top-level implementation structure:
 
 ```text
 apps/
@@ -69,7 +69,7 @@ docs/
 .github/
 ```
 
-- [ ] Add CI skeleton for lint, typecheck, and tests.
+- [x] Add CI skeleton for lint, typecheck, and tests.
 
 ### Acceptance criteria
 

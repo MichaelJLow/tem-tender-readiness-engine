@@ -102,3 +102,25 @@ The system is being built in vertical slices:
 9. stable public release
 
 The goal is not to maximise feature count. The goal is to make every automated decision understandable, testable, observable, and safe to operate.
+
+## Local development
+
+Requirements: Node.js 22 or later and npm.
+
+```sh
+npm ci
+npm run check
+```
+
+Individual checks are available as `npm run format:check`, `npm run lint`, `npm run typecheck`, and `npm test`. Copy `.env.example` to `.env` when local settings are needed; keep credentials out of tracked files.
+
+The initial workspace layout is:
+
+```text
+apps/api/         Local API, introduced in Milestone 2
+packages/domain/  Deterministic domain core, introduced in Milestone 1
+integrations/     External workflow assets
+infra/            Deployment and infrastructure assets
+docs/             Architecture, rules, and delivery plan
+.github/workflows/CI checks
+```
