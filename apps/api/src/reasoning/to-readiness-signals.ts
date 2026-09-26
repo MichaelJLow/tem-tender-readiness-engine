@@ -144,10 +144,7 @@ export function toReadinessSignals(
             : 'textSourceAssessment',
       confidence: assessment.confidence,
       ambiguous:
-        assessment.ambiguous ||
-        unresolvedRelevantSource ||
-        inconsistentIrrelevantSource ||
-        unknownLabels.length > 0,
+        unresolvedRelevantSource || inconsistentIrrelevantSource || unknownLabels.length > 0,
       evidence: [
         ...evidence,
         ...unknownLabels.map((locator): EvidenceRef => ({

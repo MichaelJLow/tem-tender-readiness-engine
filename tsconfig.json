@@ -11,5 +11,11 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["apps/**/*.ts", "packages/**/*.ts", "tests/**/*.ts", "vitest.config.ts"]
+  "include": [
+    "apps/**/*.ts",
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "evals/**/*.ts",
+    "vitest.config.ts"
+  ]
 }

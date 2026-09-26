@@ -863,6 +863,38 @@ describe('text source intake and deterministic evidence mapping', () => {
     expect(evaluateReadiness({ ...cleanTender, signals }).route).toBe('READY_FOR_PRICING');
   });
 
+  it('uses observation ambiguity, not a broad source assessment, for a clear extracted fact', () => {
+    const clearNote = {
+      ...note,
+      text: 'For site-001, the contract ends on 2027-03-31.',
+    };
+    const output = interpretation({
+      sourceAssessments: [
+        {
+          ...interpretation().sourceAssessments[0]!,
+          ambiguous: true,
+          evidence: [{ sourceId: note.sourceId, quote: clearNote.text }],
+        },
+      ],
+      observations: [
+        {
+          ...interpretation().observations[0]!,
+          field: 'contractEndDate',
+          value: '2027-03-31',
+          siteIds: ['site-001'],
+          ambiguous: false,
+          evidence: [{ sourceId: note.sourceId, quote: clearNote.text }],
+        },
+      ],
+    });
+
+    const signals = toReadinessSignals(cleanTender, [clearNote], output);
+    expect(signals.criticalFacts).not.toContainEqual(
+      expect.objectContaining({ field: 'textSourceAssessment', ambiguous: true }),
+    );
+    expect(evaluateReadiness({ ...cleanTender, signals }).route).toBe('READY_FOR_PRICING');
+  });
+
   it('routes a credible conflicting customer legal name to human review', () => {
     const customerNote = {
       ...note,

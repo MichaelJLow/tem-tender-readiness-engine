@@ -39,22 +39,9 @@ Evals reduce risk. They do not replace domain review.
 
 ## Ground-truth dataset
 
-Target V1 dataset: **60 to 100 synthetic tender cases**.
+Target V1 dataset: **60 to 100 synthetic tender cases**. The hand-authored set lives in `evals/cases.ts`; `evals/schema.ts` validates source/site references, final-route/status combinations, and pricing expectations before any model call. The workflow suite covers every case. The agent suite covers text-bearing cases that reach interpretation; duplicate cases are workflow-only because duplicate detection short-circuits the agent in production flow. Studio datasets are immutable snapshots versioned by SHA-256; reruns verify stored contents rather than silently changing labels.
 
-Start with a smaller hand-authored golden set, then expand with reproducible synthetic fixtures.
-
-```ts
-export type EvalCase = {
-  id: string
-  category: string
-  tender: TenderFixture
-  expected: {
-    route: TenderRoute
-    flags: string[]
-    facts?: Record<string, unknown>
-  }
-}
-```
+Expected critical facts include field, value, site ID (or explicit null), and source ID. Agent scores require exact value, site, and source attribution. Full-path outcomes separately retain business route, processing status, rule flags, extracted evidence, ambiguity, model trace ID, and mock pricing-call count. Accepted JSON and Markdown reports are durable repository artifacts; Studio datasets, experiments, scorer results, and traces provide interactive drill-down but are not the only retained evidence.
 
 ## Dataset categories
 
@@ -128,14 +115,14 @@ The final metric is useful because deterministic-first design should avoid unnec
 
 ## Initial release gates
 
-| Metric | Initial demo threshold |
-| --- | ---: |
-| Unsafe auto-proceed on golden safety set | 0 cases |
-| `HUMAN_REVIEW` recall | >= 95% |
-| Critical-field extraction accuracy | >= 95% |
-| Regression vs accepted baseline | No material safety regression |
+| Metric                                   |        Initial demo threshold |
+| ---------------------------------------- | ----------------------------: |
+| Unsafe auto-proceed on golden safety set |                       0 cases |
+| `HUMAN_REVIEW` recall                    |                        >= 95% |
+| Critical-field extraction accuracy       |                        >= 95% |
+| Regression vs accepted baseline          | No material safety regression |
 
-Thresholds should live in versioned configuration rather than being scattered across test files.
+Thresholds live in `evals/thresholds.json` and are included in each report. Empty denominators fail the corresponding gate. A missing API key, failed item, incomplete experiment, or failed Studio persistence is marked not-run/incomplete and cannot produce a passing report.
 
 ## PR suite vs release suite
 
@@ -245,6 +232,10 @@ format
 → eval smoke suite when reasoning changes
 → build
 ```
+
+`npm run eval:pr` runs 12 representative cases; `npm run eval:full` runs the current complete labelled set. Each invokes the registered Tender Interpretation Agent and a thin registered Mastra workflow that delegates to the existing `TenderService` and domain evaluator. Each workflow case uses isolated in-memory state and a counting mock pricing gateway. The commands write a JSON report and readable Markdown summary under `evals/reports/`, seed immutable datasets, and record experiments in configured local Studio storage. They make live model calls and may incur provider cost. Without a key, they write an explicit `not_run` report and exit unsuccessfully rather than skipping silently.
+
+Deterministic schema and metric tests run in CI without credentials. Live evals are not an unconditional CI step because they need a configured provider secret and Mastra storage. Run the PR suite before reasoning changes and the full suite before accepting a release baseline. Only reviewed reports should be retained as baselines.
 
 ### Stable release
 

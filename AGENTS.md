@@ -26,6 +26,10 @@ For operational behaviour, also read:
 
 - `docs/runbook.md`
 
+### Local Mastra Studio
+
+- Use port `4113` for this repository's Mastra Studio. Other ports such as `4111` may belong to separate agent projects; do not move this project's Studio to another port just because those are occupied. If `4113` is already occupied, identify and resolve this repository's own Studio process before starting another instance.
+
 For significant architecture changes, check:
 
 - `docs/adr/`
