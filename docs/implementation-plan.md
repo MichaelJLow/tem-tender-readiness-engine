@@ -123,17 +123,17 @@ No model call is required.
 
 ### Tasks
 
-- [ ] Create minimal TypeScript API/service.
-- [ ] Implement `POST /tenders`.
-- [ ] Validate incoming payload with Zod.
-- [ ] Create processing record.
-- [ ] Execute deterministic readiness rules.
-- [ ] Produce one final route.
-- [ ] Persist locally behind a repository abstraction.
-- [ ] Implement mocked pricing gateway.
-- [ ] Enforce pricing guard.
-- [ ] Add integration tests.
-- [ ] Add correlation/run IDs.
+- [x] Create minimal TypeScript API/service.
+- [x] Implement `POST /tenders`.
+- [x] Validate incoming payload with Zod.
+- [x] Create processing record.
+- [x] Execute deterministic readiness rules.
+- [x] Produce one final route for completed runs; keep required pending documents in `PROCESSING` without a route.
+- [x] Persist locally behind a repository abstraction.
+- [x] Implement mocked pricing gateway.
+- [x] Enforce pricing guard.
+- [x] Add integration tests.
+- [x] Add correlation/run IDs.
 
 ### Acceptance criteria
 
@@ -141,7 +141,7 @@ A clean tender can be submitted over HTTP and a non-ready tender cannot reach pr
 
 ### Suggested branch
 
-`feat/local-vertical-slice`
+`feat/milestone-2`
 
 ---
 
@@ -387,3 +387,4 @@ An engineer can review the repository without verbal context and the demo can be
 | 7 | Hardening + presentation | stable release, docs, screenshots, rehearsed demo |
 
 The sequence is intentionally flexible. If infrastructure threatens eval quality or system reliability, reduce infrastructure scope rather than weakening the core demonstration.
+

@@ -124,3 +124,6 @@ infra/            Deployment and infrastructure assets
 docs/             Architecture, rules, and delivery plan
 .github/workflows/CI checks
 ```
+
+Start the local API with `npm run dev:api`. It listens on `PORT` (default `3000`) and writes synthetic processing state to `TENDER_STATE_PATH` (default `./data/tender-state.json`, ignored by Git). Submit a JSON `ReadinessInput` to `POST /tenders`; a clean tender returns `READY_FOR_PRICING` and records one mock handoff. Repeating the same idempotency key and payload returns the stored outcome. The local JSON repository supports a single API process.
+

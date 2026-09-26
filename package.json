@@ -16,7 +16,9 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,yml,yaml}\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "build:api": "tsc --project tsconfig.api.json",
+    "dev:api": "npm run build:api && node --env-file-if-exists=.env dist/apps/api/src/main.js"
   },
   "dependencies": {
     "zod": "^4.6.5"
@@ -32,3 +34,4 @@
     "vitest": "^5.0.2"
   }
 }
+
