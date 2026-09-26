@@ -222,4 +222,3 @@ class CountingPricingGateway implements PricingGateway {
     return handoff;
   }
 }
-
