@@ -55,4 +55,3 @@ describe('JsonFileTenderRepository', () => {
 function createRepository(): JsonFileTenderRepository {
   return new JsonFileTenderRepository(new FileStateStore(statePath));
 }
-
