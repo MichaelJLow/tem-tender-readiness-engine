@@ -21,7 +21,7 @@ flowchart TD
     D --> E["Deterministic readiness checks"]
     E --> F{"Interpretation needed?"}
     F -->|No| H["Routing policy"]
-    F -->|Yes| G["Mastra Tender Interpretation Agent<br/>OpenAI"]
+    F -->|Yes| G["Mastra Tender Interpretation Agent<br/>configured model provider"]
     G --> H
     H --> I["READY_FOR_PRICING"]
     H --> J["NEEDS_INFORMATION"]
@@ -35,14 +35,14 @@ flowchart TD
 
 ## Responsibility boundaries
 
-| Layer | Responsibility | Intended technology |
-| --- | --- | --- |
-| Integration | Receive events, move files, call APIs, trigger downstream workflows | n8n |
-| Domain | Schemas, deterministic rules, routing, state transitions | TypeScript + Zod |
-| Reasoning | Interpret unstructured or semantically ambiguous information | Mastra + OpenAI |
-| Human judgment | Resolve critical conflicts and accountable exceptions | Ops console |
-| Infrastructure | Files, application state, runtime, logs | AWS |
-| Pricing boundary | Accept readiness-cleared normalized tenders only | Mock gateway |
+| Layer            | Responsibility                                                      | Intended technology                                                              |
+| ---------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Integration      | Receive events, move files, call APIs, trigger downstream workflows | n8n                                                                              |
+| Domain           | Schemas, deterministic rules, routing, state transitions            | TypeScript + Zod                                                                 |
+| Reasoning        | Interpret unstructured or semantically ambiguous information        | Tool-free Mastra agent in the API workspace, using the configured model provider |
+| Human judgment   | Resolve critical conflicts and accountable exceptions               | Ops console                                                                      |
+| Infrastructure   | Files, application state, runtime, logs                             | AWS                                                                              |
+| Pricing boundary | Accept readiness-cleared normalized tenders only                    | Mock gateway                                                                     |
 
 ## Deterministic-first policy
 
@@ -62,7 +62,7 @@ Examples:
 
 ## AI boundary
 
-OpenAI is used only where semantic interpretation adds value, for example:
+The configured model provider is used only where semantic interpretation adds value, for example:
 
 - extracting structured facts from free text or text-based documents,
 - associating broker notes or documents with the correct site,
@@ -70,6 +70,8 @@ OpenAI is used only where semantic interpretation adds value, for example:
 - returning evidence-backed explanations.
 
 The model returns structured evidence. It does not own the final safety policy.
+
+The current implementation keeps the Mastra agent in `apps/api` and invokes it through a `TenderInterpreter` interface. It uses an OpenAI-compatible API client with a configurable base URL and model ID; OpenAI and OpenRouter have provider-specific credentials. An arbitrary provider key works only when its endpoint is compatible and configured. Local Mastra Studio registers the same agent definition for inspection and experiments, with its own persisted observability store. The tender API is a separate process and does not export its runs into Studio. See [ADR-001](adr/001-bounded-mastra-agent.md).
 
 ## Human-review boundary
 

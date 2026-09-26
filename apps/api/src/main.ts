@@ -3,12 +3,18 @@ import { JsonFileTenderRepository, FileStateStore } from './file-repository.js';
 import { MockPricingGateway } from './pricing-gateway.js';
 import { createTenderServer } from './server.js';
 import { TenderService } from './service.js';
+import { MastraTenderInterpreter } from './reasoning/interpreter.js';
 
 const port = parsePort(process.env.PORT ?? '3000');
 const host = process.env.HOST ?? '127.0.0.1';
 const statePath = resolve(process.env.TENDER_STATE_PATH ?? './data/tender-state.json');
 const repository = new JsonFileTenderRepository(new FileStateStore(statePath));
-const service = new TenderService(repository, new MockPricingGateway(repository));
+const service = new TenderService(
+  repository,
+  new MockPricingGateway(repository),
+  undefined,
+  new MastraTenderInterpreter(),
+);
 const server = createTenderServer(service);
 
 server.listen(port, host, () => {

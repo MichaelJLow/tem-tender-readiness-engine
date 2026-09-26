@@ -40,4 +40,8 @@ Likely decisions include:
 - human-review policy for critical ambiguity
 - PR eval subset versus full release eval suite
 
+Current decisions:
+
+- [ADR-001: Keep the bounded Mastra agent in the API workspace](001-bounded-mastra-agent.md)
+
 ADRs should describe **this project's** choices. They should not present implementation assumptions as facts about tem's private architecture.

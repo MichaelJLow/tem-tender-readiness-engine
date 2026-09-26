@@ -72,7 +72,9 @@ async function handleRequest(
         : result.status === 'FAILED'
           ? result.failure?.code === 'PRICING_GATEWAY_FAILED'
             ? 502
-            : 500
+            : result.failure?.code === 'MODEL_PROVIDER_FAILED'
+              ? 502
+              : 500
           : 200;
     sendJson(response, statusCode, result);
     console.info(
@@ -84,6 +86,8 @@ async function handleRequest(
         status: result.status,
         route: result.route,
         replayed: result.replayed,
+        traceId: result.modelTrace?.traceId,
+        model: result.modelTrace?.model,
       }),
     );
   } catch (error) {
@@ -101,6 +105,8 @@ async function handleRequest(
           correlationId,
           status: error.response.status,
           failure: error.response.failure?.code,
+          traceId: error.response.modelTrace?.traceId,
+          model: error.response.modelTrace?.model,
         }),
       );
       return;
