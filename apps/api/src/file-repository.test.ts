@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -62,6 +62,37 @@ describe('JsonFileTenderRepository', () => {
     expect(replay.correlationId).toBe('correlation-replay');
     expect(state.runs).toHaveLength(1);
     expect(state.handoffs).toHaveLength(1);
+  });
+
+  it('reads Milestone 2 state with long IDs and no textSources field', async () => {
+    const longId = 's'.repeat(129);
+    const legacy = {
+      ...cleanTender,
+      tender: {
+        ...cleanTender.tender,
+        sites: [{ ...cleanTender.tender.sites[0], siteId: longId }],
+        documents: [
+          { documentId: longId, fileName: 'legacy-a.pdf', contentType: 'application/pdf' },
+          { documentId: longId, fileName: 'legacy-b.pdf', contentType: 'application/pdf' },
+        ],
+      },
+    };
+    const repository = createRepository();
+    await new TenderService(repository, new MockPricingGateway(repository)).submit(
+      legacy,
+      'correlation-legacy',
+    );
+    const stored = JSON.parse(await readFile(statePath, 'utf8')) as {
+      runs: { input: { textSources?: unknown } }[];
+    };
+    delete stored.runs[0]!.input.textSources;
+    await writeFile(statePath, JSON.stringify(stored));
+
+    const restored = await new FileStateStore(statePath).read();
+    expect(restored.runs[0]?.input.tender.sites[0]?.siteId).toBe(longId);
+    expect(restored.runs[0]?.input.tender.documents[0]?.documentId).toBe(longId);
+    expect(restored.runs[0]?.input.tender.documents).toHaveLength(2);
+    expect(restored.runs[0]?.input.textSources).toEqual([]);
   });
 
   it('resumes an interrupted file-backed run after creating a new repository instance', async () => {

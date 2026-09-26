@@ -82,6 +82,7 @@ export const EvidenceSourceTypeSchema = z.enum([
   'SITE',
   'DOCUMENT',
   'FACT',
+  'TEXT',
   'IDEMPOTENCY',
 ]);
 

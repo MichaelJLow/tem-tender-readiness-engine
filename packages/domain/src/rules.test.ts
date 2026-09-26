@@ -60,6 +60,28 @@ describe('schemas and date normalization', () => {
     expect(() => evaluateReadiness(input)).toThrow(/Duplicate site ID: site-001/);
   });
 
+  it('keeps legacy structured-only tenders with duplicate document IDs readable', () => {
+    const input = cloneCleanTender();
+    input.tender.documents = [
+      {
+        documentId: 'duplicate-document',
+        fileName: 'first.pdf',
+        contentType: 'application/pdf',
+        required: false,
+        processingStatus: 'PENDING',
+      },
+      {
+        documentId: 'duplicate-document',
+        fileName: 'second.pdf',
+        contentType: 'application/pdf',
+        required: false,
+        processingStatus: 'PENDING',
+      },
+    ];
+
+    expect(evaluateReadiness(input).route).toBe('READY_FOR_PRICING');
+  });
+
   it('keeps business-invalid values available to deterministic rules', () => {
     const input = cloneCleanTender();
     input.tender.sites[0]!.annualConsumptionKwh = -10;
