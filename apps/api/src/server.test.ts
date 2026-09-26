@@ -1,7 +1,11 @@
 import type { Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanTender, missingConsumptionTender } from '../../../tests/fixtures/tenders.js';
+import {
+  cleanTender,
+  conflictingDatesTender,
+  missingConsumptionTender,
+} from '../../../tests/fixtures/tenders.js';
 import type { LocalState, PricingHandoff, TenderRun } from './contracts.js';
 import { createTenderServer } from './server.js';
 import type { PricingGateway } from './pricing-gateway.js';
@@ -54,6 +58,22 @@ class MemoryRepository implements TenderRepository {
   async snapshot(): Promise<LocalState> {
     return this.store.read();
   }
+
+  async replaceState(state: LocalState): Promise<void> {
+    await this.store.write(state);
+  }
+}
+
+class InterruptOnCompletionRepository extends MemoryRepository {
+  private interrupt = true;
+
+  override async saveRun(run: TenderRun): Promise<void> {
+    if (this.interrupt && run.status === 'COMPLETED') {
+      this.interrupt = false;
+      throw new Error('simulated interruption before completion was persisted');
+    }
+    await super.saveRun(run);
+  }
 }
 
 const servers: Server[] = [];
@@ -86,6 +106,14 @@ describe('POST /tenders', () => {
 
     expect(response.status).toBe(200);
     expect(body.route).toBe('NEEDS_INFORMATION');
+    expect((await repository.snapshot()).handoffs).toHaveLength(0);
+  });
+
+  it('does not call pricing for a tender routed to human review', async () => {
+    const repository = new MemoryRepository();
+    const { body } = await postTender(repository, conflictingDatesTender);
+
+    expect(body.route).toBe('HUMAN_REVIEW');
     expect((await repository.snapshot()).handoffs).toHaveLength(0);
   });
 
@@ -124,6 +152,36 @@ describe('POST /tenders', () => {
     expect((await repository.snapshot()).handoffs).toHaveLength(1);
   });
 
+  it('resumes an interrupted run and completes its pricing handoff on replay', async () => {
+    const repository = new InterruptOnCompletionRepository();
+    const pricingGateway = new CountingPricingGateway(repository);
+    const service = new TenderService(repository, pricingGateway);
+
+    await expect(service.submit(cleanTender, 'correlation-first')).rejects.toThrow(
+      'simulated interruption',
+    );
+    const replay = await service.submit(cleanTender, 'correlation-replay');
+
+    expect(replay.replayed).toBe(true);
+    expect(replay.status).toBe('COMPLETED');
+    expect(replay.route).toBe('READY_FOR_PRICING');
+    expect((await repository.snapshot()).handoffs).toHaveLength(1);
+  });
+
+  it('reconciles a ready run whose handoff was not recorded before interruption', async () => {
+    const repository = new MemoryRepository();
+    await postTender(repository, cleanTender);
+    const state = await repository.snapshot();
+    state.handoffs = [];
+    await repository.replaceState(state);
+
+    const replay = await postTender(repository, cleanTender);
+
+    expect(replay.body.replayed).toBe(true);
+    expect(replay.body.route).toBe('READY_FOR_PRICING');
+    expect((await repository.snapshot()).handoffs).toHaveLength(1);
+  });
+
   it('routes a repeated tender ID with a new key to DUPLICATE', async () => {
     const repository = new MemoryRepository();
     await postTender(repository, cleanTender);
@@ -148,7 +206,7 @@ describe('POST /tenders', () => {
     expect((await repository.snapshot()).runs).toHaveLength(0);
   });
 
-  it('keeps READY_FOR_PRICING when the mock gateway fails', async () => {
+  it('keeps READY_FOR_PRICING and returns failure status when the gateway fails, including replay', async () => {
     const repository = new MemoryRepository();
     const failedGateway: PricingGateway = {
       async submit() {
@@ -158,11 +216,13 @@ describe('POST /tenders', () => {
     const server = createTenderServer(new TenderService(repository, failedGateway));
     servers.push(server);
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-    const response = await fetch(`${baseUrl(server)}/tenders`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(cleanTender),
-    });
+    const submit = () =>
+      fetch(`${baseUrl(server)}/tenders`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(cleanTender),
+      });
+    const response = await submit();
     const body = (await response.json()) as {
       status: string;
       route?: string;
@@ -176,6 +236,12 @@ describe('POST /tenders', () => {
     expect(body.failure?.code).toBe('PRICING_GATEWAY_FAILED');
     expect(saved?.route).toBe('READY_FOR_PRICING');
     expect(saved?.status).toBe('FAILED');
+
+    const replay = await submit();
+    const replayBody = (await replay.json()) as { status: string; replayed: boolean };
+    expect(replay.status).toBe(502);
+    expect(replayBody.status).toBe('FAILED');
+    expect(replayBody.replayed).toBe(true);
   });
 });
 
