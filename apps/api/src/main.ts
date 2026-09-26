@@ -5,13 +5,14 @@ import { createTenderServer } from './server.js';
 import { TenderService } from './service.js';
 
 const port = parsePort(process.env.PORT ?? '3000');
+const host = process.env.HOST ?? '127.0.0.1';
 const statePath = resolve(process.env.TENDER_STATE_PATH ?? './data/tender-state.json');
 const repository = new JsonFileTenderRepository(new FileStateStore(statePath));
 const service = new TenderService(repository, new MockPricingGateway(repository));
 const server = createTenderServer(service);
 
-server.listen(port, () => {
-  console.info(JSON.stringify({ event: 'api.listening', port, statePath }));
+server.listen(port, host, () => {
+  console.info(JSON.stringify({ event: 'api.listening', host, port, statePath }));
 });
 
 function parsePort(value: string): number {
