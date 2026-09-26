@@ -12,4 +12,3 @@ export interface LocalStateStore {
   read(): Promise<LocalState>;
   write(state: LocalState): Promise<void>;
 }
-
