@@ -66,7 +66,15 @@ async function handleRequest(
 
   try {
     const result = await service.submit(validation.data, correlationId);
-    sendJson(response, result.status === 'PROCESSING' ? 202 : 200, result);
+    const statusCode =
+      result.status === 'PROCESSING'
+        ? 202
+        : result.status === 'FAILED'
+          ? result.failure?.code === 'PRICING_GATEWAY_FAILED'
+            ? 502
+            : 500
+          : 200;
+    sendJson(response, statusCode, result);
     console.info(
       JSON.stringify({
         event: 'tender.processed',
