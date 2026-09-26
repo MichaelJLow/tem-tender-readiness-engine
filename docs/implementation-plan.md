@@ -145,7 +145,7 @@ A clean tender can be submitted over HTTP and a non-ready tender cannot reach pr
 
 ---
 
-## Milestone 3 - Mastra + OpenAI reasoning
+## Milestone 3 - Bounded Mastra reasoning
 
 **Goal:** introduce AI only for tasks deterministic code cannot reliably perform.
 
@@ -159,21 +159,23 @@ One bounded **Tender Interpretation Agent** for:
 
 ### Tasks
 
-- [ ] Add Mastra.
-- [ ] Configure OpenAI via environment configuration.
-- [ ] Implement structured outputs validated by Zod.
-- [ ] Preserve source/evidence provenance.
-- [ ] Add ambiguity fields where useful.
-- [ ] Invoke the agent only when interpretation is required.
-- [ ] Prevent direct pricing access from the agent.
-- [ ] Prevent model output from overriding deterministic policy.
-- [ ] Route unresolved critical ambiguity to `HUMAN_REVIEW`.
-- [ ] Add model/workflow tracing.
-- [ ] Test model failure and malformed output paths.
+- [x] Add Mastra.
+- [x] Configure an API-compatible model provider via environment configuration (including OpenAI and OpenRouter).
+- [x] Implement structured outputs validated by Zod.
+- [x] Preserve source/evidence provenance.
+- [x] Add ambiguity fields where useful.
+- [x] Invoke the agent only when interpretation is required.
+- [x] Prevent direct pricing access from the agent.
+- [x] Prevent model output from overriding deterministic policy.
+- [x] Route unresolved critical ambiguity to `HUMAN_REVIEW`.
+- [x] Add model/workflow tracing.
+- [x] Test model failure and malformed output paths.
 
 ### Acceptance criteria
 
 Unstructured text can produce schema-valid evidence, and model failure cannot accidentally produce `READY_FOR_PRICING`.
+
+**Completed:** merged in [PR #6](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/6) on 2026-09-26. Formatting, lint, typecheck, 117 tests, API build, and GitHub CI passed. The local Studio smoke run completed 8/8 cases with traces; scored evals remain in Milestone 4.
 
 ### Suggested branch
 
