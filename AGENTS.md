@@ -32,6 +32,10 @@ For significant architecture changes, check:
 
 Do not duplicate these documents inside prompts, comments, or new files unless necessary.
 
+## Git checkout boundary
+
+Before implementation, identify whether the task is running in a Codex sandbox/worktree or a writable Git checkout. Source files may be writable while .git is protected. If Git metadata operations are blocked, preserve the working tree and use the Codex/host Git workflow instead of retrying commands, changing .git permissions, resetting the repository, or recreating work.
+
 ---
 
 ## Core architecture principles
@@ -253,3 +257,4 @@ Also verify:
 - synthetic/public-data boundaries remain clear
 
 If a requested implementation conflicts with documented architecture, do not silently work around it. Surface the conflict and explain the proposed change.
+
