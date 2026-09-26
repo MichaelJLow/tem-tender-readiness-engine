@@ -189,18 +189,18 @@ Unstructured text can produce schema-valid evidence, and model failure cannot ac
 
 ### Tasks
 
-- [ ] Create an initial hand-authored golden dataset of roughly 30 strong cases.
-- [ ] Expand toward 60 to 100 reproducible synthetic cases.
-- [ ] Store expected route, flags, and critical facts.
-- [ ] Calculate routing precision/recall.
-- [ ] Calculate critical-field extraction accuracy.
-- [ ] Calculate `HUMAN_REVIEW` recall.
-- [ ] Calculate unsafe auto-proceed rate.
-- [ ] Create a golden safety set.
-- [ ] Create fast PR eval subset.
-- [ ] Create full release suite.
-- [ ] Record prompt/model configuration with results.
-- [ ] Add manual QA checklist.
+- [x] Create an initial hand-authored golden dataset of roughly 30 strong cases.
+- [x] Expand toward 60 to 100 reproducible synthetic cases.
+- [x] Store expected route, flags, and critical facts.
+- [x] Calculate routing precision/recall.
+- [x] Calculate critical-field extraction precision/recall.
+- [x] Calculate `HUMAN_REVIEW` recall.
+- [x] Calculate unsafe auto-proceed rate.
+- [x] Create a golden safety set.
+- [x] Create fast PR eval subset.
+- [x] Create full release suite.
+- [x] Record prompt/model configuration with results.
+- [x] Add manual QA checklist.
 
 ### Initial prototype gates
 
@@ -213,6 +213,15 @@ Critical-field extraction           >= 95%
 ### Acceptance criteria
 
 A safety regression caused by a prompt/model change fails visibly.
+
+**Current verification (2026-09-26):** the 63-case v5 full run is retained as an
+incomplete diagnostic: one interpretation returned invalid model output,
+ambiguity recall was 11/12, and several clear cases over-routed to review. Agent
+fact precision/recall and workflow fact precision/recall passed; safety and
+pricing-guard checks also passed. The 14-case v5 PR run passed all configured
+gates. See `docs/eval-findings.md`. The full suite and dataset are implemented,
+but Milestone 4 still needs review of full-run findings, manual QA, and an
+explicitly accepted baseline before it is complete.
 
 ### Suggested branch
 
@@ -238,11 +247,14 @@ A safety regression caused by a prompt/model change fails visibly.
 - [ ] Show deterministic rule results and AI evidence.
 - [ ] Implement human-review actions.
 - [ ] Store immutable review/audit events.
-- [ ] Add performance/eval view once metrics exist.
+- [ ] Add a performance/eval view backed by the versioned Milestone 4 report contract, showing the latest accepted run, comparable baseline, safety verdict, metrics, sample sizes, and model/prompt/dataset versions.
+- [ ] Link to Mastra Studio experiments and recent traces for drill-down when available; keep the case evidence and eval report readable after those traces expire.
+- [ ] Keep operational tender/review state in the application repository and expose eval summaries through a read-only backend projection, rather than reading Studio's local database from the UI.
+- [ ] Treat human corrections as candidate regression cases that require review before entering the canonical eval dataset.
 
 ### Acceptance criteria
 
-A reviewer can understand why a case was blocked and resolve it without reading backend logs.
+A reviewer can understand why a case was blocked and resolve it without reading backend logs. The performance view can explain the current eval verdict from the retained report even when a Mastra Studio trace is unavailable.
 
 ### Suggested branch
 
@@ -378,15 +390,14 @@ An engineer can review the repository without verbal context and the demo can be
 
 ## Seven-day focus
 
-| Day | Primary goal | Must-have outcome |
-| --- | --- | --- |
-| 1 | Repo + domain core | deterministic routes and tests |
-| 2 | Local vertical slice + reasoning | API flow and bounded model integration |
-| 3 | Evals | golden set, metrics, safety gate |
-| 4 | Ops console | queue, case detail, human review |
-| 5 | AWS | documents/state/runtime working in cloud |
-| 6 | n8n + reliability + CI | integrated workflow, retries, observable failure |
-| 7 | Hardening + presentation | stable release, docs, screenshots, rehearsed demo |
+| Day | Primary goal                     | Must-have outcome                                 |
+| --- | -------------------------------- | ------------------------------------------------- |
+| 1   | Repo + domain core               | deterministic routes and tests                    |
+| 2   | Local vertical slice + reasoning | API flow and bounded model integration            |
+| 3   | Evals                            | golden set, metrics, safety gate                  |
+| 4   | Ops console                      | queue, case detail, human review                  |
+| 5   | AWS                              | documents/state/runtime working in cloud          |
+| 6   | n8n + reliability + CI           | integrated workflow, retries, observable failure  |
+| 7   | Hardening + presentation         | stable release, docs, screenshots, rehearsed demo |
 
 The sequence is intentionally flexible. If infrastructure threatens eval quality or system reliability, reduce infrastructure scope rather than weakening the core demonstration.
-

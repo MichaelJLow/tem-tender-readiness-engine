@@ -9,7 +9,7 @@ This is a **living operational document**. It describes the local API, including
 - Start with `npm run dev:api` after `npm ci`.
 - Configure `PORT`, `HOST`, and `TENDER_STATE_PATH` with environment variables. Defaults are port `3000`, host `127.0.0.1` (loopback only), and `./data/tender-state.json`. Set `HOST` explicitly only when the API must accept connections from another interface.
 - Structured-only requests do not call a model and do not need a model-provider key. Requests with `textSources` invoke the Mastra Tender Interpretation Agent. Set `OPENROUTER_API_KEY` to use OpenRouter (default model `openai/gpt-6-luna`), or set `OPENAI_API_KEY` to use OpenAI (default model `gpt-6-luna`). `OPENROUTER_MODEL` and `OPENAI_MODEL` override provider defaults. For another OpenAI-compatible provider, set `MODEL_API_KEY`, `MODEL_API_BASE_URL`, and `MODEL_ID`; these generic settings take precedence. Keep keys in an untracked `.env` file or deployment secrets.
-- To open the registered interpretation agent in Mastra Studio, run `npm run dev:studio --workspace @tem-tender-readiness/api` from the repository root, then open the Studio URL printed by the CLI. The default port is `4111`; Mastra chooses another available port if it is occupied. The command needs a provider key above in the process environment (or local `.env`). Studio is for agent inspection and local experiments; the tender API remains the production decision path.
+- To open the registered interpretation agent and eval workflows in Mastra Studio, set `PORT=4113` and run `npm run dev:studio --workspace @tem-tender-readiness/api` from the repository root, then open `http://localhost:4113` (PowerShell: `$env:PORT = '4113'`). Port `4113` is reserved for this repository's Studio so its datasets, experiments, traces, and metrics are in the expected project UI. Do not start a second Studio instance for this repo; if the port is occupied, identify its process before restarting it. The command needs a provider key above in the process environment (or local `.env`). Studio is for agent inspection and local experiments; the tender API remains the production decision path.
 - Studio stores local traces, metrics, logs, datasets, and experiments under its ignored `src/mastra/public/data/` directory. A Studio agent call appears in that Studio's observability views. The tender API runs in a separate process and currently writes its own structured logs and model trace records to tender state; its calls do not appear in Studio's traces. Use synthetic data in Studio because traces include model inputs and outputs.
 - Interpretation runs inside the API process. The model receives only the tender context needed for site association and the submitted note/extracted text. It has no tools or pricing access. Provider failure returns a technical failure and cannot assign a route or call pricing.
 - A site-scoped extracted fact must cite a quote containing both its value and a unique known site ID, meter identifier, or full address. Unclear or conflicting identity routes to `HUMAN_REVIEW`, including for a single-site tender.
@@ -57,7 +57,22 @@ Completed locally on 2026-09-26 using `OPENROUTER_API_KEY` and `openai/gpt-6-lun
 
 A separate Studio smoke call confirmed one persisted agent trace and metrics for model usage, tokens, and latency. Studio logs captured startup events; agent runs are inspected in Traces. Studio does not score readiness routes by itself; labelled eval fixtures and the deterministic rules remain the release gate.
 
-With Studio running, run `node tests/studio-smoke.mjs` from the repository root to record eight synthetic interpretation cases as a Studio dataset experiment. Set `MASTRA_STUDIO_URL` if Studio is on another port. The dataset name includes a fixture hash, so changed cases create a new version and an unchanged rerun verifies the stored inputs before use. Run with `--verify-only` to check stored fixtures without making model calls. Open the dataset in Studio to inspect each input, expected behavior, output, and trace. A completed experiment means the model calls succeeded; these cases have descriptive ground truth for manual review and no automatic accuracy scorer yet. Run `npm run check` separately for deterministic tests, lint, formatting, and typecheck; those results are not stored as Studio agent runs. Milestone 4 adds scored, labelled evals and release thresholds.
+With Studio running, run `node tests/studio-smoke.mjs` from the repository root to record eight synthetic Milestone 3 cases as an unscored Studio agent experiment. Milestone 4's scored suites and reports are documented below.
+
+## Milestone 4 scored evals
+
+The canonical synthetic cases are in `evals/cases.ts`; the same immutable, hash-versioned cases seed agent and decision-path datasets. Start Studio with the configured model provider key, then run:
+
+```powershell
+npm run eval:pr
+npm run eval:full
+```
+
+The PR command evaluates 14 representative cases; the full command evaluates the current complete labelled set. Each runs an agent experiment for text-bearing, non-duplicate cases and a workflow experiment for all selected cases. Duplicate handling short-circuits interpretation in the real workflow, so duplicate cases are covered by the workflow experiment only. The workflow exercises the existing `TenderService` and deterministic domain rules with fresh in-memory state and a mock pricing gateway. Model facts are evaluated as evidence only; they never fill missing structured tender fields.
+
+Both runs persist datasets, experiments, scorer results, and traces to configured local Mastra storage and write a portable JSON report plus Markdown summary under `evals/reports/`. Reports include labels, denominators, per-case outcomes, metrics, thresholds, verdict, source revision, and Studio experiment IDs. Review a report before accepting it as a baseline. Cases and reports remain readable when Studio traces expire. The current dataset has 63 cases. The v5 full run is retained as diagnostic evidence and is incomplete; see `docs/eval-findings.md`. A passing PR report does not substitute for a passing full run, manual QA, or review before accepting a baseline.
+
+These commands make live model calls and may incur provider charges. Without a configured API key they write an explicit `not_run` report and exit with a nonzero status. Set `EVAL_REPORT_DIR` to change the report output directory. Never include real tender data in Studio, traces, or reports.
 
 ## Milestone 3 merge gate
 

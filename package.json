@@ -18,6 +18,8 @@
     "test": "vitest run",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
     "build:api": "tsc --project tsconfig.api.json",
+    "eval:pr": "tsx evals/run.ts --suite pr",
+    "eval:full": "tsx evals/run.ts --suite full",
     "dev:api": "npm run build:api && node --env-file-if-exists=.env dist/apps/api/src/main.js"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.1",
     "vitest": "^5.0.2"
