@@ -63,7 +63,8 @@ export class TenderService {
 
     if (priorRun) {
       if (priorRun.requestHash !== requestHash) throw new IdempotencyConflictError();
-      return responseFromRun(priorRun, true, correlationId);
+      if (priorRun.status === 'FAILED') return responseFromRun(priorRun, true, correlationId);
+      return this.processRun(priorRun, correlationId, true);
     }
 
     const activeTender = await this.repository.findRunByTenderId(request.tender.tenderId);
@@ -92,41 +93,51 @@ export class TenderService {
     });
     await this.repository.saveRun(run);
 
-    run.status = 'PROCESSING';
-    run.updatedAt = this.now().toISOString();
-    await this.repository.saveRun(run);
+    return this.processRun(run, correlationId, false);
+  }
 
-    let result: ReadinessResult;
-    try {
-      result = evaluateReadiness(input);
-    } catch {
-      run.status = 'FAILED';
-      run.failure = {
-        code: 'READINESS_EVALUATION_FAILED',
-        message: 'Readiness evaluation failed.',
-        retryable: false,
-      };
+  private async processRun(
+    run: TenderRun,
+    correlationId: string,
+    replayed: boolean,
+  ): Promise<TenderResponse> {
+    if (!run.result) {
+      run.status = 'PROCESSING';
       run.updatedAt = this.now().toISOString();
       await this.repository.saveRun(run);
-      throw new TenderProcessingError(
-        'Readiness evaluation failed.',
-        responseFromRun(run, false),
-        500,
-      );
+
+      let result: ReadinessResult;
+      try {
+        result = evaluateReadiness(run.input);
+      } catch {
+        run.status = 'FAILED';
+        run.failure = {
+          code: 'READINESS_EVALUATION_FAILED',
+          message: 'Readiness evaluation failed.',
+          retryable: false,
+        };
+        run.updatedAt = this.now().toISOString();
+        await this.repository.saveRun(run);
+        throw new TenderProcessingError(
+          'Readiness evaluation failed.',
+          responseFromRun(run, replayed, correlationId),
+          500,
+        );
+      }
+
+      run.status = result.processingStatus;
+      run.route = result.route;
+      run.result = result;
+      run.updatedAt = this.now().toISOString();
+      await this.repository.saveRun(run);
     }
 
-    run.status = result.processingStatus;
-    run.route = result.route;
-    run.result = result;
-    run.updatedAt = this.now().toISOString();
-    await this.repository.saveRun(run);
-
-    if (result.route === 'READY_FOR_PRICING') {
+    if (run.result?.route === 'READY_FOR_PRICING') {
       try {
         await this.pricingGateway.submit({
           tenderId: run.tenderId,
           runId: run.runId,
-          route: result.route,
+          route: run.result.route,
           handoffKey: `${run.tenderId}:${run.idempotencyKey}`,
         });
       } catch {
@@ -140,13 +151,13 @@ export class TenderService {
         await this.repository.saveRun(run);
         throw new TenderProcessingError(
           'Pricing handoff failed.',
-          responseFromRun(run, false),
+          responseFromRun(run, replayed, correlationId),
           502,
         );
       }
     }
 
-    return responseFromRun(run, false);
+    return responseFromRun(run, replayed, correlationId);
   }
 }
 
