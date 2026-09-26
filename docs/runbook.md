@@ -7,7 +7,7 @@ This is a **living operational document**. It describes the local Milestone 2 AP
 ## Local API
 
 - Start with `npm run dev:api` after `npm ci`.
-- Configure `PORT` and `TENDER_STATE_PATH` with environment variables. Defaults are port `3000` and `./data/tender-state.json`.
+- Configure `PORT`, `HOST`, and `TENDER_STATE_PATH` with environment variables. Defaults are port `3000`, host `127.0.0.1` (loopback only), and `./data/tender-state.json`. Set `HOST` explicitly only when the API must accept connections from another interface.
 - Submit a JSON domain `ReadinessInput` to `POST /tenders` with `Content-Type: application/json`.
 - The service returns `200` for a completed decision, `202` while a required document remains pending, `400` for invalid JSON/input, `409` when an idempotency key is reused for different content, and `502` when the mock pricing handoff fails.
 - Each response includes `X-Correlation-ID`. Supply a printable `X-Correlation-ID` of up to 128 characters to carry one through the request; otherwise the API generates one.
@@ -106,4 +106,3 @@ This document is considered complete when each implemented failure path includes
 - verification that no duplicate side effect occurred.
 
 Until those behaviours exist in code, this file should remain deliberately concise.
-
