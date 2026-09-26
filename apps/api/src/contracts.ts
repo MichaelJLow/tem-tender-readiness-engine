@@ -68,4 +68,3 @@ export function fingerprintRequest(input: IntakeRequest): string {
 }
 
 export type { ReadinessResult };
-
