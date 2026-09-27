@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import process from 'node:process';
 import prettier from 'prettier';
+import { z } from 'zod';
 import { resolveProviderConfiguration } from '../apps/api/src/reasoning/interpreter.js';
 import { INTERPRETATION_PROMPT_VERSION } from '../apps/api/src/reasoning/contracts.js';
 import {
@@ -29,6 +30,7 @@ const startedAt = new Date();
 const providerConfig = resolveProviderConfiguration();
 configureMastraDataDirectory(process.env, process.cwd());
 const thresholds = EvalThresholdsSchema.parse(thresholdsConfig);
+const baseline = await loadAcceptedBaseline();
 const model = providerConfig.model;
 const provider = providerName(providerConfig.baseURL, providerConfig.apiKey);
 const sourceRevision = gitOutput(['rev-parse', 'HEAD'], 'unknown');
@@ -238,6 +240,7 @@ const scored = scoreEvalRun({
   agentOutcomes,
   thresholds,
   suiteStatus,
+  baseline,
   datasetHash,
 });
 const completedAt = new Date();
@@ -267,6 +270,7 @@ const report = EvalReportSchema.parse({
     studioDatasetIds,
   },
   gates: scored.gates,
+  baselineComparison: scored.baselineComparison,
   verdict: scored.verdict,
 });
 
@@ -323,6 +327,40 @@ function mean(values: number[] | undefined): number | null {
   return values?.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 }
 
+async function loadAcceptedBaseline() {
+  const pointerSchema = z.object({
+    schemaVersion: z.literal(1),
+    report: z.string().min(1),
+    datasetId: z.string().min(1),
+    datasetHash: z.string().regex(/^[a-f0-9]{64}$/),
+  });
+  try {
+    const evalsDirectory = resolve(process.cwd(), 'evals');
+    const pointer = pointerSchema.parse(
+      JSON.parse(await readFile(join(evalsDirectory, 'accepted-baseline.json'), 'utf8')),
+    );
+    const reportPath = resolve(evalsDirectory, pointer.report);
+    const reportsDirectory = resolve(evalsDirectory, 'reports');
+    if (isAbsolute(pointer.report) || !reportPath.startsWith(`${reportsDirectory}${sep}`))
+      return undefined;
+    const report = EvalReportSchema.parse(JSON.parse(await readFile(reportPath, 'utf8')));
+    if (
+      report.verdict !== 'pass' ||
+      report.suiteStatus !== 'completed' ||
+      report.datasetId !== pointer.datasetId ||
+      report.datasetHash !== pointer.datasetHash
+    )
+      return undefined;
+    return {
+      runId: report.runId,
+      datasetHash: report.datasetHash,
+      metrics: calculateMetrics(report.outcomes),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 function failedOutcome(
   caseId: string,
   category: EvalOutcome['category'],
@@ -368,6 +406,7 @@ function renderMarkdown(value: typeof report) {
     `- Dataset: \`${value.datasetId}\` (${value.caseCount} cases, SHA-256 \`${value.datasetHash}\`)`,
     `- Prompt: \`${value.promptVersion}\``,
     `- Provider/model: \`${value.provider}\` / \`${value.model}\``,
+    `- Accepted baseline: ${value.baselineComparison?.status ?? 'not recorded'}${value.baselineComparison ? ` — ${value.baselineComparison.detail}` : ''}`,
     ...(value.runError
       ? [`- Run error: \`${value.runError.code}\` at \`${value.runError.stage}\``]
       : []),

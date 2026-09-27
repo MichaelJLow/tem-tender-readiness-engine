@@ -11,7 +11,7 @@ function asItems(value: Awaited<ReturnType<Dataset['listItems']>>) {
   return value.items;
 }
 
-function agentPrompt(testCase: EvalCase): string {
+export function agentPrompt(testCase: EvalCase): string {
   return JSON.stringify({
     tender: {
       tenderId: testCase.input.tender.tenderId,

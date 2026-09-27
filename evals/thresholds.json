@@ -3,5 +3,6 @@
   "minimumHumanReviewRecall": 0.95,
   "minimumCriticalFactPrecision": 0.95,
   "minimumCriticalFactRecall": 0.95,
-  "minimumAmbiguityRecall": 0.95
+  "minimumAmbiguityRecall": 0.95,
+  "maximumBaselineSafetyDrop": 0.05
 }

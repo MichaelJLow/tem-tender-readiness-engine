@@ -1,8 +1,10 @@
 import { EvalOutcomeSchema, type EvalOutcome } from './metrics.js';
 import type { EvalCase } from './schema.js';
+import { agentPrompt } from './mastra-datasets.js';
 import {
   findTenderInterpretation,
   interpretationIsAmbiguous,
+  interpretationHasGroundedEvidence,
   toAgentFacts,
 } from './interpretation.js';
 
@@ -53,7 +55,14 @@ export function reconcileAgentOutcomes(
       unexpectedResults += 1;
       continue;
     }
-    const interpretation = result.failed ? undefined : findTenderInterpretation(result.output);
+    const parsedInterpretation = result.failed
+      ? undefined
+      : findTenderInterpretation(result.output);
+    const interpretation =
+      parsedInterpretation &&
+      interpretationHasGroundedEvidence(parsedInterpretation, agentPrompt(testCase))
+        ? parsedInterpretation
+        : undefined;
     const errorCode = result.failed
       ? result.errorCode || 'EXPERIMENT_TARGET_FAILED'
       : interpretation

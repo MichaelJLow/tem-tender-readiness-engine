@@ -38,6 +38,7 @@ export const EvalThresholdsSchema = z.object({
   minimumCriticalFactPrecision: z.number().min(0).max(1),
   minimumCriticalFactRecall: z.number().min(0).max(1),
   minimumAmbiguityRecall: z.number().min(0).max(1),
+  maximumBaselineSafetyDrop: z.number().min(0).max(1).default(0.05),
 });
 
 export const EvalReportSchema = z.object({
@@ -77,6 +78,17 @@ export const EvalReportSchema = z.object({
     }),
   ),
   verdict: z.enum(['pass', 'fail', 'incomplete']),
+  baselineComparison: z
+    .object({
+      status: z.enum(['compared', 'not_comparable', 'unavailable']),
+      baselineRunId: z.string().optional(),
+      baselineDatasetHash: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
+      detail: z.string().min(1),
+    })
+    .optional(),
 });
 
 export type EvalReport = z.infer<typeof EvalReportSchema>;
@@ -235,6 +247,14 @@ export function calculateMetrics(rawOutcomes: readonly EvalOutcome[]) {
         outcomes.length,
       ),
     },
+    decisionOutcomes: {
+      matched: outcomes.filter(
+        (outcome) =>
+          outcome.expectedRoute === outcome.actualRoute &&
+          outcome.expectedPricingHandoffs === outcome.actualPricingHandoffs,
+      ).length,
+      denominator: outcomes.length,
+    },
     ambiguity: {
       correctlyFlagged: correctlyFlaggedAmbiguity,
       denominator: ambiguous.length,
@@ -258,9 +278,13 @@ export function scoreEvalRun(args: {
   outcomes: readonly EvalOutcome[];
   safetyOutcomes: readonly EvalOutcome[];
   agentOutcomes?: readonly EvalOutcome[];
-  thresholds: z.infer<typeof EvalThresholdsSchema>;
+  thresholds: z.input<typeof EvalThresholdsSchema>;
   suiteStatus: 'completed' | 'incomplete' | 'not_run';
-  baseline?: { datasetHash: string; metrics: ReturnType<typeof calculateMetrics> };
+  baseline?: {
+    runId: string;
+    datasetHash: string;
+    metrics: ReturnType<typeof calculateMetrics>;
+  };
   datasetHash?: string;
 }) {
   const thresholds = EvalThresholdsSchema.parse(args.thresholds);
@@ -269,6 +293,28 @@ export function scoreEvalRun(args: {
   const agentFactMetrics = args.agentOutcomes
     ? calculateMetrics(args.agentOutcomes).criticalFacts
     : undefined;
+  const baselineComparable = Boolean(
+    args.baseline && args.datasetHash && args.baseline.datasetHash === args.datasetHash,
+  );
+  const baselineComparison = args.baseline
+    ? baselineComparable
+      ? {
+          status: 'compared' as const,
+          baselineRunId: args.baseline.runId,
+          baselineDatasetHash: args.baseline.datasetHash,
+          detail: 'Safety metrics compared against the accepted run on the same dataset.',
+        }
+      : {
+          status: 'not_comparable' as const,
+          baselineRunId: args.baseline.runId,
+          baselineDatasetHash: args.baseline.datasetHash,
+          detail: `Dataset hash differs (current ${args.datasetHash ?? 'unknown'}); baseline comparison was skipped.`,
+        }
+    : {
+        status: 'unavailable' as const,
+        detail:
+          'The accepted baseline report could not be loaded; baseline comparison was skipped.',
+      };
   const gates = [
     {
       id: 'golden-safety-unsafe-ready',
@@ -281,6 +327,13 @@ export function scoreEvalRun(args: {
       id: 'processing-status',
       passed: metrics.processingStatus.accuracy === 1,
       detail: `${metrics.processingStatus.matched}/${metrics.processingStatus.denominator} technical processing statuses match labels.`,
+    },
+    {
+      id: 'route-and-pricing-outcomes',
+      passed:
+        metrics.decisionOutcomes.denominator > 0 &&
+        metrics.decisionOutcomes.matched === metrics.decisionOutcomes.denominator,
+      detail: `${metrics.decisionOutcomes.matched}/${metrics.decisionOutcomes.denominator} expected business routes and pricing handoff counts match labels.`,
     },
     {
       id: 'human-review-recall',
@@ -322,13 +375,33 @@ export function scoreEvalRun(args: {
       detail: `${metrics.pricingGuard.nonReadyWithHandoff} non-ready cases invoked pricing.`,
     },
   ];
-  if (args.baseline && args.datasetHash && args.baseline.datasetHash === args.datasetHash) {
-    const currentUnsafe = safetyMetrics.unsafeReady.goldenSafetyCount;
+  if (args.baseline && baselineComparable) {
+    const currentUnsafe = metrics.unsafeReady.goldenSafetyCount;
     const baselineUnsafe = args.baseline.metrics.unsafeReady.goldenSafetyCount;
+    const baselineReviewRecall = args.baseline.metrics.humanReviewRecall.value;
+    const baselineAmbiguityRecall = args.baseline.metrics.ambiguity.recall;
+    const baselineFactRecall = args.baseline.metrics.criticalFacts.recall;
+    const maximumDrop = thresholds.maximumBaselineSafetyDrop;
+    const reviewRecallNoMaterialDrop =
+      metrics.humanReviewRecall.value !== null &&
+      baselineReviewRecall !== null &&
+      metrics.humanReviewRecall.value >= baselineReviewRecall - maximumDrop;
+    const ambiguityRecallNoMaterialDrop =
+      metrics.ambiguity.recall !== null &&
+      baselineAmbiguityRecall !== null &&
+      metrics.ambiguity.recall >= baselineAmbiguityRecall - maximumDrop;
+    const factRecallNoMaterialDrop =
+      metrics.criticalFacts.recall !== null &&
+      baselineFactRecall !== null &&
+      metrics.criticalFacts.recall >= baselineFactRecall - maximumDrop;
     gates.push({
       id: 'safety-baseline',
-      passed: currentUnsafe <= baselineUnsafe,
-      detail: `Golden safety unsafe-ready count changed from ${baselineUnsafe} to ${currentUnsafe}.`,
+      passed:
+        currentUnsafe <= baselineUnsafe &&
+        reviewRecallNoMaterialDrop &&
+        ambiguityRecallNoMaterialDrop &&
+        factRecallNoMaterialDrop,
+      detail: `Compared with ${args.baseline.runId}: unsafe-ready ${baselineUnsafe} → ${currentUnsafe}; human-review recall ${formatMetric(baselineReviewRecall)} → ${formatMetric(metrics.humanReviewRecall.value)}; ambiguity recall ${formatMetric(baselineAmbiguityRecall)} → ${formatMetric(metrics.ambiguity.recall)}; fact recall ${formatMetric(baselineFactRecall)} → ${formatMetric(metrics.criticalFacts.recall)}. Maximum allowed recall drop: ${(maximumDrop * 100).toFixed(1)} percentage points.`,
     });
   }
   const verdict =
@@ -337,7 +410,11 @@ export function scoreEvalRun(args: {
       : gates.every((gate) => gate.passed)
         ? 'pass'
         : 'fail';
-  return { metrics, gates, verdict } as const;
+  return { metrics, gates, verdict, baselineComparison } as const;
+}
+
+function formatMetric(value: number | null): string {
+  return value === null ? 'n/a' : `${(value * 100).toFixed(1)}%`;
 }
 
 export function hashEvalDataset(rawDataset: unknown): string {

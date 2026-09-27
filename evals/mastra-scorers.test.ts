@@ -26,6 +26,17 @@ const interpretation = {
   siteAssociations: [],
   conflicts: [],
 };
+const agentInput = JSON.stringify({
+  tender: {
+    sites: [{ siteId: 'site-001', address: '1 Example Road', meterIdentifier: '1234567890' }],
+  },
+  sources: [
+    {
+      sourceId: 'note-1',
+      text: 'Site site-001 ends on 2027-03-31. The customer is Northstar Foods Ltd.',
+    },
+  ],
+});
 
 describe('Mastra eval scorers', () => {
   it('scores exact value, site, and source attribution', async () => {
@@ -38,7 +49,7 @@ describe('Mastra eval scorers', () => {
       },
     ];
     const result = await evidenceFactF1Scorer.run({
-      input: 'Synthetic note input.',
+      input: agentInput,
       output: [
         { role: 'assistant', content: [{ type: 'text', text: JSON.stringify(interpretation) }] },
       ],
@@ -49,7 +60,7 @@ describe('Mastra eval scorers', () => {
     const wrongSource = structuredClone(interpretation);
     wrongSource.observations[0]!.evidence[0]!.sourceId = 'other-note';
     const mismatch = await evidenceFactF1Scorer.run({
-      input: 'Synthetic note input.',
+      input: agentInput,
       output: [
         { role: 'assistant', content: [{ type: 'text', text: JSON.stringify(wrongSource) }] },
       ],
@@ -73,7 +84,7 @@ describe('Mastra eval scorers', () => {
       ],
     };
     const result = await evidenceFactF1Scorer.run({
-      input: 'Synthetic customer-name note.',
+      input: agentInput,
       output: [{ role: 'assistant', content: [{ type: 'text', text: JSON.stringify(customer) }] }],
       groundTruth: {
         expectedFacts: [

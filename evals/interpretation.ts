@@ -22,6 +22,127 @@ export function toAgentFacts(rawInterpretation: unknown): EvalFact[] {
     .map((fact) => EvalFactSchema.parse(fact));
 }
 
+/** Validate citations against the exact synthetic prompt sent to the agent. */
+export function interpretationHasGroundedEvidence(rawInterpretation: unknown, rawInput: unknown) {
+  const interpretation = TenderInterpretationSchema.safeParse(rawInterpretation);
+  const input = parseAgentInput(rawInput);
+  if (!interpretation.success || !input) return false;
+  const sourceById = new Map(input.sources.map((source) => [source.sourceId, source.text]));
+  const siteById = new Map(input.tender.sites.map((site) => [site.siteId, site]));
+  const validCitation = (citation: { sourceId: string; quote: string }) =>
+    sourceById.get(citation.sourceId)?.includes(citation.quote) === true;
+  const siteMentioned = (quote: string, siteId: string) => {
+    const site = siteById.get(siteId);
+    if (!site) return false;
+    const normalizedQuote = normalizeEvidenceText(quote);
+    return [site.siteId, site.address, site.meterIdentifier]
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
+      .some((value) => normalizedQuote.includes(normalizeEvidenceText(value)));
+  };
+  const valueMentioned = (quote: string, field: string, value: string) => {
+    const normalizedQuote = normalizeEvidenceText(quote);
+    const normalizedValue = normalizeEvidenceText(value);
+    if (normalizedValue && normalizedQuote.includes(normalizedValue)) return true;
+    if (field === 'contractEndDate') {
+      const dayFirst = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (dayFirst) {
+        const [year, month, day] = dayFirst.slice(1);
+        return (
+          quote.includes(`${day}/${month}/${year}`) || quote.includes(`${day}-${month}-${year}`)
+        );
+      }
+    }
+    if (field === 'annualConsumptionKwh') {
+      const expected = value.replace(/,/g, '').match(/\d+(?:\.\d+)?/)?.[0];
+      return expected !== undefined && quote.replace(/,/g, '').includes(expected);
+    }
+    return false;
+  };
+
+  const result = interpretation.data;
+  if (
+    [...result.sourceAssessments, ...result.observations, ...result.siteAssociations].some((item) =>
+      item.evidence.some((citation) => !validCitation(citation)),
+    ) ||
+    result.conflicts.some((item) => item.evidence.some((citation) => !validCitation(citation)))
+  )
+    return false;
+
+  for (const observation of result.observations) {
+    if (observation.siteIds.length === 0) {
+      if (
+        !observation.evidence.some((citation) =>
+          valueMentioned(citation.quote, observation.field, observation.value),
+        )
+      )
+        return false;
+      continue;
+    }
+    for (const siteId of observation.siteIds) {
+      if (!siteById.has(siteId)) return false;
+      if (
+        !observation.evidence.some(
+          (citation) =>
+            valueMentioned(citation.quote, observation.field, observation.value) &&
+            siteMentioned(citation.quote, siteId),
+        )
+      )
+        return false;
+    }
+  }
+  for (const association of result.siteAssociations) {
+    if (
+      !sourceById.has(association.sourceId) ||
+      association.siteIds.some(
+        (siteId) =>
+          !siteById.has(siteId) ||
+          !association.evidence.some(
+            (citation) =>
+              citation.sourceId === association.sourceId && siteMentioned(citation.quote, siteId),
+          ),
+      )
+    )
+      return false;
+  }
+  return true;
+}
+
+function parseAgentInput(value: unknown):
+  | {
+      tender: { sites: Array<{ siteId: string; address?: string; meterIdentifier?: string }> };
+      sources: Array<{ sourceId: string; text: string }>;
+    }
+  | undefined {
+  try {
+    const parsed = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
+    if (typeof parsed !== 'object' || parsed === null) return undefined;
+    const record = parsed as Record<string, unknown>;
+    const tender = record.tender as Record<string, unknown> | undefined;
+    if (!tender || !Array.isArray(tender.sites) || !Array.isArray(record.sources)) return undefined;
+    const sites = tender.sites.map((site) => site as Record<string, unknown>);
+    const sources = record.sources.map((source) => source as Record<string, unknown>);
+    if (
+      sites.some((site) => typeof site.siteId !== 'string') ||
+      sources.some(
+        (source) => typeof source.sourceId !== 'string' || typeof source.text !== 'string',
+      )
+    )
+      return undefined;
+    return {
+      tender: {
+        sites: sites as Array<{ siteId: string; address?: string; meterIdentifier?: string }>,
+      },
+      sources: sources as Array<{ sourceId: string; text: string }>,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeEvidenceText(value: string) {
+  return value.toLocaleLowerCase('en').replace(/[^\p{L}\p{N}]/gu, '');
+}
+
 export function findTenderInterpretation(
   value: unknown,
   seen = new Set<object>(),

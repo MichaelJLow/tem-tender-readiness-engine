@@ -4,6 +4,7 @@ import { EvalOutcomeSchema } from './metrics.js';
 import { EvalFactSchema } from './schema.js';
 import {
   findTenderInterpretation,
+  interpretationHasGroundedEvidence,
   interpretationIsAmbiguous,
   normalizedFactKey,
   toAgentFacts,
@@ -11,10 +12,15 @@ import {
 
 const AnySchema = z.unknown();
 
-function factF1(expectedValue: unknown, actualValue: unknown): number {
+function factF1(expectedValue: unknown, actualValue: unknown, inputValue: unknown): number {
   const expected = z.array(EvalFactSchema).safeParse(expectedValue);
   const interpretation = findTenderInterpretation(actualValue);
-  if (!expected.success || !interpretation) return 0;
+  if (
+    !expected.success ||
+    !interpretation ||
+    !interpretationHasGroundedEvidence(interpretation, inputValue)
+  )
+    return 0;
   const expectedKeys = expected.data.map(normalizedFactKey);
   const actualKeys = toAgentFacts(interpretation).map(normalizedFactKey);
   const counts = new Map<string, number>();
@@ -43,7 +49,7 @@ export const evidenceFactF1Scorer = createScorer({
     typeof run.groundTruth === 'object' && run.groundTruth !== null
       ? (run.groundTruth as Record<string, unknown>)
       : {};
-  return factF1(truth.expectedFacts, run.output);
+  return factF1(truth.expectedFacts, run.output, run.input);
 });
 
 export const ambiguityRecallScorer = createScorer({
