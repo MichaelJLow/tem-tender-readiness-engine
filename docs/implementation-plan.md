@@ -388,6 +388,10 @@ At least one failure can be demonstrated end to end: visible failure → no unsa
 
 An engineer can review the repository without verbal context and the demo can be run repeatedly without fragile manual setup.
 
+### Optional portfolio extension after all milestones
+
+Once Milestones 0–9 are complete, build a more realistic fully synthetic tender pack for the demo: a submission form, broker note, and supporting PDF documents with single-site, multi-site, and conflicting-evidence examples. Add a PDF-to-text intake step that feeds extracted text into the existing bounded interpretation flow. Extend the eval fixtures and checks to cover extraction failures, document-to-site attribution, and the existing pricing safety guard. This follow-on is outside Milestone 9 acceptance.
+
 ---
 
 ## Seven-day focus
