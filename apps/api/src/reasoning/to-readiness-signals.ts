@@ -166,6 +166,45 @@ export function toReadinessSignals(
       );
     }
     const evidence = citationsToEvidence(association.evidence);
+    if (source.documentId && !documentIds.has(source.documentId)) {
+      throw new InvalidInterpretationError('Association references an unknown document.');
+    }
+    const separateSiteQuotes =
+      source.documentId &&
+      !association.ambiguous &&
+      association.confidence >= MIN_CONFIDENCE_FOR_CREDIBLE_EVIDENCE &&
+      association.siteIds.length > 1 &&
+      new Set(association.siteIds).size === association.siteIds.length &&
+      association.evidence.every((citation) =>
+        association.siteIds.some((candidate) => quoteIdentifiesSite(citation.quote, candidate)),
+      ) &&
+      association.siteIds.every((candidate) =>
+        association.evidence.some((citation) => quoteIdentifiesSite(citation.quote, candidate)),
+      );
+    if (source.documentId && separateSiteQuotes) {
+      for (const candidate of association.siteIds) {
+        const citations = association.evidence.filter((citation) =>
+          quoteIdentifiesSite(citation.quote, candidate),
+        );
+        documentSiteAssociations.push({
+          documentId: source.documentId,
+          status: 'RESOLVED',
+          siteId: candidate,
+          candidateSiteIds: [candidate],
+          evidence: [
+            ...citationsToEvidence(citations),
+            ...citations.flatMap((citation) =>
+              siteMentions(citation.quote).map((mention): EvidenceRef => ({
+                sourceId: source.sourceId,
+                sourceType: 'TEXT',
+                locator: mention.locator,
+              })),
+            ),
+          ],
+        });
+      }
+      continue;
+    }
     const siteId = association.siteIds.length === 1 ? association.siteIds[0] : undefined;
     const sourceSiteConflict = association.evidence.some(
       (citation) => !quoteIdentifiesSite(citation.quote, siteId),
@@ -178,9 +217,6 @@ export function toReadinessSignals(
     );
 
     if (source.documentId) {
-      if (!documentIds.has(source.documentId)) {
-        throw new InvalidInterpretationError('Association references an unknown document.');
-      }
       documentSiteAssociations.push({
         documentId: source.documentId,
         status: resolved
@@ -217,12 +253,7 @@ export function toReadinessSignals(
     ensureKnownSites(observation.siteIds);
     const evidence = citationsToEvidence(observation.evidence);
     if (
-      observation.evidence.some(
-        (citation) =>
-          !citation.quote
-            .toLocaleLowerCase('en')
-            .includes(observation.value.toLocaleLowerCase('en')),
-      )
+      observation.evidence.some((citation) => !supportsObservedValue(observation, citation.quote))
     ) {
       throw new InvalidInterpretationError(
         `The observed ${observation.field} value must appear in every cited quote.`,
@@ -434,6 +465,7 @@ function conflictsWithStructured(
   siteId: string | undefined,
 ): boolean {
   if (field === 'customerLegalName') {
+    if (!input.tender.customer.legalName.trim()) return false;
     return (
       normalizeCustomerLegalName(value) !==
       normalizeCustomerLegalName(input.tender.customer.legalName)
@@ -442,10 +474,8 @@ function conflictsWithStructured(
   const site = input.tender.sites.find((candidate) => candidate.siteId === siteId);
   if (!site) return false;
   if (field === 'contractEndDate') {
-    return Boolean(
-      site.contractEndDate &&
-      normalizeObservedValue(field, site.contractEndDate) !== normalizeObservedValue(field, value),
-    );
+    const structuredDate = site.contractEndDate && normalizeTenderDate(site.contractEndDate);
+    return Boolean(structuredDate && structuredDate !== normalizeObservedValue(field, value));
   }
   if (field === 'meterIdentifier') {
     return Boolean(
@@ -466,11 +496,24 @@ function conflictsWithStructured(
 }
 
 function parseConsumption(value: string): number | undefined {
-  const normalized = value
-    .trim()
-    .replace(/,/g, '')
-    .replace(/\s*kwh$/i, '');
-  if (!/^\d+(?:\.\d+)?$/.test(normalized)) return undefined;
-  const number = Number(normalized);
+  const match =
+    /^(\d+(?:\.\d+)?|\d{1,3}(?:,\d{3})+(?:\.\d+)?)(?:\s*kwh)?(?:\s+(?:annually|each year|per year))?$/i.exec(
+      value.trim(),
+    );
+  if (!match) return undefined;
+  const number = Number(match[1]!.replace(/,/g, ''));
   return Number.isFinite(number) ? number : undefined;
+}
+
+function supportsObservedValue(
+  observation: TenderInterpretation['observations'][number],
+  quote: string,
+): boolean {
+  if (quote.toLocaleLowerCase('en').includes(observation.value.toLocaleLowerCase('en'))) {
+    return true;
+  }
+  if (observation.field !== 'annualConsumptionKwh' || !observation.ambiguous) return false;
+  const candidate = /^(\d+(?:\.\d+)?|\d{1,3}(?:,\d{3})+(?:\.\d+)?)\s*kwh$/i.exec(observation.value);
+  if (!candidate || !/\bkwh\b/i.test(quote)) return false;
+  return new RegExp(`(?<![\\d,.])${escapeRegExp(candidate[1]!)}(?![\\d,.])`, 'u').test(quote);
 }

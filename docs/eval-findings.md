@@ -131,6 +131,127 @@ report can be considered for an accepted baseline.
   customer-name normalization. **Status: current full-run evidence; not accepted
   as a release baseline.**
 
+### PR eval after harness fixes — 2026-09-26, prompt v5
+
+- Report: [`pr-2026-09-26T22-23-59.188Z.md`](../evals/reports/pr-2026-09-26T22-23-59.188Z.md)
+- Dataset: 14 cases; verdict **pass**; suite completed; all 7 configured gates
+  passed
+- Experiments: agent `8a7052c3-d4ec-40e7-a945-8fbd7e9b0c7c`, workflow
+  `148b8e4f-f0e0-462c-a8a8-1db33f9b1d2a`
+- The revised pricing gate, case-scoped metric matching, agent-result
+  reconciliation, and interrupted-Studio reporting passed their deterministic
+  regression checks. The live PR run confirms the fast subset only.
+
+### Full release eval after harness fixes — 2026-09-26, prompt v5
+
+- Report: [`full-2026-09-26T22-25-24.194Z.md`](../evals/reports/full-2026-09-26T22-25-24.194Z.md)
+- Dataset: `tender-readiness-golden-v1`, 63 cases; model OpenRouter
+  `openai/gpt-6-luna`
+- Verdict: **incomplete**; do not accept as a baseline
+- Experiments: agent `c7adbe1e-b682-442e-95a2-24b0122514e6`, workflow
+  `df5f5ed8-b002-42c9-ba01-bfc6deaa5327`
+- Safety checks: 0 unsafe-ready decisions across 44 cases and 0 non-ready
+  pricing calls. Critical fact extraction was 49/49 workflow and 51/51 agent;
+  human-review recall was 21/22 (95.5%).
+- Failed gates: processing 62/63 because `ambiguous-two-consumption-values`
+  returned `MODEL_OUTPUT_INVALID`; ambiguity recall was 11/12 (91.7%).
+- Manual case review confirmed the clean structured tender,
+  `second-site-missing-consumption`, conflicting-date case, ambiguous multi-site case, duplicate replay,
+  and pending-document case matched their expected route/status and pricing
+  handoff. The malformed model output failed closed with no route or handoff.
+- Clear cases remain over-routed to `HUMAN_REVIEW`, including
+  `ready-two-facts`, `ready-second-site-consumption-note`,
+  `missing-consumption-evidence`, and multiple
+  missing-information cases. Human-review precision is 72.4% (21/29). Review
+  the affected cases and document their disposition before accepting a
+  baseline; passing safety checks do not resolve this quality issue.
+- The plan's provider-timeout fixture and expired-trace scenario were not
+  exercised by this run. The interrupted-Studio path was separately verified
+  by an injected startup failure, which wrote an incomplete report and exited
+  nonzero. **Status: earlier diagnostic; manual QA and baseline acceptance
+  remain incomplete.**
+
+### Studio-backed reruns — 2026-09-26, prompt v5
+
+- PR report: [`pr-2026-09-26T22-44-18.426Z.md`](../evals/reports/pr-2026-09-26T22-44-18.426Z.md).
+  All 14 cases ran and all 7 configured gates passed. Studio experiments:
+  agent `a83bc434-f0f9-4388-8e34-cc5f9418ad67`, workflow
+  `bc1530af-fef6-443f-ae73-c932af912623`.
+- Full report: [`full-2026-09-26T22-45-48.864Z.md`](../evals/reports/full-2026-09-26T22-45-48.864Z.md).
+  All 63 cases were attempted; the verdict is **incomplete** because
+  `ambiguous-two-consumption-values` ended in `MODEL_OUTPUT_INVALID` rather
+  than the expected completed human-review route. Processing matched 62/63
+  labels; ambiguity recall was 11/12. Human-review recall was 21/22 and
+  precision was 21/30; 0 unsafe-ready outcomes and 0 non-ready pricing calls.
+  Studio experiments: agent `573d71b4-c5df-473d-91a1-4d2c97c08129`,
+  workflow `7e89714a-ba94-4ad0-8fce-446a338229a2`.
+- The immediately preceding runs at 22:23 and 22:25 wrote to a separate local
+  store and remain diagnostic evidence. These reruns use the Studio store on
+  port 4113 and are the current reports for review.
+
+### Studio persistence and manual QA confirmation — 2026-09-26
+
+- Confirmed the PR and full eval datasets and experiments are present in the
+  same local Mastra Studio store served on port 4113. The `/api/datasets` and
+  `/api/experiments` read-only endpoints return the records linked from the
+  reports above. This resolves the earlier mismatch where evals were written
+  to a second `data/` directory and were not visible to Studio.
+- Manual case review covered a clean ready case, missing consumption evidence,
+  conflicting dates, ambiguous multi-site evidence, duplicate replay, pending
+  required documents, and invalid model output. The invalid output failed
+  closed with no business route and no pricing handoff; the other reviewed
+  cases showed the expected safety behavior. The full report still identifies
+  over-escalation on clear or missing-information cases.
+- Provider-timeout behavior and expired-trace handling remain unverified.
+  The full run is incomplete due to `MODEL_OUTPUT_INVALID`, and the remaining
+  route mismatches need disposition. **Status: Studio record visibility
+  confirmed; manual QA and baseline acceptance remain incomplete.**
+
+### Accepted Milestone 4 synthetic baseline — 2026-09-26
+
+- PR report: [`pr-2026-09-26T23-30-23.599Z.md`](../evals/reports/pr-2026-09-26T23-30-23.599Z.md),
+  14/14 cases and all 7 gates passed.
+- Release report: [`full-2026-09-26T23-53-52.654Z.md`](../evals/reports/full-2026-09-26T23-53-52.654Z.md),
+  63/63 processing statuses and 63/63 expected routes and pricing counts;
+  all 7 gates passed. The golden safety set had 0/44 unsafe-ready outcomes,
+  human-review recall was 22/22, ambiguity recall was 12/12, and no non-ready
+  case called pricing. Workflow critical-fact precision and recall were 49/51
+  (96.1%); the agent experiment was 51/51. The accepted report is identified
+  by [`accepted-baseline.json`](../evals/accepted-baseline.json).
+- Manual QA inspected `ready-structured-single`, `ready-structured-multi`,
+  `ready-two-site-meters-document`, `missing-consumption-evidence`,
+  `duplicate-replay`, `conflicting-date-structured`,
+  `ambiguous-multisite-date`, `ambiguous-two-consumption-values`,
+  `ready-two-facts`, `required-document-pending`,
+  `required-document-unreadable`, and `injection-missing-consumption`.
+  Their routes, processing statuses, rule flags, and mock pricing counts
+  matched the labels. Stored agent quotes and site associations were reviewed
+  for the conflict, ambiguity, and two-site document cases. The two-site
+  document has separate cited sentences for each site; a shared ambiguous
+  quote still routes to review in the deterministic regression test.
+- The provider-timeout test verifies a retryable `MODEL_PROVIDER_FAILED` with
+  a failed trace. The service replay test verifies a later successful attempt
+  under the same idempotency key and one recorded pricing handoff. The JSON
+  release report was parsed with all 63 outcomes and 2 Studio experiment IDs
+  while Studio was stopped, confirming that the durable report can be read
+  without live traces.
+- The two workflow fact mismatches are the second and third dates in
+  `conflicting-three-date-values`: the model left their site IDs unset because
+  their individual quoted clauses do not name a site. The case still routed
+  to `HUMAN_REVIEW` with no pricing call. Labels remain unchanged; this is a
+  recorded attribution limitation within the accepted 95% threshold.
+- The final live run followed two diagnostic interruptions. The Studio dev
+  supervisor held DuckDB until stopped; later, OpenRouter refused requests
+  whose default maximum output was 65,536 tokens. The agent now limits output
+  to 8,192 tokens. Both interruptions produced incomplete reports rather than
+  false passes. The accepted report records a dirty working tree because the
+  verified fixes had not yet been committed at run start.
+
+**Manual QA disposition:** complete for the synthetic Milestone 4 prototype.
+**Baseline disposition:** accepted for this milestone; review the report and
+local changes in PR #8 before merge. This does not assess real tender data or
+model behaviour beyond the labelled dataset.
+
 ## Follow-up log
 
 | Date       | Report                        | Finding / decision                                     | Status                                    |
@@ -139,3 +260,6 @@ report can be considered for an accepted baseline.
 | 2026-09-26 | v5 full release run           | One invalid model output and remaining over-escalation | Retained as diagnostic                    |
 | 2026-09-26 | v5 PR run                     | All configured PR gates passed                         | Reviewable; not an accepted full baseline |
 | 2026-09-26 | refreshed v5 full release run | Agent scoring clean; one invalid model output remains  | Current diagnostic; not baseline          |
+| 2026-09-26 | post-fix v5 PR run            | All 7 configured PR gates passed                       | Reviewable; not an accepted full baseline |
+| 2026-09-26 | post-fix v5 full release run  | Safety held; invalid output and over-routing remain    | Manual QA incomplete; not a baseline      |
+| 2026-09-26 | bounded v5 full release run   | All 7 gates and 63 expected routes passed              | Accepted synthetic prototype baseline     |

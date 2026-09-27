@@ -106,6 +106,18 @@ describe('Mastra interpreter failure classification', () => {
     });
   });
 
+  it('classifies a provider timeout as retryable', async () => {
+    vi.spyOn(Agent.prototype, 'generate').mockRejectedValue(
+      new DOMException('The provider timed out.', 'TimeoutError'),
+    );
+    const interpreter = new MastraTenderInterpreter({ apiKey: 'synthetic-key' });
+    await expect(interpreter.interpret(request)).rejects.toMatchObject({
+      code: 'MODEL_PROVIDER_FAILED',
+      retryable: true,
+      trace: { outcome: 'FAILED' },
+    });
+  });
+
   it('classifies Mastra schema errors as invalid model output', async () => {
     const invalid = z.object({ required: z.string() }).safeParse({});
     if (invalid.success) throw new Error('Synthetic invalid output unexpectedly passed.');
@@ -129,6 +141,7 @@ describe('Mastra interpreter failure classification', () => {
       retryable: false,
     });
     expect((generate.mock.calls[0] as unknown[])[1]).toMatchObject({
+      modelSettings: { maxOutputTokens: 8_192 },
       structuredOutput: { errorStrategy: 'warn' },
     });
   });

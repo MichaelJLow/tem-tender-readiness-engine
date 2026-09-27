@@ -214,14 +214,16 @@ Critical-field extraction           >= 95%
 
 A safety regression caused by a prompt/model change fails visibly.
 
-**Current verification (2026-09-26):** the 63-case v5 full run is retained as an
-incomplete diagnostic: one interpretation returned invalid model output,
-ambiguity recall was 11/12, and several clear cases over-routed to review. Agent
-fact precision/recall and workflow fact precision/recall passed; safety and
-pricing-guard checks also passed. The 14-case v5 PR run passed all configured
-gates. See `docs/eval-findings.md`. The full suite and dataset are implemented,
-but Milestone 4 still needs review of full-run findings, manual QA, and an
-explicitly accepted baseline before it is complete.
+**Current verification (2026-09-26):** the 14-case PR run and 63-case release
+run passed all 7 configured gates. All 63 expected routes, processing statuses,
+and pricing handoff counts matched. The full run recorded 0 unsafe-ready cases
+and 0 non-ready pricing calls. Manual QA inspected representative routes,
+evidence, retry/replay behaviour, and the durable report without Studio.
+The two remaining fact-attribution misses are documented in
+`docs/eval-findings.md`; workflow fact precision/recall remains above the 95%
+gate. `evals/accepted-baseline.json` identifies the accepted synthetic
+prototype baseline. Milestone 4 implementation and verification are complete
+on the feature branch; PR #8 remains subject to review and merge.
 
 ### Suggested branch
 

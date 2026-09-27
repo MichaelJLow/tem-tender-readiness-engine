@@ -14,14 +14,11 @@ import {
   type EvalOutcome,
 } from './metrics.js';
 import { evalDataset } from './cases.js';
-import {
-  findTenderInterpretation,
-  interpretationIsAmbiguous,
-  toAgentFacts,
-} from './interpretation.js';
 import { ensureStudioDataset, selectAgentCases, selectEvalCases } from './mastra-datasets.js';
 import thresholdsConfig from './thresholds.json' with { type: 'json' };
 import { EvalOutcomeSchema } from './metrics.js';
+import { reconcileAgentOutcomes } from './agent-outcomes.js';
+import { configureMastraDataDirectory } from './mastra-storage.js';
 
 const suite = parseSuite(process.argv.slice(2));
 const cases = selectEvalCases(suite);
@@ -30,6 +27,7 @@ const datasetSnapshot = { ...evalDataset, cases };
 const datasetHash = hashEvalDataset(datasetSnapshot);
 const startedAt = new Date();
 const providerConfig = resolveProviderConfiguration();
+configureMastraDataDirectory(process.env, process.cwd());
 const thresholds = EvalThresholdsSchema.parse(thresholdsConfig);
 const model = providerConfig.model;
 const provider = providerName(providerConfig.baseURL, providerConfig.apiKey);
@@ -50,168 +48,188 @@ let agentMetricSummary: Record<string, unknown> = {
   meanAmbiguityScore: null,
 };
 let studioDatasetIds: Record<string, string> = {};
+let runError: { code: 'EVAL_RUN_INTERRUPTED'; stage: string } | undefined;
 
 if (!providerConfig.apiKey) {
   console.warn(
     'No model API key is configured; writing an explicit not-run report without importing Mastra Studio configuration.',
   );
 } else {
-  const { mastra } = await import('../apps/api/src/mastra/index.js');
-  const {
-    evidenceFactF1Scorer,
-    ambiguityRecallScorer,
-    decisionFlagsScorer,
-    decisionRouteScorer,
-    pricingGuardScorer,
-  } = await import('./mastra-scorers.js');
-  const agentDatasetResult =
-    agentCases.length > 0
-      ? await ensureStudioDataset({
-          mastra,
-          target: 'agent',
-          cases: agentCases,
+  let runStage = 'mastra-import';
+  try {
+    const { mastra } = await import('../apps/api/src/mastra/index.js');
+    const {
+      evidenceFactF1Scorer,
+      ambiguityRecallScorer,
+      decisionFlagsScorer,
+      decisionRouteScorer,
+      pricingGuardScorer,
+    } = await import('./mastra-scorers.js');
+    runStage = 'agent-dataset';
+    const agentDatasetResult =
+      agentCases.length > 0
+        ? await ensureStudioDataset({
+            mastra,
+            target: 'agent',
+            cases: agentCases,
+            targetId: 'tender-interpretation-agent',
+          })
+        : undefined;
+    runStage = 'workflow-dataset';
+    const workflowId = mastra.getWorkflow('decisionPathEvalWorkflow').id;
+    const workflowDatasetResult = await ensureStudioDataset({
+      mastra,
+      target: 'workflow',
+      cases,
+      targetId: workflowId,
+    });
+    studioDatasetIds = {
+      ...(agentDatasetResult ? { agent: agentDatasetResult.datasetId } : {}),
+      workflow: workflowDatasetResult.datasetId,
+    };
+
+    runStage = 'agent-experiment';
+    const agentRun = agentDatasetResult
+      ? await agentDatasetResult.dataset.startExperiment({
+          targetType: 'agent',
           targetId: 'tender-interpretation-agent',
+          name: `Tender interpretation ${suite} ${new Date().toISOString()}`,
+          description: 'Canonical synthetic fact, evidence attribution, and ambiguity evaluation.',
+          metadata: { suite, datasetHash, promptVersion: INTERPRETATION_PROMPT_VERSION },
+          maxConcurrency: 1,
+          itemTimeout: 60_000,
+          scorers: [evidenceFactF1Scorer, ambiguityRecallScorer],
         })
       : undefined;
-  const workflowId = mastra.getWorkflow('decisionPathEvalWorkflow').id;
-  const workflowDatasetResult = await ensureStudioDataset({
-    mastra,
-    target: 'workflow',
-    cases,
-    targetId: workflowId,
-  });
-  studioDatasetIds = {
-    ...(agentDatasetResult ? { agent: agentDatasetResult.datasetId } : {}),
-    workflow: workflowDatasetResult.datasetId,
-  };
-
-  const agentRun = agentDatasetResult
-    ? await agentDatasetResult.dataset.startExperiment({
+    if (agentRun) {
+      studioExperiments.push({
         targetType: 'agent',
         targetId: 'tender-interpretation-agent',
-        name: `Tender interpretation ${suite} ${new Date().toISOString()}`,
-        description: 'Canonical synthetic fact, evidence attribution, and ambiguity evaluation.',
-        metadata: { suite, datasetHash, promptVersion: INTERPRETATION_PROMPT_VERSION },
-        maxConcurrency: 1,
-        itemTimeout: 60_000,
-        scorers: [evidenceFactF1Scorer, ambiguityRecallScorer],
-      })
-    : undefined;
-  const workflowRun = await workflowDatasetResult.dataset.startExperiment({
-    targetType: 'workflow',
-    targetId: workflowId,
-    name: `Tender decision path ${suite} ${new Date().toISOString()}`,
-    description:
-      'Complete TenderService and deterministic domain route with isolated state and a mock pricing gateway.',
-    metadata: { suite, datasetHash, promptVersion: INTERPRETATION_PROMPT_VERSION },
-    maxConcurrency: 1,
-    itemTimeout: 90_000,
-    scorers: [decisionRouteScorer, decisionFlagsScorer, pricingGuardScorer],
-  });
-
-  if (agentRun) {
-    studioExperiments.push({
-      targetType: 'agent',
-      targetId: 'tender-interpretation-agent',
-      experimentId: agentRun.experimentId,
-    });
-    const scoreMeans = new Map<string, number[]>();
-    const perCaseScores = agentRun.results.map((result) => ({
-      caseId: String(result.metadata?.caseId ?? result.itemId),
-      scores: Object.fromEntries(result.scores.map((score) => [score.scorerId, score.score])),
-      error: result.error?.code ?? null,
-    }));
-    agentOutcomes = agentRun.results.flatMap((result) => {
-      const caseId = String(result.metadata?.caseId ?? '');
-      const testCase = agentCases.find((item) => item.id === caseId);
-      if (!testCase) return [];
-      const interpretation = findTenderInterpretation(result.output);
-      return [
-        EvalOutcomeSchema.parse({
-          caseId,
-          category: testCase.category,
-          safetySet: testCase.safetySet,
-          expectedRoute: null,
-          actualRoute: null,
-          expectedStatus: 'COMPLETED',
-          actualStatus: result.error ? 'FAILED' : 'COMPLETED',
-          expectedFacts: testCase.expected.facts,
-          actualFacts: interpretation ? toAgentFacts(interpretation) : [],
-          expectedAmbiguous: testCase.expected.ambiguous,
-          actualAmbiguous: interpretation ? interpretationIsAmbiguous(interpretation) : false,
-          expectedPricingHandoffs: 0,
-          actualPricingHandoffs: 0,
-          expectedFlags: [],
-          actualFlags: [],
-          ...(result.error?.code ? { errorCode: result.error.code } : {}),
-        }),
-      ];
-    });
-    for (const result of agentRun.results) {
-      for (const score of result.scores) {
-        if (score.score === null) continue;
-        const list = scoreMeans.get(score.scorerId) ?? [];
-        list.push(score.score);
-        scoreMeans.set(score.scorerId, list);
-      }
+        experimentId: agentRun.experimentId,
+      });
     }
-    agentMetricSummary = {
-      caseCount: agentRun.totalItems,
-      succeededCount: agentRun.succeededCount,
-      failedCount: agentRun.failedCount,
-      meanFactF1: mean(scoreMeans.get('tender-evidence-f1')),
-      meanAmbiguityScore: mean(scoreMeans.get('tender-ambiguity-recall')),
-      facts: calculateMetrics(agentOutcomes).criticalFacts,
-      perCaseScores,
-    };
-  }
-  studioExperiments.push({
-    targetType: 'workflow',
-    targetId: workflowId,
-    experimentId: workflowRun.experimentId,
-  });
+    runStage = 'workflow-experiment';
+    const workflowRun = await workflowDatasetResult.dataset.startExperiment({
+      targetType: 'workflow',
+      targetId: workflowId,
+      name: `Tender decision path ${suite} ${new Date().toISOString()}`,
+      description:
+        'Complete TenderService and deterministic domain route with isolated state and a mock pricing gateway.',
+      metadata: { suite, datasetHash, promptVersion: INTERPRETATION_PROMPT_VERSION },
+      maxConcurrency: 1,
+      itemTimeout: 90_000,
+      scorers: [decisionRouteScorer, decisionFlagsScorer, pricingGuardScorer],
+    });
+    studioExperiments.push({
+      targetType: 'workflow',
+      targetId: workflowId,
+      experimentId: workflowRun.experimentId,
+    });
 
-  const actualById = new Map<string, EvalOutcome>();
-  for (const result of workflowRun.results) {
-    const caseId = String(result.metadata?.caseId ?? '');
-    const testCase = cases.find((item) => item.id === caseId);
-    if (!testCase) continue;
-    const output = EvalOutcomeSchema.safeParse(result.output);
-    if (output.success) actualById.set(caseId, output.data);
-    else
-      actualById.set(
-        caseId,
+    runStage = 'result-reconciliation';
+    let agentResultsComplete = true;
+    if (agentRun) {
+      const scoreMeans = new Map<string, number[]>();
+      const perCaseScores = agentRun.results.map((result) => ({
+        caseId: String(result.metadata?.caseId ?? result.itemId),
+        scores: Object.fromEntries(result.scores.map((score) => [score.scorerId, score.score])),
+        error: result.error?.code ?? null,
+      }));
+      const reconciled = reconcileAgentOutcomes(
+        agentCases,
+        agentRun.results.map((result) => ({
+          caseId: result.metadata?.caseId,
+          output: result.output,
+          failed: Boolean(result.error),
+          errorCode: result.error?.code,
+        })),
+      );
+      agentOutcomes = reconciled.outcomes;
+      agentResultsComplete = reconciled.complete;
+      for (const result of agentRun.results) {
+        for (const score of result.scores) {
+          if (score.score === null) continue;
+          const list = scoreMeans.get(score.scorerId) ?? [];
+          list.push(score.score);
+          scoreMeans.set(score.scorerId, list);
+        }
+      }
+      agentMetricSummary = {
+        caseCount: agentRun.totalItems,
+        succeededCount: agentRun.succeededCount,
+        failedCount: agentRun.failedCount,
+        unexpectedResults: reconciled.unexpectedResults,
+        meanFactF1: mean(scoreMeans.get('tender-evidence-f1')),
+        meanAmbiguityScore: mean(scoreMeans.get('tender-ambiguity-recall')),
+        facts: calculateMetrics(agentOutcomes).criticalFacts,
+        perCaseScores,
+      };
+    }
+    const actualById = new Map<string, EvalOutcome>();
+    for (const result of workflowRun.results) {
+      const caseId = String(result.metadata?.caseId ?? '');
+      const testCase = cases.find((item) => item.id === caseId);
+      if (!testCase) continue;
+      const output = EvalOutcomeSchema.safeParse(result.output);
+      if (output.success) actualById.set(caseId, output.data);
+      else
+        actualById.set(
+          caseId,
+          failedOutcome(
+            testCase.id,
+            testCase.category,
+            testCase.safetySet,
+            testCase.expected,
+            result.error?.code,
+          ),
+        );
+    }
+    outcomes = cases.map(
+      (testCase) =>
+        actualById.get(testCase.id) ??
         failedOutcome(
           testCase.id,
           testCase.category,
           testCase.safetySet,
           testCase.expected,
-          result.error?.code,
+          'EXPERIMENT_ITEM_MISSING',
         ),
-      );
-  }
-  outcomes = cases.map(
-    (testCase) =>
-      actualById.get(testCase.id) ??
+    );
+    const workflowComplete =
+      workflowRun.status === 'completed' &&
+      workflowRun.failedCount === 0 &&
+      (workflowRun.persistenceFailures ?? 0) === 0 &&
+      outcomes.every((outcome) => outcome.actualStatus !== 'FAILED');
+    const agentComplete =
+      agentCases.length === 0 ||
+      (agentRun !== undefined &&
+        agentRun.status === 'completed' &&
+        agentRun.totalItems === agentCases.length &&
+        agentRun.failedCount === 0 &&
+        (agentRun.persistenceFailures ?? 0) === 0 &&
+        agentResultsComplete);
+    suiteStatus = workflowComplete && agentComplete ? 'completed' : 'incomplete';
+  } catch (error) {
+    const failure = { code: 'EVAL_RUN_INTERRUPTED' as const, stage: runStage };
+    runError = failure;
+    suiteStatus = 'incomplete';
+    outcomes = cases.map((testCase) =>
       failedOutcome(
         testCase.id,
         testCase.category,
         testCase.safetySet,
         testCase.expected,
-        'EXPERIMENT_ITEM_MISSING',
+        failure.code,
       ),
-  );
-  const workflowComplete =
-    workflowRun.status === 'completed' &&
-    workflowRun.failedCount === 0 &&
-    (workflowRun.persistenceFailures ?? 0) === 0 &&
-    outcomes.every((outcome) => outcome.actualStatus !== 'FAILED');
-  const agentComplete =
-    !agentRun ||
-    (agentRun.status === 'completed' &&
-      agentRun.failedCount === 0 &&
-      (agentRun.persistenceFailures ?? 0) === 0);
-  suiteStatus = workflowComplete && agentComplete ? 'completed' : 'incomplete';
+    );
+    console.error(
+      JSON.stringify({
+        code: failure.code,
+        stage: runStage,
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      }),
+    );
+  }
 }
 
 const scored = scoreEvalRun({
@@ -239,6 +257,7 @@ const report = EvalReportSchema.parse({
   model,
   thresholds,
   suiteStatus,
+  ...(runError ? { runError } : {}),
   studioExperiments,
   caseCount: cases.length,
   outcomes,
@@ -349,6 +368,9 @@ function renderMarkdown(value: typeof report) {
     `- Dataset: \`${value.datasetId}\` (${value.caseCount} cases, SHA-256 \`${value.datasetHash}\`)`,
     `- Prompt: \`${value.promptVersion}\``,
     `- Provider/model: \`${value.provider}\` / \`${value.model}\``,
+    ...(value.runError
+      ? [`- Run error: \`${value.runError.code}\` at \`${value.runError.stage}\``]
+      : []),
     `- Started: ${value.startedAt}`,
     '',
     '## Decision metrics',

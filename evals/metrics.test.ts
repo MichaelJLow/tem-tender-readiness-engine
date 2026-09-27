@@ -162,6 +162,61 @@ describe('eval metrics and gates', () => {
     );
   });
 
+  it('blocks pricing when the actual route is non-ready even if the label is ready', () => {
+    const misrouted = outcome({
+      actualRoute: 'HUMAN_REVIEW',
+      actualPricingHandoffs: 1,
+    });
+    const result = scoreEvalRun({
+      outcomes: [misrouted],
+      safetyOutcomes: [outcome({ caseId: 'safety', safetySet: true })],
+      thresholds,
+      suiteStatus: 'completed',
+    });
+    expect(result.gates.find((gate) => gate.id === 'pricing-guard')?.passed).toBe(false);
+    expect(result.metrics.pricingGuard.nonReadyWithHandoff).toBe(1);
+  });
+
+  it('matches facts and flags within their own case', () => {
+    const fact = {
+      field: 'contractEndDate' as const,
+      value: '2027-03-31',
+      siteId: 'site-001',
+      sourceId: 'note-1',
+    };
+    const results = [
+      outcome({
+        caseId: 'case-a',
+        expectedFacts: [fact],
+        actualFacts: [],
+        expectedFlags: ['TDR-001'],
+        actualFlags: [],
+      }),
+      outcome({
+        caseId: 'case-b',
+        expectedFacts: [],
+        actualFacts: [fact],
+        expectedFlags: [],
+        actualFlags: ['TDR-001'],
+      }),
+    ];
+    const metrics = calculateMetrics(results);
+    expect(metrics.criticalFacts).toMatchObject({
+      expected: 1,
+      predicted: 1,
+      matched: 0,
+      precision: 0,
+      recall: 0,
+    });
+    expect(metrics.ruleFlags).toMatchObject({
+      expected: 1,
+      predicted: 1,
+      matched: 0,
+      precision: 0,
+      recall: 0,
+    });
+  });
+
   it('cannot pass an incomplete or unavailable suite', () => {
     const result = scoreEvalRun({
       outcomes: [],

@@ -56,6 +56,9 @@ export const EvalReportSchema = z.object({
   model: z.string().min(1),
   thresholds: EvalThresholdsSchema,
   suiteStatus: z.enum(['completed', 'incomplete', 'not_run']),
+  runError: z
+    .object({ code: z.literal('EVAL_RUN_INTERRUPTED'), stage: z.string().min(1) })
+    .optional(),
   studioExperiments: z.array(
     z.object({
       targetType: z.enum(['agent', 'workflow']),
@@ -122,6 +125,15 @@ function countKeys(keys: string[]): Map<string, number> {
   return counts;
 }
 
+function countMatches(expected: string[], predicted: string[]): number {
+  const expectedCounts = countKeys(expected);
+  const predictedCounts = countKeys(predicted);
+  let matched = 0;
+  for (const [key, count] of expectedCounts)
+    matched += Math.min(count, predictedCounts.get(key) ?? 0);
+  return matched;
+}
+
 function routeMetrics(outcomes: readonly EvalOutcome[]) {
   return Object.fromEntries(
     routes.map((route: Route) => {
@@ -145,13 +157,13 @@ function routeMetrics(outcomes: readonly EvalOutcome[]) {
 }
 
 function factMetrics(outcomes: readonly EvalOutcome[]) {
-  const expected = outcomes.flatMap((outcome) => outcome.expectedFacts.map(factKey));
-  const predicted = outcomes.flatMap((outcome) => outcome.actualFacts.map(factKey));
-  const expectedCounts = countKeys(expected);
-  const predictedCounts = countKeys(predicted);
-  let matched = 0;
-  for (const [key, count] of expectedCounts)
-    matched += Math.min(count, predictedCounts.get(key) ?? 0);
+  const expected = outcomes.flatMap((outcome) => outcome.expectedFacts);
+  const predicted = outcomes.flatMap((outcome) => outcome.actualFacts);
+  const matched = outcomes.reduce(
+    (total, outcome) =>
+      total + countMatches(outcome.expectedFacts.map(factKey), outcome.actualFacts.map(factKey)),
+    0,
+  );
   return {
     expected: expected.length,
     predicted: predicted.length,
@@ -166,11 +178,10 @@ function factMetrics(outcomes: readonly EvalOutcome[]) {
 function flagMetrics(outcomes: readonly EvalOutcome[]) {
   const expected = outcomes.flatMap((outcome) => outcome.expectedFlags);
   const predicted = outcomes.flatMap((outcome) => outcome.actualFlags);
-  const expectedCounts = countKeys(expected);
-  const predictedCounts = countKeys(predicted);
-  let matched = 0;
-  for (const [key, count] of expectedCounts)
-    matched += Math.min(count, predictedCounts.get(key) ?? 0);
+  const matched = outcomes.reduce(
+    (total, outcome) => total + countMatches(outcome.expectedFlags, outcome.actualFlags),
+    0,
+  );
   return {
     expected: expected.length,
     predicted: predicted.length,
@@ -192,7 +203,10 @@ export function calculateMetrics(rawOutcomes: readonly EvalOutcome[]) {
   const humanReview = outcomes.filter((outcome) => outcome.expectedRoute === 'HUMAN_REVIEW');
   const ambiguous = outcomes.filter((outcome) => outcome.expectedAmbiguous);
   const nonReadyWithPricingHandoff = outcomes.filter(
-    (outcome) => outcome.expectedRoute !== 'READY_FOR_PRICING' && outcome.actualPricingHandoffs > 0,
+    (outcome) =>
+      (outcome.expectedRoute !== 'READY_FOR_PRICING' ||
+        outcome.actualRoute !== 'READY_FOR_PRICING') &&
+      outcome.actualPricingHandoffs > 0,
   );
   const correctlyFlaggedAmbiguity = ambiguous.filter((outcome) => outcome.actualAmbiguous).length;
 

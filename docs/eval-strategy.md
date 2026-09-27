@@ -233,7 +233,7 @@ format
 → build
 ```
 
-`npm run eval:pr` runs 12 representative cases; `npm run eval:full` runs the current complete labelled set. Each invokes the registered Tender Interpretation Agent and a thin registered Mastra workflow that delegates to the existing `TenderService` and domain evaluator. Each workflow case uses isolated in-memory state and a counting mock pricing gateway. The commands write a JSON report and readable Markdown summary under `evals/reports/`, seed immutable datasets, and record experiments in configured local Studio storage. They make live model calls and may incur provider cost. Without a key, they write an explicit `not_run` report and exit unsuccessfully rather than skipping silently.
+`npm run eval:pr` runs a representative subset (currently 14 cases); `npm run eval:full` runs the current complete labelled set. Each invokes the registered Tender Interpretation Agent and a thin registered Mastra workflow that delegates to the existing `TenderService` and domain evaluator. Each workflow case uses isolated in-memory state and a counting mock pricing gateway. The commands write a JSON report and readable Markdown summary under `evals/reports/`, seed immutable datasets, and record experiments in configured local Studio storage. They make live model calls and may incur provider cost. Without a key, they write an explicit `not_run` report and exit unsuccessfully rather than skipping silently.
 
 Deterministic schema and metric tests run in CI without credentials. Live evals are not an unconditional CI step because they need a configured provider secret and Mastra storage. Run the PR suite before reasoning changes and the full suite before accepting a release baseline. Only reviewed reports should be retained as baselines.
 
