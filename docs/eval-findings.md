@@ -254,12 +254,13 @@ model behaviour beyond the labelled dataset.
 
 ## Follow-up log
 
-| Date       | Report                        | Finding / decision                                     | Status                                    |
-| ---------- | ----------------------------- | ------------------------------------------------------ | ----------------------------------------- |
-| 2026-09-26 | v4 full release run           | Documented above; multiple quality gates failed        | Retained as diagnostic                    |
-| 2026-09-26 | v5 full release run           | One invalid model output and remaining over-escalation | Retained as diagnostic                    |
-| 2026-09-26 | v5 PR run                     | All configured PR gates passed                         | Reviewable; not an accepted full baseline |
-| 2026-09-26 | refreshed v5 full release run | Agent scoring clean; one invalid model output remains  | Current diagnostic; not baseline          |
-| 2026-09-26 | post-fix v5 PR run            | All 7 configured PR gates passed                       | Reviewable; not an accepted full baseline |
-| 2026-09-26 | post-fix v5 full release run  | Safety held; invalid output and over-routing remain    | Manual QA incomplete; not a baseline      |
-| 2026-09-26 | bounded v5 full release run   | All 7 gates and 63 expected routes passed              | Accepted synthetic prototype baseline     |
+| Date       | Report                        | Finding / decision                                                                                 | Status                                                                                           |
+| ---------- | ----------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 2026-09-26 | v4 full release run           | Documented above; multiple quality gates failed                                                    | Retained as diagnostic                                                                           |
+| 2026-09-26 | v5 full release run           | One invalid model output and remaining over-escalation                                             | Retained as diagnostic                                                                           |
+| 2026-09-26 | v5 PR run                     | All configured PR gates passed                                                                     | Reviewable; not an accepted full baseline                                                        |
+| 2026-09-26 | refreshed v5 full release run | Agent scoring clean; one invalid model output remains                                              | Current diagnostic; not baseline                                                                 |
+| 2026-09-26 | post-fix v5 PR run            | All 7 configured PR gates passed                                                                   | Reviewable; not an accepted full baseline                                                        |
+| 2026-09-26 | post-fix v5 full release run  | Safety held; invalid output and over-routing remain                                                | Manual QA incomplete; not a baseline                                                             |
+| 2026-09-26 | bounded v5 full release run   | All 7 gates and 63 expected routes passed                                                          | Accepted synthetic prototype baseline                                                            |
+| 2026-09-26 | post-review full rerun        | OpenRouter key limit rejected 8,192-token requests (HTTP 402); Codex worktree blocked report write | Incomplete; no report; rerun after key limit is raised, writing reports to the writable checkout |

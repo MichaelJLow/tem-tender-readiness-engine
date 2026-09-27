@@ -242,6 +242,7 @@ const scored = scoreEvalRun({
   suiteStatus,
   baseline,
   datasetHash,
+  requireComparableBaseline: suite === 'full',
 });
 const completedAt = new Date();
 const report = EvalReportSchema.parse({
@@ -351,10 +352,17 @@ async function loadAcceptedBaseline() {
       report.datasetHash !== pointer.datasetHash
     )
       return undefined;
+    const agentMetrics = z
+      .object({
+        facts: z.object({ precision: z.number().nullable(), recall: z.number().nullable() }),
+      })
+      .safeParse(report.metrics.agent);
+    if (!agentMetrics.success) return undefined;
     return {
       runId: report.runId,
       datasetHash: report.datasetHash,
       metrics: calculateMetrics(report.outcomes),
+      agentFacts: agentMetrics.data.facts,
     };
   } catch {
     return undefined;

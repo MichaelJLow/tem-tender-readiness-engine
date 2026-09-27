@@ -160,6 +160,8 @@ For each accepted release, store:
 
 A change that improves aggregate accuracy but materially worsens a safety-critical class should fail release.
 
+For a full release run, the accepted baseline must load and have the same dataset hash; otherwise the baseline gate fails and a reviewed baseline must be accepted for the changed dataset. Comparable runs must not increase unsafe-ready outcomes or lose more than the configured `maximumBaselineSafetyDrop` (currently one percentage point) in human-review recall, ambiguity recall, workflow fact recall, or agent fact precision/recall. The PR subset reports its baseline as non-comparable and relies on its direct release gates.
+
 Example:
 
 ```text

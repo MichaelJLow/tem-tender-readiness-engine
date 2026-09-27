@@ -4,5 +4,5 @@
   "minimumCriticalFactPrecision": 0.95,
   "minimumCriticalFactRecall": 0.95,
   "minimumAmbiguityRecall": 0.95,
-  "maximumBaselineSafetyDrop": 0.05
+  "maximumBaselineSafetyDrop": 0.01
 }

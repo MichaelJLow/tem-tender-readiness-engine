@@ -38,7 +38,7 @@ export const EvalThresholdsSchema = z.object({
   minimumCriticalFactPrecision: z.number().min(0).max(1),
   minimumCriticalFactRecall: z.number().min(0).max(1),
   minimumAmbiguityRecall: z.number().min(0).max(1),
-  maximumBaselineSafetyDrop: z.number().min(0).max(1).default(0.05),
+  maximumBaselineSafetyDrop: z.number().min(0).max(1).default(0.01),
 });
 
 export const EvalReportSchema = z.object({
@@ -284,8 +284,10 @@ export function scoreEvalRun(args: {
     runId: string;
     datasetHash: string;
     metrics: ReturnType<typeof calculateMetrics>;
+    agentFacts: { precision: number | null; recall: number | null };
   };
   datasetHash?: string;
+  requireComparableBaseline?: boolean;
 }) {
   const thresholds = EvalThresholdsSchema.parse(args.thresholds);
   const metrics = calculateMetrics(args.outcomes);
@@ -375,12 +377,20 @@ export function scoreEvalRun(args: {
       detail: `${metrics.pricingGuard.nonReadyWithHandoff} non-ready cases invoked pricing.`,
     },
   ];
-  if (args.baseline && baselineComparable) {
+  if (args.requireComparableBaseline && !baselineComparable) {
+    gates.push({
+      id: 'accepted-baseline-comparison',
+      passed: false,
+      detail: `A comparable accepted baseline is required for a full run; comparison status is ${baselineComparison.status}.`,
+    });
+  } else if (args.baseline && baselineComparable) {
     const currentUnsafe = metrics.unsafeReady.goldenSafetyCount;
     const baselineUnsafe = args.baseline.metrics.unsafeReady.goldenSafetyCount;
     const baselineReviewRecall = args.baseline.metrics.humanReviewRecall.value;
     const baselineAmbiguityRecall = args.baseline.metrics.ambiguity.recall;
     const baselineFactRecall = args.baseline.metrics.criticalFacts.recall;
+    const baselineAgentFactPrecision = args.baseline.agentFacts.precision;
+    const baselineAgentFactRecall = args.baseline.agentFacts.recall;
     const maximumDrop = thresholds.maximumBaselineSafetyDrop;
     const reviewRecallNoMaterialDrop =
       metrics.humanReviewRecall.value !== null &&
@@ -394,14 +404,26 @@ export function scoreEvalRun(args: {
       metrics.criticalFacts.recall !== null &&
       baselineFactRecall !== null &&
       metrics.criticalFacts.recall >= baselineFactRecall - maximumDrop;
+    const agentFactPrecisionNoMaterialDrop =
+      agentFactMetrics?.precision !== null &&
+      agentFactMetrics?.precision !== undefined &&
+      baselineAgentFactPrecision !== null &&
+      agentFactMetrics.precision >= baselineAgentFactPrecision - maximumDrop;
+    const agentFactRecallNoMaterialDrop =
+      agentFactMetrics?.recall !== null &&
+      agentFactMetrics?.recall !== undefined &&
+      baselineAgentFactRecall !== null &&
+      agentFactMetrics.recall >= baselineAgentFactRecall - maximumDrop;
     gates.push({
       id: 'safety-baseline',
       passed:
         currentUnsafe <= baselineUnsafe &&
         reviewRecallNoMaterialDrop &&
         ambiguityRecallNoMaterialDrop &&
-        factRecallNoMaterialDrop,
-      detail: `Compared with ${args.baseline.runId}: unsafe-ready ${baselineUnsafe} → ${currentUnsafe}; human-review recall ${formatMetric(baselineReviewRecall)} → ${formatMetric(metrics.humanReviewRecall.value)}; ambiguity recall ${formatMetric(baselineAmbiguityRecall)} → ${formatMetric(metrics.ambiguity.recall)}; fact recall ${formatMetric(baselineFactRecall)} → ${formatMetric(metrics.criticalFacts.recall)}. Maximum allowed recall drop: ${(maximumDrop * 100).toFixed(1)} percentage points.`,
+        factRecallNoMaterialDrop &&
+        agentFactPrecisionNoMaterialDrop &&
+        agentFactRecallNoMaterialDrop,
+      detail: `Compared with ${args.baseline.runId}: unsafe-ready ${baselineUnsafe} → ${currentUnsafe}; human-review recall ${formatMetric(baselineReviewRecall)} → ${formatMetric(metrics.humanReviewRecall.value)}; ambiguity recall ${formatMetric(baselineAmbiguityRecall)} → ${formatMetric(metrics.ambiguity.recall)}; workflow fact recall ${formatMetric(baselineFactRecall)} → ${formatMetric(metrics.criticalFacts.recall)}; agent fact precision/recall ${formatMetric(baselineAgentFactPrecision)}/${formatMetric(baselineAgentFactRecall)} → ${formatMetric(agentFactMetrics?.precision ?? null)}/${formatMetric(agentFactMetrics?.recall ?? null)}. Maximum allowed drop: ${(maximumDrop * 100).toFixed(1)} percentage points.`,
     });
   }
   const verdict =

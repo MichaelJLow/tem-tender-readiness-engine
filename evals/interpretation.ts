@@ -29,20 +29,21 @@ export function interpretationHasGroundedEvidence(rawInterpretation: unknown, ra
   if (!interpretation.success || !input) return false;
   const sourceById = new Map(input.sources.map((source) => [source.sourceId, source.text]));
   const siteById = new Map(input.tender.sites.map((site) => [site.siteId, site]));
+  const lowercaseSiteIds = new Set(
+    input.tender.sites.map((site) => site.siteId.toLocaleLowerCase('en')),
+  );
   const validCitation = (citation: { sourceId: string; quote: string }) =>
     sourceById.get(citation.sourceId)?.includes(citation.quote) === true;
-  const siteMentioned = (quote: string, siteId: string) => {
-    const site = siteById.get(siteId);
-    if (!site) return false;
-    const normalizedQuote = normalizeEvidenceText(quote);
-    return [site.siteId, site.address, site.meterIdentifier]
-      .filter((value): value is string => typeof value === 'string' && value.length > 0)
-      .some((value) => normalizedQuote.includes(normalizeEvidenceText(value)));
-  };
+  const sitesInQuote = (quote: string) =>
+    input.tender.sites.filter((site) => siteLocatesQuote(site, quote));
   const valueMentioned = (quote: string, field: string, value: string) => {
+    if (field === 'meterIdentifier') {
+      const escaped = value.trim().split('').map(escapeRegExp).join('[\\s-]*');
+      return new RegExp(`(?<!\\d)${escaped}(?!\\d)`, 'u').test(quote);
+    }
     const normalizedQuote = normalizeEvidenceText(quote);
     const normalizedValue = normalizeEvidenceText(value);
-    if (normalizedValue && normalizedQuote.includes(normalizedValue)) return true;
+    if (normalizedValue && ` ${normalizedQuote} `.includes(` ${normalizedValue} `)) return true;
     if (field === 'contractEndDate') {
       const dayFirst = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (dayFirst) {
@@ -53,52 +54,79 @@ export function interpretationHasGroundedEvidence(rawInterpretation: unknown, ra
       }
     }
     if (field === 'annualConsumptionKwh') {
-      const expected = value.replace(/,/g, '').match(/\d+(?:\.\d+)?/)?.[0];
-      return expected !== undefined && quote.replace(/,/g, '').includes(expected);
+      const expected = value.replace(/,/g, '').match(/^\d+(?:\.\d+)?$/)?.[0];
+      if (!expected) return false;
+      return [...quote.matchAll(/\d[\d,]*(?:\.\d+)?/g)].some(
+        (match) => match[0].replace(/,/g, '') === expected,
+      );
     }
     return false;
   };
 
   const result = interpretation.data;
   if (
-    [...result.sourceAssessments, ...result.observations, ...result.siteAssociations].some((item) =>
-      item.evidence.some((citation) => !validCitation(citation)),
+    result.sourceAssessments.length !== sourceById.size ||
+    new Set(result.sourceAssessments.map((item) => item.sourceId)).size !== sourceById.size ||
+    result.sourceAssessments.some(
+      (item) =>
+        !sourceById.has(item.sourceId) ||
+        item.evidence.some(
+          (citation) => citation.sourceId !== item.sourceId || !validCitation(citation),
+        ),
     ) ||
     result.conflicts.some((item) => item.evidence.some((citation) => !validCitation(citation)))
   )
     return false;
 
   for (const observation of result.observations) {
-    if (observation.siteIds.length === 0) {
-      if (
-        !observation.evidence.some((citation) =>
-          valueMentioned(citation.quote, observation.field, observation.value),
+    if (observation.siteIds.some((siteId) => !siteById.has(siteId))) return false;
+    if (
+      observation.evidence.some((citation) => {
+        if (
+          !validCitation(citation) ||
+          !valueMentioned(citation.quote, observation.field, observation.value) ||
+          (observation.siteIds.length > 0 && unknownSiteLabels(citation.quote, lowercaseSiteIds))
         )
+          return true;
+        if (observation.siteIds.length === 0) return false;
+        const matchingSites = sitesInQuote(citation.quote);
+        return (
+          matchingSites.length !== 1 || !observation.siteIds.includes(matchingSites[0]!.siteId)
+        );
+      })
+    )
+      return false;
+    if (
+      observation.siteIds.some(
+        (siteId) =>
+          !observation.evidence.some(
+            (citation) =>
+              sitesInQuote(citation.quote).length === 1 &&
+              sitesInQuote(citation.quote)[0]?.siteId === siteId,
+          ),
       )
-        return false;
-      continue;
-    }
-    for (const siteId of observation.siteIds) {
-      if (!siteById.has(siteId)) return false;
-      if (
-        !observation.evidence.some(
-          (citation) =>
-            valueMentioned(citation.quote, observation.field, observation.value) &&
-            siteMentioned(citation.quote, siteId),
-        )
-      )
-        return false;
-    }
+    )
+      return false;
   }
   for (const association of result.siteAssociations) {
     if (
       !sourceById.has(association.sourceId) ||
+      association.siteIds.some((siteId) => !siteById.has(siteId)) ||
+      association.evidence.some(
+        (citation) =>
+          citation.sourceId !== association.sourceId ||
+          !validCitation(citation) ||
+          (association.siteIds.length > 0 && unknownSiteLabels(citation.quote, lowercaseSiteIds)) ||
+          (association.siteIds.length > 0 &&
+            (sitesInQuote(citation.quote).length !== 1 ||
+              !association.siteIds.includes(sitesInQuote(citation.quote)[0]!.siteId))),
+      ) ||
       association.siteIds.some(
         (siteId) =>
-          !siteById.has(siteId) ||
           !association.evidence.some(
             (citation) =>
-              citation.sourceId === association.sourceId && siteMentioned(citation.quote, siteId),
+              sitesInQuote(citation.quote).length === 1 &&
+              sitesInQuote(citation.quote)[0]?.siteId === siteId,
           ),
       )
     )
@@ -140,7 +168,53 @@ function parseAgentInput(value: unknown):
 }
 
 function normalizeEvidenceText(value: string) {
-  return value.toLocaleLowerCase('en').replace(/[^\p{L}\p{N}]/gu, '');
+  return value
+    .toLocaleLowerCase('en')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function siteLocatesQuote(
+  site: { siteId: string; address?: string; meterIdentifier?: string },
+  quote: string,
+) {
+  const hasIdentifier = (identifier: string, allowSpaces: boolean) => {
+    const escaped = identifier
+      .trim()
+      .split('')
+      .map(escapeRegExp)
+      .join(allowSpaces ? '\\s*' : '');
+    const pattern = new RegExp(`(?<![\\p{L}\\p{N}_-])${escaped}(?![\\p{L}\\p{N}_-])`, 'iu');
+    return pattern.test(quote);
+  };
+  const hasMeter = site.meterIdentifier
+    ? new RegExp(
+        `(?<![\\p{L}\\p{N}_-])${site.meterIdentifier.trim().split('').map(escapeRegExp).join('[\\s-]*')}(?![\\p{L}\\p{N}_-])`,
+        'u',
+      ).test(quote)
+    : false;
+  return (
+    hasIdentifier(site.siteId, false) ||
+    hasMeter ||
+    (site.address
+      ? normalizeEvidenceText(quote).includes(normalizeEvidenceText(site.address))
+      : false)
+  );
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function unknownSiteLabels(quote: string, knownSiteIds: ReadonlySet<string>) {
+  return [...quote.matchAll(/(?<![\p{L}\p{N}_-])site[-\s:#]+([\p{L}\p{N}_-]+)/giu)].some(
+    (match) => {
+      const candidate = match[1]?.toLocaleLowerCase('en');
+      const fullLabel = match[0].trim().toLocaleLowerCase('en');
+      return !knownSiteIds.has(candidate ?? '') && !knownSiteIds.has(fullLabel);
+    },
+  );
 }
 
 export function findTenderInterpretation(

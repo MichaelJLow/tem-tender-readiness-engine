@@ -61,7 +61,7 @@ With Studio running, run `node tests/studio-smoke.mjs` from the repository root 
 
 ## Milestone 4 scored evals
 
-The canonical synthetic cases are in `evals/cases.ts`; the same immutable, hash-versioned cases seed agent and decision-path datasets. Start Studio with the configured model provider key, then run:
+The canonical synthetic cases are in `evals/cases.ts`; the same immutable, hash-versioned cases seed agent and decision-path datasets. Stop Studio before running either scored eval because it shares the eval runner's DuckDB store. With the configured model provider key in the environment, run:
 
 ```powershell
 npm run eval:pr
@@ -70,7 +70,7 @@ npm run eval:full
 
 The PR command evaluates 14 representative cases; the full command evaluates the current complete labelled set. Each runs an agent experiment for text-bearing, non-duplicate cases and a workflow experiment for all selected cases. Duplicate handling short-circuits interpretation in the real workflow, so duplicate cases are covered by the workflow experiment only. The workflow exercises the existing `TenderService` and deterministic domain rules with fresh in-memory state and a mock pricing gateway. Model facts are evaluated as evidence only; they never fill missing structured tender fields.
 
-Stop the Studio dev server before starting either eval. Studio and eval experiments share the local DuckDB store, and a running Studio server can hold a database lock that prevents the eval runner from opening it. Run the eval commands from the repository root with the same `MASTRA_DATA_DIR` used by Studio (the default is `apps/api/src/mastra/public/data`). After the eval finishes, restart Studio on port `4113` to inspect its persisted experiments and traces. Do not run Studio and an eval concurrently against the same store.
+Run the commands from the repository root with the same `MASTRA_DATA_DIR` used by Studio (the default is `apps/api/src/mastra/public/data`). After the eval finishes, restart Studio on port `4113` to inspect its persisted experiments and traces. Do not run Studio and an eval concurrently against the same store.
 
 Both runs persist datasets, experiments, scorer results, and traces to the same local Mastra storage used by this repository's Studio (`apps/api/src/mastra/public/data` by default) and write a portable JSON report plus Markdown summary under `evals/reports/`. Set `MASTRA_DATA_DIR` explicitly if Studio is configured with a different path. Reports include labels, denominators, per-case outcomes, metrics, thresholds, verdict, source revision, and Studio experiment IDs. If Studio setup or an experiment is interrupted, the report records an incomplete verdict, a `runError` stage, and failed outcomes, then exits unsuccessfully. Review a report before accepting it as a baseline. Cases and reports remain readable when Studio traces expire. The current dataset has 63 cases. The accepted synthetic Milestone 4 baseline is identified by `evals/accepted-baseline.json`; earlier incomplete runs remain diagnostic evidence in `docs/eval-findings.md`. A passing PR report does not substitute for a passing full run, manual QA, or review before accepting a baseline.
 
