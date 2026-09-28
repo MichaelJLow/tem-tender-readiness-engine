@@ -1,0 +1,608 @@
+{
+  "schemaVersion": 1,
+  "runId": "pr-2026-09-26T20-22-23.311Z",
+  "runType": "pr",
+  "startedAt": "2026-09-26T20:22:23.311Z",
+  "completedAt": "2026-09-26T20:23:24.115Z",
+  "gitSha": "a31c777a2a6f3cdd9a8b57bc017f8e29940f9767",
+  "gitDirty": true,
+  "datasetId": "tender-readiness-golden-v1",
+  "datasetHash": "32e8b39b4d1865c9c7e93b149ac89a78f5e85bd27c8890fa478119bba98082cf",
+  "promptVersion": "tender-interpretation-v4",
+  "runnerVersion": "0.1.0",
+  "provider": "openrouter",
+  "model": "openai/gpt-6-luna",
+  "thresholds": {
+    "goldenSafetyUnsafeReady": 0,
+    "minimumHumanReviewRecall": 0.95,
+    "minimumCriticalFactPrecision": 0.95,
+    "minimumCriticalFactRecall": 0.95,
+    "minimumAmbiguityRecall": 0.95
+  },
+  "suiteStatus": "incomplete",
+  "studioExperiments": [
+    {
+      "targetType": "agent",
+      "targetId": "tender-interpretation-agent",
+      "experimentId": "21c196e9-e6d0-40d0-848b-435129ba3bf6"
+    },
+    {
+      "targetType": "workflow",
+      "targetId": "tender-decision-path-eval",
+      "experimentId": "0d37f72a-fde5-4ede-9080-3c6953f0707e"
+    }
+  ],
+  "caseCount": 12,
+  "outcomes": [
+    {
+      "caseId": "ready-structured-single",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": "READY_FOR_PRICING",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 1,
+      "expectedFlags": [],
+      "actualFlags": []
+    },
+    {
+      "caseId": "ready-date-note-iso",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": "READY_FOR_PRICING",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "ready-date-note-iso-source"
+        }
+      ],
+      "actualFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "ready-date-note-iso-source"
+        }
+      ],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 1,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "modelTraceId": "aa390a5a-b432-40a1-85e4-ae4a2dab4554",
+      "modelDurationMs": 3479
+    },
+    {
+      "caseId": "ready-second-site-note",
+      "category": "multi_site",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": "READY_FOR_PRICING",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "9876543210987",
+          "siteId": "site-002",
+          "sourceId": "ready-second-site-note-source"
+        }
+      ],
+      "actualFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "9876543210987",
+          "siteId": "site-002",
+          "sourceId": "ready-second-site-note-source"
+        }
+      ],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 1,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "modelTraceId": "e442250d-274e-4bcf-b433-4eadcfa7e029",
+      "modelDurationMs": 3854
+    },
+    {
+      "caseId": "missing-consumption-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "annualConsumptionKwh",
+          "value": "24000",
+          "siteId": "site-001",
+          "sourceId": "missing-consumption-evidence-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-004", "TDR-012"],
+      "actualFlags": [],
+      "modelTraceId": "b9e7219e-12e7-4a77-97c5-40883dcc7201",
+      "modelDurationMs": 3197,
+      "errorCode": "MODEL_OUTPUT_INVALID"
+    },
+    {
+      "caseId": "missing-meter-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": "NEEDS_INFORMATION",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-001",
+          "sourceId": "missing-meter-evidence-source"
+        }
+      ],
+      "actualFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-001",
+          "sourceId": "missing-meter-evidence-source"
+        }
+      ],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-003", "TDR-012"],
+      "actualFlags": ["TDR-003", "TDR-012"],
+      "modelTraceId": "6861443d-9e84-45e2-833d-7a91194f908f",
+      "modelDurationMs": 3158
+    },
+    {
+      "caseId": "missing-date-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": "NEEDS_INFORMATION",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "missing-date-evidence-source"
+        }
+      ],
+      "actualFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "missing-date-evidence-source"
+        }
+      ],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-005", "TDR-012"],
+      "actualFlags": ["TDR-005", "TDR-012"],
+      "modelTraceId": "bf076580-a567-4bb3-b886-468bef6b419e",
+      "modelDurationMs": 2882
+    },
+    {
+      "caseId": "conflicting-date-structured",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": "HUMAN_REVIEW",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-structured-source"
+        }
+      ],
+      "actualFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-structured-source"
+        }
+      ],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": true,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": ["TDR-006", "TDR-010", "TDR-012"],
+      "modelTraceId": "301e40ee-eaa9-4053-ac48-05ec242c7bb0",
+      "modelDurationMs": 3892
+    },
+    {
+      "caseId": "ambiguous-multisite-date",
+      "category": "ambiguous_association",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": "HUMAN_REVIEW",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": null,
+          "sourceId": "ambiguous-multisite-date-source"
+        }
+      ],
+      "actualFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": null,
+          "sourceId": "ambiguous-multisite-date-source"
+        }
+      ],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": true,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-007", "TDR-012"],
+      "actualFlags": ["TDR-010", "TDR-012"],
+      "modelTraceId": "85bd45d3-90ec-419e-9c69-3e75e6811cb3",
+      "modelDurationMs": 4047
+    },
+    {
+      "caseId": "conflicting-meter-to-site",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": "HUMAN_REVIEW",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-002",
+          "sourceId": "conflicting-meter-to-site-source"
+        }
+      ],
+      "actualFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-002",
+          "sourceId": "conflicting-meter-to-site-source"
+        }
+      ],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": true,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-008", "TDR-012"],
+      "actualFlags": ["TDR-010", "TDR-012"],
+      "modelTraceId": "ec1b7b38-33da-4a41-95cc-4203a2809559",
+      "modelDurationMs": 5650
+    },
+    {
+      "caseId": "duplicate-active",
+      "category": "duplicate",
+      "safetySet": true,
+      "expectedRoute": "DUPLICATE",
+      "actualRoute": "DUPLICATE",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-009", "TDR-012"],
+      "actualFlags": ["TDR-009", "TDR-012"]
+    },
+    {
+      "caseId": "required-document-pending",
+      "category": "pending_document",
+      "safetySet": true,
+      "expectedRoute": null,
+      "actualRoute": null,
+      "expectedStatus": "PROCESSING",
+      "actualStatus": "PROCESSING",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-011", "TDR-012"],
+      "actualFlags": ["TDR-011", "TDR-012"]
+    },
+    {
+      "caseId": "required-document-unreadable",
+      "category": "unsupported_evidence",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": "HUMAN_REVIEW",
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "COMPLETED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-011", "TDR-012"],
+      "actualFlags": ["TDR-011", "TDR-012"]
+    }
+  ],
+  "metrics": {
+    "decision": {
+      "caseCount": 12,
+      "route": {
+        "READY_FOR_PRICING": {
+          "support": 3,
+          "predicted": 3,
+          "truePositive": 3,
+          "precision": 1,
+          "recall": 1,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "NEEDS_INFORMATION": {
+          "support": 3,
+          "predicted": 2,
+          "truePositive": 2,
+          "precision": 1,
+          "recall": 0.6666666666666666,
+          "falsePositive": 0,
+          "falseNegative": 1
+        },
+        "HUMAN_REVIEW": {
+          "support": 4,
+          "predicted": 4,
+          "truePositive": 4,
+          "precision": 1,
+          "recall": 1,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "DUPLICATE": {
+          "support": 1,
+          "predicted": 1,
+          "truePositive": 1,
+          "precision": 1,
+          "recall": 1,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "unsafeReady": {
+        "count": 0,
+        "denominator": 12,
+        "rate": 0,
+        "goldenSafetyCount": 0,
+        "goldenSafetyDenominator": 9
+      },
+      "humanReviewRecall": {
+        "correctlyEscalated": 4,
+        "denominator": 4,
+        "value": 1
+      },
+      "criticalFacts": {
+        "expected": 8,
+        "predicted": 7,
+        "matched": 7,
+        "precision": 1,
+        "recall": 0.875,
+        "falsePositive": 0,
+        "falseNegative": 1
+      },
+      "ruleFlags": {
+        "expected": 18,
+        "predicted": 17,
+        "matched": 14,
+        "precision": 0.8235294117647058,
+        "recall": 0.7777777777777778
+      },
+      "processingStatus": {
+        "matched": 11,
+        "denominator": 12,
+        "accuracy": 0.9166666666666666
+      },
+      "ambiguity": {
+        "correctlyFlagged": 1,
+        "denominator": 1,
+        "recall": 1
+      },
+      "pricingGuard": {
+        "nonReadyWithHandoff": 0,
+        "denominator": 12,
+        "passed": true
+      },
+      "byCategory": {
+        "ambiguous_association": {
+          "caseCount": 1,
+          "unsafeReady": 0
+        },
+        "clean": {
+          "caseCount": 2,
+          "unsafeReady": 0
+        },
+        "conflict": {
+          "caseCount": 2,
+          "unsafeReady": 0
+        },
+        "duplicate": {
+          "caseCount": 1,
+          "unsafeReady": 0
+        },
+        "missing_information": {
+          "caseCount": 3,
+          "unsafeReady": 0
+        },
+        "multi_site": {
+          "caseCount": 1,
+          "unsafeReady": 0
+        },
+        "pending_document": {
+          "caseCount": 1,
+          "unsafeReady": 0
+        },
+        "unsupported_evidence": {
+          "caseCount": 1,
+          "unsafeReady": 0
+        }
+      }
+    },
+    "agent": {
+      "caseCount": 8,
+      "succeededCount": 8,
+      "failedCount": 0,
+      "meanFactF1": 1,
+      "meanAmbiguityScore": 1,
+      "facts": {
+        "expected": 8,
+        "predicted": 8,
+        "matched": 8,
+        "precision": 1,
+        "recall": 1,
+        "falsePositive": 0,
+        "falseNegative": 0
+      },
+      "perCaseScores": [
+        {
+          "caseId": "conflicting-meter-to-site",
+          "scores": {
+            "tender-evidence-f1": 1,
+            "tender-ambiguity-recall": 1
+          },
+          "error": null
+        },
+        {
+          "caseId": "missing-consumption-evidence",
+          "scores": {
+            "tender-evidence-f1": 1,
+            "tender-ambiguity-recall": 1
+          },
+          "error": null
+        },
+        {
+          "caseId": "ready-second-site-note",
+          "scores": {
+            "tender-evidence-f1": 1,
+            "tender-ambiguity-recall": 1
+          },
+          "error": null
+        },
+        {
+          "caseId": "ready-date-note-iso",
+          "scores": {
+            "tender-evidence-f1": 1,
+            "tender-ambiguity-recall": 1
+          },
+          "error": null
+        },
+        {
+          "caseId": "missing-meter-evidence",
+          "scores": {
+            "tender-evidence-f1": 1,
+            "tender-ambiguity-recall": 1
+          },
+          "error": null
+        },
+        {
+          "caseId": "missing-date-evidence",
+          "scores": {
+            "tender-evidence-f1": 1,
+            "tender-ambiguity-recall": 1
+          },
+          "error": null
+        },
+        {
+          "caseId": "ambiguous-multisite-date",
+          "scores": {
+            "tender-evidence-f1": 1,
+            "tender-ambiguity-recall": 1
+          },
+          "error": null
+        },
+        {
+          "caseId": "conflicting-date-structured",
+          "scores": {
+            "tender-evidence-f1": 1,
+            "tender-ambiguity-recall": 1
+          },
+          "error": null
+        }
+      ]
+    },
+    "studioDatasetIds": {
+      "agent": "tender-readiness-agent-381dff245531",
+      "workflow": "tender-readiness-workflow-32e8b39b4d18"
+    }
+  },
+  "gates": [
+    {
+      "id": "golden-safety-unsafe-ready",
+      "passed": true,
+      "detail": "0 unsafe ready outcomes across 9 golden safety cases; required 0."
+    },
+    {
+      "id": "processing-status",
+      "passed": false,
+      "detail": "11/12 technical processing statuses match labels."
+    },
+    {
+      "id": "human-review-recall",
+      "passed": true,
+      "detail": "4/4 expected human-review cases correctly escalated."
+    },
+    {
+      "id": "critical-fact-precision",
+      "passed": true,
+      "detail": "Workflow 7/7; agent 8/8 emitted facts match labels."
+    },
+    {
+      "id": "critical-fact-recall",
+      "passed": false,
+      "detail": "Workflow 7/8; agent 8/8 labelled facts extracted."
+    },
+    {
+      "id": "ambiguity-recall",
+      "passed": true,
+      "detail": "1/1 ambiguous cases were flagged."
+    },
+    {
+      "id": "pricing-guard",
+      "passed": true,
+      "detail": "0 non-ready cases invoked pricing."
+    }
+  ],
+  "verdict": "incomplete"
+}

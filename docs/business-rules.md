@@ -40,13 +40,13 @@ Every rule should return a consistent structure:
 
 ```ts
 export type RuleResult = {
-  ruleId: string
-  passed: boolean
-  route?: TenderRoute
-  severity: "info" | "blocking" | "review"
-  reason: string
-  evidence: EvidenceRef[]
-}
+  ruleId: string;
+  passed: boolean;
+  route?: TenderRoute;
+  severity: 'info' | 'blocking' | 'review';
+  reason: string;
+  evidence: EvidenceRef[];
+};
 ```
 
 Rules should be independently testable and free of AWS, UI, n8n, and model-provider concerns.
@@ -106,7 +106,7 @@ The prototype accepts strict `YYYY-MM-DD`, `DD/MM/YYYY`, and `DD-MM-YYYY` calend
 ### TDR-007 - Unresolved document-to-site association
 
 **Input:** extracted document facts and site candidates \
-**Condition:** supporting evidence cannot be associated with a single site under the agreed policy \
+**Condition:** a supporting fact's cited evidence cannot be associated with one known site under the agreed policy; separate site-specific facts in one document may resolve to different sites \
 **Route:** `HUMAN_REVIEW` \
 **Reason:** applying information to the wrong site can create a false readiness decision \
 **Tests:** explicit site ID, strong match, ambiguous multi-site case

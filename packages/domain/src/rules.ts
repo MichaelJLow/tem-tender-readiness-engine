@@ -174,17 +174,25 @@ export const rule007DocumentSiteAssociation: Rule = (input) => {
   const siteIds = new Set(input.tender.sites.map((site) => site.siteId));
   const documentIds = new Set(input.tender.documents.map((document) => document.documentId));
   const associations = input.signals.documentSiteAssociations;
-  const siteIdsByDocument = new Map<string, Set<string>>();
+  const siteIdsByEvidence = new Map<string, Set<string>>();
   for (const association of associations) {
     if (association.status !== 'RESOLVED' || !association.siteId) continue;
-    const associatedSiteIds = siteIdsByDocument.get(association.documentId) ?? new Set<string>();
-    associatedSiteIds.add(association.siteId);
-    siteIdsByDocument.set(association.documentId, associatedSiteIds);
+    for (const evidence of association.evidence) {
+      const key = JSON.stringify([
+        association.documentId,
+        evidence.sourceId,
+        evidence.sourceType,
+        evidence.locator ?? null,
+      ]);
+      const associatedSiteIds = siteIdsByEvidence.get(key) ?? new Set<string>();
+      associatedSiteIds.add(association.siteId);
+      siteIdsByEvidence.set(key, associatedSiteIds);
+    }
   }
-  const conflictingDocumentIds = new Set(
-    [...siteIdsByDocument.entries()]
+  const conflictingEvidence = new Set(
+    [...siteIdsByEvidence.entries()]
       .filter(([, associatedSiteIds]) => associatedSiteIds.size > 1)
-      .map(([documentId]) => documentId),
+      .map(([key]) => key),
   );
   const unresolved = associations.filter(
     (association) =>
@@ -192,7 +200,16 @@ export const rule007DocumentSiteAssociation: Rule = (input) => {
       association.status !== 'RESOLVED' ||
       !association.siteId ||
       !siteIds.has(association.siteId) ||
-      conflictingDocumentIds.has(association.documentId),
+      association.evidence.some((evidence) =>
+        conflictingEvidence.has(
+          JSON.stringify([
+            association.documentId,
+            evidence.sourceId,
+            evidence.sourceType,
+            evidence.locator ?? null,
+          ]),
+        ),
+      ),
   );
   const evidence = unresolved.flatMap((association) => association.evidence);
   return unresolved.length === 0

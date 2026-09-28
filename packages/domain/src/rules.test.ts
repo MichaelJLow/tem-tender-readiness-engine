@@ -398,6 +398,54 @@ describe('TDR-006 through TDR-008: evidence conflicts and association', () => {
     expect(resultFor(input, 'TDR-007').route).toBe('HUMAN_REVIEW');
   });
 
+  it('accepts separate site-specific facts in one document', () => {
+    const input = cloneCleanTender();
+    input.tender.sites.push({
+      ...input.tender.sites[0]!,
+      siteId: 'site-002',
+      meterIdentifier: '2234567890123',
+    });
+    input.tender.documents = [
+      {
+        documentId: 'multi-site-doc',
+        fileName: 'meter-schedule.pdf',
+        contentType: 'application/pdf',
+        required: false,
+        processingStatus: 'PROCESSED',
+      },
+    ];
+    input.signals.documentSiteAssociations = [
+      {
+        documentId: 'multi-site-doc',
+        status: 'RESOLVED',
+        siteId: 'site-001',
+        candidateSiteIds: ['site-001'],
+        evidence: [
+          {
+            sourceId: 'multi-site-doc',
+            sourceType: 'DOCUMENT',
+            locator: 'Site site-001 meter is 1234567890123.',
+          },
+        ],
+      },
+      {
+        documentId: 'multi-site-doc',
+        status: 'RESOLVED',
+        siteId: 'site-002',
+        candidateSiteIds: ['site-002'],
+        evidence: [
+          {
+            sourceId: 'multi-site-doc',
+            sourceType: 'DOCUMENT',
+            locator: 'Site site-002 meter is 2234567890123.',
+          },
+        ],
+      },
+    ];
+
+    expect(resultFor(input, 'TDR-007').passed).toBe(true);
+  });
+
   it('allows consistent meter mappings despite display formatting', () => {
     const input = cloneCleanTender();
     input.signals.meterSiteAssociations = [

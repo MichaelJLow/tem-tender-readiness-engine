@@ -556,6 +556,79 @@ describe('text source intake and deterministic evidence mapping', () => {
     expect(evaluateReadiness({ ...input, signals }).route).toBe('READY_FOR_PRICING');
   });
 
+  it('separates a grouped document association only when each quote identifies one site', () => {
+    const tender = structuredClone(cleanTender);
+    tender.tender.sites.push({
+      ...tender.tender.sites[0]!,
+      siteId: 'site-002',
+      address: '20 Sample Road, Bristol',
+      meterIdentifier: '9876543210987',
+    });
+    tender.tender.documents.push({
+      documentId: 'document-001',
+      fileName: 'meter-schedule.txt',
+      contentType: 'text/plain',
+      required: false,
+      processingStatus: 'PROCESSED',
+    });
+    const quotes = [
+      'Site site-001 meter is 1234567890123.',
+      'Site site-002 meter is 9876543210987.',
+    ];
+    const source = {
+      sourceId: 'meter-schedule-source',
+      kind: 'DOCUMENT_TEXT' as const,
+      documentId: 'document-001',
+      text: quotes.join(' '),
+    };
+    const input = IntakeRequestSchema.parse({ ...tender, textSources: [source] });
+    const citations = quotes.map((quote) => ({ sourceId: source.sourceId, quote }));
+    const output = interpretation({
+      sourceAssessments: [
+        {
+          ...interpretation().sourceAssessments[0]!,
+          sourceId: source.sourceId,
+          evidence: citations,
+        },
+      ],
+      observations: quotes.map((quote, index) => ({
+        field: 'meterIdentifier' as const,
+        value: index === 0 ? '1234567890123' : '9876543210987',
+        siteIds: [index === 0 ? 'site-001' : 'site-002'],
+        confidence: 1,
+        ambiguous: false,
+        evidence: [{ sourceId: source.sourceId, quote }],
+      })),
+      siteAssociations: [
+        {
+          sourceId: source.sourceId,
+          siteIds: ['site-001', 'site-002'],
+          confidence: 1,
+          ambiguous: false,
+          evidence: citations,
+        },
+      ],
+    });
+    const signals = toReadinessSignals(input, input.textSources, output);
+    expect(signals.documentSiteAssociations).toMatchObject([
+      { status: 'RESOLVED', siteId: 'site-001' },
+      { status: 'RESOLVED', siteId: 'site-002' },
+    ]);
+    expect(evaluateReadiness({ ...input, signals }).route).toBe('READY_FOR_PRICING');
+
+    const sharedQuote = {
+      ...output,
+      siteAssociations: [
+        {
+          ...output.siteAssociations[0]!,
+          evidence: [{ sourceId: source.sourceId, quote: source.text }],
+        },
+      ],
+    };
+    const sharedSignals = toReadinessSignals(input, input.textSources, sharedQuote);
+    expect(evaluateReadiness({ ...input, signals: sharedSignals }).route).toBe('HUMAN_REVIEW');
+  });
+
   it('rejects a mixed citation that assigns another source’s date to a conflicting note', () => {
     const conflictingNote = {
       sourceId: 'conflicting-note',
@@ -665,6 +738,102 @@ describe('text source intake and deterministic evidence mapping', () => {
 
     const signals = toReadinessSignals(cleanTender, [consumptionNote], output);
     expect(evaluateReadiness({ ...cleanTender, signals }).route).toBe('READY_FOR_PRICING');
+  });
+
+  it('accepts explicit annual consumption wording without creating an ambiguity', () => {
+    for (const value of ['24,000 kWh annually', '24,000 kWh each year']) {
+      const source = { ...note, text: `Site site-001 uses ${value}.` };
+      const output = interpretation({
+        sourceAssessments: [
+          {
+            ...interpretation().sourceAssessments[0]!,
+            evidence: [{ sourceId: source.sourceId, quote: source.text }],
+          },
+        ],
+        observations: [
+          {
+            field: 'annualConsumptionKwh',
+            value,
+            siteIds: ['site-001'],
+            confidence: 0.99,
+            ambiguous: false,
+            evidence: [{ sourceId: source.sourceId, quote: source.text }],
+          },
+        ],
+      });
+      const signals = toReadinessSignals(cleanTender, [source], output);
+      expect(evaluateReadiness({ ...cleanTender, signals }).route).toBe('READY_FOR_PRICING');
+      const missingSignals = toReadinessSignals(missingConsumptionTender, [source], output);
+      expect(
+        evaluateReadiness({ ...missingConsumptionTender, signals: missingSignals }).route,
+      ).toBe('NEEDS_INFORMATION');
+    }
+  });
+
+  it('does not call missing or invalid structured fields conflicts with clear text evidence', () => {
+    const missingCustomer = structuredClone(cleanTender);
+    missingCustomer.tender.customer.legalName = '';
+    const customerSource = { ...note, text: 'The customer legal name is Northstar Foods Ltd.' };
+    const customerOutput = interpretation({
+      sourceAssessments: [
+        {
+          ...interpretation().sourceAssessments[0]!,
+          evidence: [{ sourceId: note.sourceId, quote: customerSource.text }],
+        },
+      ],
+      observations: [
+        {
+          field: 'customerLegalName',
+          value: 'Northstar Foods Ltd.',
+          siteIds: [],
+          confidence: 0.99,
+          ambiguous: false,
+          evidence: [{ sourceId: note.sourceId, quote: customerSource.text }],
+        },
+      ],
+    });
+    const customerSignals = toReadinessSignals(missingCustomer, [customerSource], customerOutput);
+    expect(evaluateReadiness({ ...missingCustomer, signals: customerSignals }).route).toBe(
+      'NEEDS_INFORMATION',
+    );
+
+    const invalidDate = structuredClone(cleanTender);
+    invalidDate.tender.sites[0]!.contractEndDate = '31/31/2027';
+    const dateSignals = toReadinessSignals(invalidDate, [note], interpretation());
+    expect(evaluateReadiness({ ...invalidDate, signals: dateSignals }).route).toBe(
+      'NEEDS_INFORMATION',
+    );
+  });
+
+  it('keeps ambiguous numeric alternatives when each number is quoted but the unit is shared', () => {
+    const source = {
+      ...note,
+      text: 'For site-001, annual usage is either 24,000 or 26,000 kWh; the broker is unsure.',
+    };
+    const output = interpretation({
+      sourceAssessments: [
+        {
+          ...interpretation().sourceAssessments[0]!,
+          evidence: [{ sourceId: note.sourceId, quote: source.text }],
+        },
+      ],
+      observations: ['24,000 kWh', '26,000 kWh'].map((value) => ({
+        field: 'annualConsumptionKwh' as const,
+        value,
+        siteIds: ['site-001'],
+        confidence: 0.99,
+        ambiguous: true,
+        evidence: [{ sourceId: note.sourceId, quote: source.text }],
+      })),
+    });
+    const signals = toReadinessSignals(cleanTender, [source], output);
+    expect(evaluateReadiness({ ...cleanTender, signals }).route).toBe('HUMAN_REVIEW');
+    expect(() =>
+      toReadinessSignals(cleanTender, [source], {
+        ...output,
+        observations: [{ ...output.observations[0]!, value: '23,000 kWh' }],
+      }),
+    ).toThrow(InvalidInterpretationError);
   });
 
   it('routes an unparseable critical consumption observation to human review', () => {
@@ -860,6 +1029,38 @@ describe('text source intake and deterministic evidence mapping', () => {
     });
 
     const signals = toReadinessSignals(cleanTender, [irrelevantNote], output);
+    expect(evaluateReadiness({ ...cleanTender, signals }).route).toBe('READY_FOR_PRICING');
+  });
+
+  it('uses observation ambiguity, not a broad source assessment, for a clear extracted fact', () => {
+    const clearNote = {
+      ...note,
+      text: 'For site-001, the contract ends on 2027-03-31.',
+    };
+    const output = interpretation({
+      sourceAssessments: [
+        {
+          ...interpretation().sourceAssessments[0]!,
+          ambiguous: true,
+          evidence: [{ sourceId: note.sourceId, quote: clearNote.text }],
+        },
+      ],
+      observations: [
+        {
+          ...interpretation().observations[0]!,
+          field: 'contractEndDate',
+          value: '2027-03-31',
+          siteIds: ['site-001'],
+          ambiguous: false,
+          evidence: [{ sourceId: note.sourceId, quote: clearNote.text }],
+        },
+      ],
+    });
+
+    const signals = toReadinessSignals(cleanTender, [clearNote], output);
+    expect(signals.criticalFacts).not.toContainEqual(
+      expect.objectContaining({ field: 'textSourceAssessment', ambiguous: true }),
+    );
     expect(evaluateReadiness({ ...cleanTender, signals }).route).toBe('READY_FOR_PRICING');
   });
 

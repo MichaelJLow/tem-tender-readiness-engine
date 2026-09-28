@@ -189,18 +189,18 @@ Unstructured text can produce schema-valid evidence, and model failure cannot ac
 
 ### Tasks
 
-- [ ] Create an initial hand-authored golden dataset of roughly 30 strong cases.
-- [ ] Expand toward 60 to 100 reproducible synthetic cases.
-- [ ] Store expected route, flags, and critical facts.
-- [ ] Calculate routing precision/recall.
-- [ ] Calculate critical-field extraction accuracy.
-- [ ] Calculate `HUMAN_REVIEW` recall.
-- [ ] Calculate unsafe auto-proceed rate.
-- [ ] Create a golden safety set.
-- [ ] Create fast PR eval subset.
-- [ ] Create full release suite.
-- [ ] Record prompt/model configuration with results.
-- [ ] Add manual QA checklist.
+- [x] Create an initial hand-authored golden dataset of roughly 30 strong cases.
+- [x] Expand toward 60 to 100 reproducible synthetic cases.
+- [x] Store expected route, flags, and critical facts.
+- [x] Calculate routing precision/recall.
+- [x] Calculate critical-field extraction precision/recall.
+- [x] Calculate `HUMAN_REVIEW` recall.
+- [x] Calculate unsafe auto-proceed rate.
+- [x] Create a golden safety set.
+- [x] Create fast PR eval subset.
+- [x] Create full release suite.
+- [x] Record prompt/model configuration with results.
+- [x] Add manual QA checklist.
 
 ### Initial prototype gates
 
@@ -213,6 +213,17 @@ Critical-field extraction           >= 95%
 ### Acceptance criteria
 
 A safety regression caused by a prompt/model change fails visibly.
+
+**Current verification (2026-09-28):** the final 63-case release run
+[`full-2026-09-28T19-39-31.237Z.md`](../evals/reports/full-2026-09-28T19-39-31.237Z.md)
+completed and passed all 9 configured gates. All expected routes, processing
+statuses, and pricing handoff counts matched. The run recorded 0 unsafe-ready
+cases, 0 non-ready pricing calls, 51/51 agent facts, and a successful comparison
+with the accepted baseline. The intermediate validator failures, their causes,
+and fixes are documented in `docs/eval-findings.md`; the reports remain in
+`evals/reports/`. Manual QA from the accepted synthetic prototype baseline
+remains documented above. Milestone 4 full-eval acceptance is met for the
+synthetic dataset; review and merge of the current branch remain separate.
 
 ### Suggested branch
 
@@ -238,11 +249,14 @@ A safety regression caused by a prompt/model change fails visibly.
 - [ ] Show deterministic rule results and AI evidence.
 - [ ] Implement human-review actions.
 - [ ] Store immutable review/audit events.
-- [ ] Add performance/eval view once metrics exist.
+- [ ] Add a performance/eval view backed by the versioned Milestone 4 report contract, showing the latest accepted run, comparable baseline, safety verdict, metrics, sample sizes, and model/prompt/dataset versions.
+- [ ] Link to Mastra Studio experiments and recent traces for drill-down when available; keep the case evidence and eval report readable after those traces expire.
+- [ ] Keep operational tender/review state in the application repository and expose eval summaries through a read-only backend projection, rather than reading Studio's local database from the UI.
+- [ ] Treat human corrections as candidate regression cases that require review before entering the canonical eval dataset.
 
 ### Acceptance criteria
 
-A reviewer can understand why a case was blocked and resolve it without reading backend logs.
+A reviewer can understand why a case was blocked and resolve it without reading backend logs. The performance view can explain the current eval verdict from the retained report even when a Mastra Studio trace is unavailable.
 
 ### Suggested branch
 
@@ -374,19 +388,22 @@ At least one failure can be demonstrated end to end: visible failure → no unsa
 
 An engineer can review the repository without verbal context and the demo can be run repeatedly without fragile manual setup.
 
+### Optional portfolio extension after all milestones
+
+Once Milestones 0–9 are complete, build a more realistic fully synthetic tender pack for the demo: a submission form, broker note, and supporting PDF documents with single-site, multi-site, and conflicting-evidence examples. Add a PDF-to-text intake step that feeds extracted text into the existing bounded interpretation flow. Extend the eval fixtures and checks to cover extraction failures, document-to-site attribution, and the existing pricing safety guard. This follow-on is outside Milestone 9 acceptance.
+
 ---
 
 ## Seven-day focus
 
-| Day | Primary goal | Must-have outcome |
-| --- | --- | --- |
-| 1 | Repo + domain core | deterministic routes and tests |
-| 2 | Local vertical slice + reasoning | API flow and bounded model integration |
-| 3 | Evals | golden set, metrics, safety gate |
-| 4 | Ops console | queue, case detail, human review |
-| 5 | AWS | documents/state/runtime working in cloud |
-| 6 | n8n + reliability + CI | integrated workflow, retries, observable failure |
-| 7 | Hardening + presentation | stable release, docs, screenshots, rehearsed demo |
+| Day | Primary goal                     | Must-have outcome                                 |
+| --- | -------------------------------- | ------------------------------------------------- |
+| 1   | Repo + domain core               | deterministic routes and tests                    |
+| 2   | Local vertical slice + reasoning | API flow and bounded model integration            |
+| 3   | Evals                            | golden set, metrics, safety gate                  |
+| 4   | Ops console                      | queue, case detail, human review                  |
+| 5   | AWS                              | documents/state/runtime working in cloud          |
+| 6   | n8n + reliability + CI           | integrated workflow, retries, observable failure  |
+| 7   | Hardening + presentation         | stable release, docs, screenshots, rehearsed demo |
 
 The sequence is intentionally flexible. If infrastructure threatens eval quality or system reliability, reduce infrastructure scope rather than weakening the core demonstration.
-

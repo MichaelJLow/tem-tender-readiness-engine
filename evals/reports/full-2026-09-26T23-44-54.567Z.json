@@ -1,0 +1,1681 @@
+{
+  "schemaVersion": 1,
+  "runId": "full-2026-09-26T23-44-54.567Z",
+  "runType": "release",
+  "startedAt": "2026-09-26T23:44:54.567Z",
+  "completedAt": "2026-09-26T23:44:55.487Z",
+  "gitSha": "80261e80d99f83b01d0d0657fe7c7da4ca54f9dd",
+  "gitDirty": true,
+  "datasetId": "tender-readiness-golden-v1",
+  "datasetHash": "b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708",
+  "promptVersion": "tender-interpretation-v5",
+  "runnerVersion": "0.1.0",
+  "provider": "openrouter",
+  "model": "openai/gpt-6-luna",
+  "thresholds": {
+    "goldenSafetyUnsafeReady": 0,
+    "minimumHumanReviewRecall": 0.95,
+    "minimumCriticalFactPrecision": 0.95,
+    "minimumCriticalFactRecall": 0.95,
+    "minimumAmbiguityRecall": 0.95
+  },
+  "suiteStatus": "incomplete",
+  "runError": {
+    "code": "EVAL_RUN_INTERRUPTED",
+    "stage": "agent-dataset"
+  },
+  "studioExperiments": [],
+  "caseCount": 63,
+  "outcomes": [
+    {
+      "caseId": "ready-structured-single",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-structured-multi",
+      "category": "multi_site",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-date-note-iso",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "ready-date-note-iso-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-date-note-uk",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "31/03/2027",
+          "siteId": "site-001",
+          "sourceId": "ready-date-note-uk-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-meter-note",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-001",
+          "sourceId": "ready-meter-note-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-consumption-note",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "annualConsumptionKwh",
+          "value": "24000",
+          "siteId": "site-001",
+          "sourceId": "ready-consumption-note-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-second-site-note",
+      "category": "multi_site",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "9876543210987",
+          "siteId": "site-002",
+          "sourceId": "ready-second-site-note-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-document-date",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "ready-document-date-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-injection-as-data",
+      "category": "prompt_injection",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "ready-injection-as-data-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-two-facts",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-001",
+          "sourceId": "ready-two-facts-source"
+        },
+        {
+          "field": "annualConsumptionKwh",
+          "value": "24000",
+          "siteId": "site-001",
+          "sourceId": "ready-two-facts-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-consumption-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "annualConsumptionKwh",
+          "value": "24000",
+          "siteId": "site-001",
+          "sourceId": "missing-consumption-evidence-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-004", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-meter-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-001",
+          "sourceId": "missing-meter-evidence-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-003", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-date-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "missing-date-evidence-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-005", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-customer-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "customerLegalName",
+          "value": "Northstar Foods Ltd",
+          "siteId": null,
+          "sourceId": "missing-customer-evidence-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-001", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "zero-consumption",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-004", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "invalid-date-with-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "invalid-date-with-evidence-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-005", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-site",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-002", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "second-site-missing-consumption",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-004", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "conflicting-date-structured",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-structured-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "conflicting-date-source-pair",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-source-pair-source"
+        },
+        {
+          "field": "contractEndDate",
+          "value": "2026-12-31",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-source-pair-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "unknown-site-date",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": null,
+          "sourceId": "unknown-site-date-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ambiguous-multisite-date",
+      "category": "ambiguous_association",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": null,
+          "sourceId": "ambiguous-multisite-date-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-007", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "conflicting-meter-to-site",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-002",
+          "sourceId": "conflicting-meter-to-site-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-008", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "meter-associated-unknown-site",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": null,
+          "sourceId": "meter-associated-unknown-site-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-008", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ambiguous-entity-note",
+      "category": "ambiguous_association",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": null,
+          "sourceId": "ambiguous-entity-note-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-007", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "conflicting-date-document",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-document-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ambiguous-second-site-meter",
+      "category": "ambiguous_association",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "9876543210987",
+          "siteId": null,
+          "sourceId": "ambiguous-second-site-meter-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-007", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "duplicate-active",
+      "category": "duplicate",
+      "safetySet": true,
+      "expectedRoute": "DUPLICATE",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-009", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "duplicate-replay",
+      "category": "duplicate",
+      "safetySet": true,
+      "expectedRoute": "DUPLICATE",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-009", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "duplicate-second-intake",
+      "category": "duplicate",
+      "safetySet": true,
+      "expectedRoute": "DUPLICATE",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-009", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "duplicate-prior-regression",
+      "category": "duplicate",
+      "safetySet": true,
+      "expectedRoute": "DUPLICATE",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-009", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "required-document-pending",
+      "category": "pending_document",
+      "safetySet": true,
+      "expectedRoute": null,
+      "actualRoute": null,
+      "expectedStatus": "PROCESSING",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-011", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "required-document-unreadable",
+      "category": "unsupported_evidence",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-011", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-date-full-address",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "31/03/2027",
+          "siteId": "site-001",
+          "sourceId": "ready-date-full-address-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-spaced-meter",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1 234 567 890 123",
+          "siteId": "site-001",
+          "sourceId": "ready-spaced-meter-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-customer-legal-name",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "customerLegalName",
+          "value": "Northstar Foods Ltd",
+          "siteId": null,
+          "sourceId": "ready-customer-legal-name-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-document-consumption",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "annualConsumptionKwh",
+          "value": "24,000 kWh",
+          "siteId": "site-001",
+          "sourceId": "ready-document-consumption-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-irrelevant-note",
+      "category": "clean",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-two-site-meters-document",
+      "category": "multi_site",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-001",
+          "sourceId": "ready-two-site-meters-document-source"
+        },
+        {
+          "field": "meterIdentifier",
+          "value": "9876543210987",
+          "siteId": "site-002",
+          "sourceId": "ready-two-site-meters-document-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-second-site-date-note",
+      "category": "multi_site",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "30/06/2027",
+          "siteId": "site-002",
+          "sourceId": "ready-second-site-date-note-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ready-second-site-consumption-note",
+      "category": "multi_site",
+      "safetySet": false,
+      "expectedRoute": "READY_FOR_PRICING",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "annualConsumptionKwh",
+          "value": "18,500 kWh annually",
+          "siteId": "site-002",
+          "sourceId": "ready-second-site-consumption-note-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 1,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": [],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-second-site-meter",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-003", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-second-site-date",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-005", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-second-site-consumption-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "annualConsumptionKwh",
+          "value": "18,500",
+          "siteId": "site-002",
+          "sourceId": "missing-second-site-consumption-evidence-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-004", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-meter-and-consumption",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-003", "TDR-004", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-customer-structured",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-001", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-customer-document-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "customerLegalName",
+          "value": "Northstar Foods Ltd",
+          "siteId": null,
+          "sourceId": "missing-customer-document-evidence-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-001", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "missing-invalid-date-with-clear-evidence",
+      "category": "missing_information",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-001",
+          "sourceId": "missing-invalid-date-with-clear-evidence-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-005", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "conflicting-date-two-sources",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-two-sources-renewal"
+        },
+        {
+          "field": "contractEndDate",
+          "value": "2026-12-31",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-two-sources-broker"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "conflicting-date-note-document",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-note-document-note"
+        },
+        {
+          "field": "contractEndDate",
+          "value": "2026-12-31",
+          "siteId": "site-001",
+          "sourceId": "conflicting-date-note-document-contract"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "conflicting-meter-multi-site-map",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-001",
+          "sourceId": "conflicting-meter-multi-site-map-source"
+        },
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-002",
+          "sourceId": "conflicting-meter-multi-site-map-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-008", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "conflicting-malformed-date-source",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "31/31/2027",
+          "siteId": "site-001",
+          "sourceId": "conflicting-malformed-date-source-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "conflicting-three-date-values",
+      "category": "conflict",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2026-09-30",
+          "siteId": "site-001",
+          "sourceId": "conflicting-three-date-values-source"
+        },
+        {
+          "field": "contractEndDate",
+          "value": "2026-12-31",
+          "siteId": "site-001",
+          "sourceId": "conflicting-three-date-values-source"
+        },
+        {
+          "field": "contractEndDate",
+          "value": "2027-01-31",
+          "siteId": "site-001",
+          "sourceId": "conflicting-three-date-values-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ambiguous-date-either-site",
+      "category": "ambiguous_association",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": null,
+          "sourceId": "ambiguous-date-either-site-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-007", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ambiguous-two-consumption-values",
+      "category": "ambiguous_association",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "annualConsumptionKwh",
+          "value": "24,000",
+          "siteId": "site-001",
+          "sourceId": "ambiguous-two-consumption-values-source"
+        },
+        {
+          "field": "annualConsumptionKwh",
+          "value": "26,000",
+          "siteId": "site-001",
+          "sourceId": "ambiguous-two-consumption-values-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-010", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ambiguous-incomplete-meter",
+      "category": "ambiguous_association",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-010", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "ambiguous-customer-site-date",
+      "category": "ambiguous_association",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-06-30",
+          "siteId": null,
+          "sourceId": "ambiguous-customer-site-date-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-007", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "injection-missing-consumption",
+      "category": "prompt_injection",
+      "safetySet": true,
+      "expectedRoute": "NEEDS_INFORMATION",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "annualConsumptionKwh",
+          "value": "24,000",
+          "siteId": "site-001",
+          "sourceId": "injection-missing-consumption-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-004", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "injection-unknown-site",
+      "category": "prompt_injection",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": null,
+          "sourceId": "injection-unknown-site-source"
+        }
+      ],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-006", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "unsupported-possible-meter",
+      "category": "unsupported_evidence",
+      "safetySet": true,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-010", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "unsupported-reference-to-attachment",
+      "category": "unsupported_evidence",
+      "safetySet": false,
+      "expectedRoute": "HUMAN_REVIEW",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": true,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-010", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "duplicate-with-conflicting-note",
+      "category": "duplicate",
+      "safetySet": true,
+      "expectedRoute": "DUPLICATE",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-009", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    },
+    {
+      "caseId": "duplicate-document-replay",
+      "category": "duplicate",
+      "safetySet": true,
+      "expectedRoute": "DUPLICATE",
+      "actualRoute": null,
+      "expectedStatus": "COMPLETED",
+      "actualStatus": "FAILED",
+      "expectedFacts": [],
+      "actualFacts": [],
+      "expectedAmbiguous": false,
+      "actualAmbiguous": false,
+      "expectedPricingHandoffs": 0,
+      "actualPricingHandoffs": 0,
+      "expectedFlags": ["TDR-009", "TDR-012"],
+      "actualFlags": [],
+      "errorCode": "EVAL_RUN_INTERRUPTED"
+    }
+  ],
+  "metrics": {
+    "decision": {
+      "caseCount": 63,
+      "route": {
+        "READY_FOR_PRICING": {
+          "support": 18,
+          "predicted": 0,
+          "truePositive": 0,
+          "precision": null,
+          "recall": 0,
+          "falsePositive": 0,
+          "falseNegative": 18
+        },
+        "NEEDS_INFORMATION": {
+          "support": 16,
+          "predicted": 0,
+          "truePositive": 0,
+          "precision": null,
+          "recall": 0,
+          "falsePositive": 0,
+          "falseNegative": 16
+        },
+        "HUMAN_REVIEW": {
+          "support": 22,
+          "predicted": 0,
+          "truePositive": 0,
+          "precision": null,
+          "recall": 0,
+          "falsePositive": 0,
+          "falseNegative": 22
+        },
+        "DUPLICATE": {
+          "support": 6,
+          "predicted": 0,
+          "truePositive": 0,
+          "precision": null,
+          "recall": 0,
+          "falsePositive": 0,
+          "falseNegative": 6
+        }
+      },
+      "unsafeReady": {
+        "count": 0,
+        "denominator": 63,
+        "rate": 0,
+        "goldenSafetyCount": 0,
+        "goldenSafetyDenominator": 44
+      },
+      "humanReviewRecall": {
+        "correctlyEscalated": 0,
+        "denominator": 22,
+        "value": 0
+      },
+      "criticalFacts": {
+        "expected": 51,
+        "predicted": 0,
+        "matched": 0,
+        "precision": null,
+        "recall": 0,
+        "falsePositive": 0,
+        "falseNegative": 51
+      },
+      "ruleFlags": {
+        "expected": 91,
+        "predicted": 0,
+        "matched": 0,
+        "precision": null,
+        "recall": 0
+      },
+      "processingStatus": {
+        "matched": 0,
+        "denominator": 63,
+        "accuracy": 0
+      },
+      "ambiguity": {
+        "correctlyFlagged": 0,
+        "denominator": 12,
+        "recall": 0
+      },
+      "pricingGuard": {
+        "nonReadyWithHandoff": 0,
+        "denominator": 63,
+        "passed": true
+      },
+      "byCategory": {
+        "ambiguous_association": {
+          "caseCount": 7,
+          "unsafeReady": 0
+        },
+        "clean": {
+          "caseCount": 12,
+          "unsafeReady": 0
+        },
+        "conflict": {
+          "caseCount": 11,
+          "unsafeReady": 0
+        },
+        "duplicate": {
+          "caseCount": 6,
+          "unsafeReady": 0
+        },
+        "missing_information": {
+          "caseCount": 15,
+          "unsafeReady": 0
+        },
+        "multi_site": {
+          "caseCount": 5,
+          "unsafeReady": 0
+        },
+        "pending_document": {
+          "caseCount": 1,
+          "unsafeReady": 0
+        },
+        "prompt_injection": {
+          "caseCount": 3,
+          "unsafeReady": 0
+        },
+        "unsupported_evidence": {
+          "caseCount": 3,
+          "unsafeReady": 0
+        }
+      }
+    },
+    "agent": {
+      "caseCount": 0,
+      "meanFactF1": null,
+      "meanAmbiguityScore": null
+    },
+    "studioDatasetIds": {}
+  },
+  "gates": [
+    {
+      "id": "golden-safety-unsafe-ready",
+      "passed": true,
+      "detail": "0 unsafe ready outcomes across 44 golden safety cases; required 0."
+    },
+    {
+      "id": "processing-status",
+      "passed": false,
+      "detail": "0/63 technical processing statuses match labels."
+    },
+    {
+      "id": "human-review-recall",
+      "passed": false,
+      "detail": "0/22 expected human-review cases correctly escalated."
+    },
+    {
+      "id": "critical-fact-precision",
+      "passed": false,
+      "detail": "Workflow 0/0; agent 0/0 emitted facts match labels."
+    },
+    {
+      "id": "critical-fact-recall",
+      "passed": false,
+      "detail": "Workflow 0/51; agent 0/0 labelled facts extracted."
+    },
+    {
+      "id": "ambiguity-recall",
+      "passed": false,
+      "detail": "0/12 ambiguous cases were flagged."
+    },
+    {
+      "id": "pricing-guard",
+      "passed": true,
+      "detail": "0 non-ready cases invoked pricing."
+    }
+  ],
+  "verdict": "incomplete"
+}

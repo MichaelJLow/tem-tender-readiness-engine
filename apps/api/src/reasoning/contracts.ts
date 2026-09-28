@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const INTERPRETATION_PROMPT_VERSION = 'tender-interpretation-v3';
+export const INTERPRETATION_PROMPT_VERSION = 'tender-interpretation-v5';
 export const MIN_CONFIDENCE_FOR_CREDIBLE_EVIDENCE = 0.95;
 
 export const CitationSchema = z.object({

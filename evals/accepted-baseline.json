@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "report": "reports/full-2026-09-26T23-53-52.654Z.json",
+  "datasetId": "tender-readiness-golden-v1",
+  "datasetHash": "b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708",
+  "promptVersion": "tender-interpretation-v5",
+  "provider": "openrouter",
+  "model": "openai/gpt-6-luna",
+  "acceptedFor": "milestone-4-synthetic-prototype"
+}
