@@ -145,4 +145,18 @@ describe('Mastra interpreter failure classification', () => {
       structuredOutput: { errorStrategy: 'warn' },
     });
   });
+
+  it('allows a provider-neutral output-token override', async () => {
+    vi.stubEnv('MODEL_MAX_OUTPUT_TOKENS', '6144');
+    const generate = vi
+      .spyOn(Agent.prototype, 'generate')
+      .mockRejectedValue(new Error('synthetic provider failure'));
+    const interpreter = new MastraTenderInterpreter({ apiKey: 'synthetic-key' });
+    await expect(interpreter.interpret(request)).rejects.toMatchObject({
+      code: 'MODEL_PROVIDER_FAILED',
+    });
+    expect((generate.mock.calls[0] as unknown[])[1]).toMatchObject({
+      modelSettings: { maxOutputTokens: 6144 },
+    });
+  });
 });

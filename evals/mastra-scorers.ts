@@ -22,7 +22,7 @@ function factF1(expectedValue: unknown, actualValue: unknown, inputValue: unknow
   )
     return 0;
   const expectedKeys = expected.data.map(normalizedFactKey);
-  const actualKeys = toAgentFacts(interpretation).map(normalizedFactKey);
+  const actualKeys = toAgentFacts(interpretation, inputValue).map(normalizedFactKey);
   const counts = new Map<string, number>();
   for (const key of actualKeys) counts.set(key, (counts.get(key) ?? 0) + 1);
   let matched = 0;

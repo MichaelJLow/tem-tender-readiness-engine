@@ -7,6 +7,44 @@ import { EvalReportSchema } from './metrics.js';
 import { selectEvalCases } from './mastra-datasets.js';
 
 describe('eval runner interruption reporting', () => {
+  it('writes an incomplete report for a partial provider configuration', () => {
+    const temporaryRoot = realpathSync(tmpdir());
+    const reportDirectory = mkdtempSync(join(temporaryRoot, 'tem-eval-config-'));
+    try {
+      const result = spawnSync(
+        process.execPath,
+        ['--import', 'tsx', 'evals/run.ts', '--suite', 'pr'],
+        {
+          cwd: process.cwd(),
+          env: {
+            ...process.env,
+            MODEL_API_KEY: '',
+            MODEL_API_BASE_URL: '',
+            MODEL_ID: 'synthetic-model-only',
+            OPENROUTER_API_KEY: '',
+            OPENAI_API_KEY: '',
+            EVAL_REPORT_DIR: reportDirectory,
+          },
+          encoding: 'utf8',
+          timeout: 30_000,
+        },
+      );
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(1);
+      const reportFile = readdirSync(reportDirectory).find((name) => name.endsWith('.json'));
+      expect(reportFile).toBeDefined();
+      const report = EvalReportSchema.parse(
+        JSON.parse(readFileSync(join(reportDirectory, reportFile!), 'utf8')) as unknown,
+      );
+      expect(report.suiteStatus).toBe('incomplete');
+      expect(report.runError?.stage).toBe('provider-configuration');
+    } finally {
+      if (dirname(reportDirectory) === temporaryRoot) {
+        rmSync(reportDirectory, { recursive: true, force: true });
+      }
+    }
+  }, 15_000);
+
   it('writes an incomplete report when Studio storage cannot initialize', () => {
     const temporaryRoot = realpathSync(tmpdir());
     const reportDirectory = mkdtempSync(join(temporaryRoot, 'tem-eval-failure-'));
@@ -48,5 +86,5 @@ describe('eval runner interruption reporting', () => {
         rmSync(reportDirectory, { recursive: true, force: true });
       }
     }
-  });
+  }, 15_000);
 });

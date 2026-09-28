@@ -29,7 +29,7 @@ function agentOutcome(
     expectedStatus: 'COMPLETED',
     actualStatus: errorCode ? 'FAILED' : 'COMPLETED',
     expectedFacts: testCase.expected.facts,
-    actualFacts: errorCode || !interpretation ? [] : toAgentFacts(interpretation),
+    actualFacts: errorCode || !interpretation ? [] : toAgentFacts(interpretation, testCase.input),
     expectedAmbiguous: testCase.expected.ambiguous,
     actualAmbiguous:
       errorCode || !interpretation ? false : interpretationIsAmbiguous(interpretation),

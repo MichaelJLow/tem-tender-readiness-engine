@@ -137,7 +137,9 @@ export const decisionPathEvalStep = createStep({
       expectedStatus: testCase.expected.status,
       actualStatus: response.status,
       expectedFacts: testCase.expected.facts,
-      actualFacts: response.interpretation ? toAgentFacts(response.interpretation) : [],
+      actualFacts: response.interpretation
+        ? toAgentFacts(response.interpretation, testCase.input)
+        : [],
       expectedAmbiguous: testCase.expected.ambiguous,
       actualAmbiguous: hasAmbiguity(response),
       expectedPricingHandoffs: testCase.expected.pricingHandoffs,

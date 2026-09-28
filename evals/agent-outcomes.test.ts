@@ -6,7 +6,14 @@ import { selectAgentCases } from './mastra-datasets.js';
 const testCase = selectAgentCases(evalCases)[0]!;
 const validOutput = {
   summary: 'No relevant facts were extracted.',
-  sourceAssessments: [],
+  sourceAssessments: testCase.input.textSources.map((source) => ({
+    sourceId: source.sourceId,
+    relevance: 'NO_RELEVANT_FACTS' as const,
+    confidence: 1,
+    ambiguous: false,
+    explanation: 'Synthetic test assessment.',
+    evidence: [{ sourceId: source.sourceId, quote: source.text.slice(0, 500) }],
+  })),
   observations: [],
   siteAssociations: [],
   conflicts: [],

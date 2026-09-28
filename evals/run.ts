@@ -17,9 +17,9 @@ import {
 import { evalDataset } from './cases.js';
 import { ensureStudioDataset, selectAgentCases, selectEvalCases } from './mastra-datasets.js';
 import thresholdsConfig from './thresholds.json' with { type: 'json' };
-import { EvalOutcomeSchema } from './metrics.js';
 import { reconcileAgentOutcomes } from './agent-outcomes.js';
 import { configureMastraDataDirectory } from './mastra-storage.js';
+import { failedWorkflowOutcome, reconcileWorkflowOutcomes } from './workflow-outcomes.js';
 
 const suite = parseSuite(process.argv.slice(2));
 const cases = selectEvalCases(suite);
@@ -27,10 +27,21 @@ const agentCases = selectAgentCases(cases);
 const datasetSnapshot = { ...evalDataset, cases };
 const datasetHash = hashEvalDataset(datasetSnapshot);
 const startedAt = new Date();
-const providerConfig = resolveProviderConfiguration();
 configureMastraDataDirectory(process.env, process.cwd());
 const thresholds = EvalThresholdsSchema.parse(thresholdsConfig);
 const baseline = await loadAcceptedBaseline();
+let providerConfig: ReturnType<typeof resolveProviderConfiguration> = {
+  apiKey: undefined,
+  baseURL: undefined,
+  model: 'unconfigured',
+};
+let providerConfigurationError: Error | undefined;
+try {
+  providerConfig = resolveProviderConfiguration();
+} catch (error) {
+  providerConfigurationError =
+    error instanceof Error ? error : new Error('Invalid provider configuration.');
+}
 const model = providerConfig.model;
 const provider = providerName(providerConfig.baseURL, providerConfig.apiKey);
 const sourceRevision = gitOutput(['rev-parse', 'HEAD'], 'unknown');
@@ -51,8 +62,19 @@ let agentMetricSummary: Record<string, unknown> = {
 };
 let studioDatasetIds: Record<string, string> = {};
 let runError: { code: 'EVAL_RUN_INTERRUPTED'; stage: string } | undefined;
+let workflowUnexpectedResults = 0;
 
-if (!providerConfig.apiKey) {
+if (providerConfigurationError) {
+  runError = { code: 'EVAL_RUN_INTERRUPTED', stage: 'provider-configuration' };
+  suiteStatus = 'incomplete';
+  console.error(
+    JSON.stringify({
+      code: runError.code,
+      stage: runError.stage,
+      errorName: providerConfigurationError.name,
+    }),
+  );
+} else if (!providerConfig.apiKey) {
   console.warn(
     'No model API key is configured; writing an explicit not-run report without importing Mastra Studio configuration.',
   );
@@ -167,41 +189,22 @@ if (!providerConfig.apiKey) {
         perCaseScores,
       };
     }
-    const actualById = new Map<string, EvalOutcome>();
-    for (const result of workflowRun.results) {
-      const caseId = String(result.metadata?.caseId ?? '');
-      const testCase = cases.find((item) => item.id === caseId);
-      if (!testCase) continue;
-      const output = EvalOutcomeSchema.safeParse(result.output);
-      if (output.success) actualById.set(caseId, output.data);
-      else
-        actualById.set(
-          caseId,
-          failedOutcome(
-            testCase.id,
-            testCase.category,
-            testCase.safetySet,
-            testCase.expected,
-            result.error?.code,
-          ),
-        );
-    }
-    outcomes = cases.map(
-      (testCase) =>
-        actualById.get(testCase.id) ??
-        failedOutcome(
-          testCase.id,
-          testCase.category,
-          testCase.safetySet,
-          testCase.expected,
-          'EXPERIMENT_ITEM_MISSING',
-        ),
+    const reconciledWorkflow = reconcileWorkflowOutcomes(
+      cases,
+      workflowRun.results.map((result) => ({
+        caseId: result.metadata?.caseId,
+        output: result.output,
+        failed: Boolean(result.error),
+        errorCode: result.error?.code,
+      })),
     );
+    outcomes = reconciledWorkflow.outcomes;
+    workflowUnexpectedResults = reconciledWorkflow.unexpectedResults;
     const workflowComplete =
       workflowRun.status === 'completed' &&
       workflowRun.failedCount === 0 &&
       (workflowRun.persistenceFailures ?? 0) === 0 &&
-      outcomes.every((outcome) => outcome.actualStatus !== 'FAILED');
+      reconciledWorkflow.complete;
     const agentComplete =
       agentCases.length === 0 ||
       (agentRun !== undefined &&
@@ -215,15 +218,7 @@ if (!providerConfig.apiKey) {
     const failure = { code: 'EVAL_RUN_INTERRUPTED' as const, stage: runStage };
     runError = failure;
     suiteStatus = 'incomplete';
-    outcomes = cases.map((testCase) =>
-      failedOutcome(
-        testCase.id,
-        testCase.category,
-        testCase.safetySet,
-        testCase.expected,
-        failure.code,
-      ),
-    );
+    outcomes = cases.map((testCase) => failedWorkflowOutcome(testCase, failure.code));
     console.error(
       JSON.stringify({
         code: failure.code,
@@ -269,6 +264,7 @@ const report = EvalReportSchema.parse({
     decision: calculateMetrics(outcomes),
     agent: agentMetricSummary,
     studioDatasetIds,
+    workflowUnexpectedResults,
   },
   gates: scored.gates,
   baselineComparison: scored.baselineComparison,
@@ -369,33 +365,6 @@ async function loadAcceptedBaseline() {
   }
 }
 
-function failedOutcome(
-  caseId: string,
-  category: EvalOutcome['category'],
-  safetySet: boolean,
-  expected: (typeof cases)[number]['expected'],
-  errorCode?: string,
-): EvalOutcome {
-  return EvalOutcomeSchema.parse({
-    caseId,
-    category,
-    safetySet,
-    expectedRoute: expected.route,
-    actualRoute: null,
-    expectedStatus: expected.status,
-    actualStatus: 'FAILED',
-    expectedFacts: expected.facts,
-    actualFacts: [],
-    expectedAmbiguous: expected.ambiguous,
-    actualAmbiguous: false,
-    expectedPricingHandoffs: expected.pricingHandoffs,
-    actualPricingHandoffs: 0,
-    expectedFlags: expected.flaggedRules,
-    actualFlags: [],
-    errorCode: errorCode ?? 'EXPERIMENT_TARGET_FAILED',
-  });
-}
-
 function renderMarkdown(value: typeof report) {
   const metrics = value.metrics.decision as ReturnType<typeof calculateMetrics>;
   const gateRows = value.gates.map(
@@ -432,8 +401,12 @@ function renderMarkdown(value: typeof report) {
     `- Golden unsafe-ready: ${metrics.unsafeReady.goldenSafetyCount}/${metrics.unsafeReady.goldenSafetyDenominator}`,
     `- Human-review recall: ${formatRatio(metrics.humanReviewRecall.value)} (${metrics.humanReviewRecall.correctlyEscalated}/${metrics.humanReviewRecall.denominator})`,
     `- Critical fact precision/recall: ${formatRatio(metrics.criticalFacts.precision)} / ${formatRatio(metrics.criticalFacts.recall)} (${metrics.criticalFacts.matched} matched; ${metrics.criticalFacts.predicted} predicted; ${metrics.criticalFacts.expected} expected)`,
+    `- Rule flag precision/recall (diagnostic): ${formatRatio(metrics.ruleFlags.precision)} / ${formatRatio(metrics.ruleFlags.recall)} (${metrics.ruleFlags.matched} matched; ${metrics.ruleFlags.predicted} predicted; ${metrics.ruleFlags.expected} expected)`,
     `- Ambiguity recall: ${formatRatio(metrics.ambiguity.recall)} (${metrics.ambiguity.correctlyFlagged}/${metrics.ambiguity.denominator})`,
     `- Non-ready pricing calls: ${metrics.pricingGuard.nonReadyWithHandoff}`,
+    ...(typeof value.metrics.workflowUnexpectedResults === 'number'
+      ? [`- Unexpected workflow experiment results: ${value.metrics.workflowUnexpectedResults}`]
+      : []),
     '',
     '## Gates',
     '',

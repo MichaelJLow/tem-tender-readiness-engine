@@ -224,8 +224,10 @@ report can be considered for an accepted baseline.
   `ambiguous-multisite-date`, `ambiguous-two-consumption-values`,
   `ready-two-facts`, `required-document-pending`,
   `required-document-unreadable`, and `injection-missing-consumption`.
-  Their routes, processing statuses, rule flags, and mock pricing counts
-  matched the labels. Stored agent quotes and site associations were reviewed
+  Their routes, processing statuses, and mock pricing counts matched the
+  labels. Rule flags differed on `conflicting-date-structured` and
+  `ambiguous-multisite-date`: the former added `TDR-010`, while the latter
+  raised `TDR-010` instead of `TDR-007`. Stored agent quotes and site associations were reviewed
   for the conflict, ambiguity, and two-site document cases. The two-site
   document has separate cited sentences for each site; a shared ambiguous
   quote still routes to review in the deterministic regression test.
@@ -252,6 +254,128 @@ report can be considered for an accepted baseline.
 local changes in PR #8 before merge. This does not assess real tender data or
 model behaviour beyond the labelled dataset.
 
+### Post-review release rerun — 2026-09-28, prompt v5
+
+- Report: [`full-2026-09-28T15-42-53.438Z.md`](../evals/reports/full-2026-09-28T15-42-53.438Z.md)
+- Dataset: `tender-readiness-golden-v1`, 63 cases
+- Model: OpenRouter `openai/gpt-6-luna`
+- Verdict: **incomplete**; retain as diagnostic evidence and do not replace the
+  accepted baseline
+- Provider execution completed: all 46 agent experiment items succeeded, all
+  63 workflow routes and processing statuses matched, and no non-ready case
+  invoked pricing
+- Failed gates: agent critical-fact recall was 46/51 (90.2%), below the 95%
+  threshold and more than the permitted one percentage point drop from the
+  accepted 51/51 baseline
+
+#### Confirmed cause and disposition
+
+The model returned all five facts. Three otherwise valid interpretations were
+discarded by the local evidence validator:
+
+1. `ambiguous-two-consumption-values` returned both `24,000 kWh` and
+   `26,000 kWh` from a sentence where the unit appears once after both values.
+   The validator only recognized a bare numeric value or a contiguous
+   value-plus-unit phrase, so it rejected both facts.
+2. `conflicting-meter-multi-site-map` returned one meter observation explicitly
+   attributed to both named sites. The validator required exactly one located
+   site per citation even though the prompt and fixture allow a clearly stated
+   shared fact, so it rejected two facts.
+3. `conflicting-meter-to-site` returned the note's explicit site-002 assignment.
+   The quoted meter also matched site-001's structured meter, causing the
+   validator to infer two locations and reject the text evidence instead of
+   retaining it for deterministic conflict handling.
+
+The validator now recognizes numeric consumption candidates independently of
+where the shared `kWh` unit appears. Explicit site IDs and full addresses take
+precedence over structured meter matches when locating a quote, and a citation
+may identify multiple sites only when its identified site set exactly matches
+the observation or association. This preserves contradictory source evidence
+for deterministic `HUMAN_REVIEW` routing without letting the model resolve the
+conflict or authorize pricing.
+
+The rerun also exposed a scorer integration defect: Mastra passes agent scorer
+input inside an `inputMessages` envelope, while the evidence scorer expected the
+raw JSON prompt. This made every persisted Studio evidence-F1 score zero even
+when local reconciliation found correct facts. Input parsing now supports the
+Mastra envelope, with deterministic regression coverage for the envelope and
+all three validator cases. **Status: fixed locally; targeted tests pass; a fresh
+provider-backed full eval is required before accepting the change.**
+
+### Full release eval after validator and scorer fixes — 2026-09-28
+
+- Report: [`full-2026-09-28T19-25-34.873Z.md`](../evals/reports/full-2026-09-28T19-25-34.873Z.md)
+- Dataset: `tender-readiness-golden-v1`, 63 cases
+- Model: OpenRouter `openai/gpt-6-luna`
+- Verdict: **incomplete**; retain as diagnostic evidence and do not replace the
+  accepted baseline
+- All 63 workflow routes/statuses matched. All safety, human-review,
+  critical-fact minimum, ambiguity, and pricing-guard gates passed. Studio
+  evidence-F1 scores now report a mean of 0.978 rather than all zeros.
+- The safety-baseline gate failed: agent facts were 49/51 (96.1%), compared
+  with the accepted 51/51 baseline; the permitted drop is at most 1 percentage
+  point.
+
+#### Remaining confirmed cause
+
+`ready-two-site-meters-document` returned both meter facts with separate exact
+quotes, one identifying site-001 and one identifying site-002. The model also
+returned one source-level association covering both sites and attached both
+quotes. The validator required every quote in that association to identify
+both sites, so it rejected the interpretation and dropped both facts. This is
+the same evidence-aggregation issue seen in the previous run, across a
+multi-site association with separate citations rather than a single shared
+quote.
+
+The validator now permits each citation to support a subset of the claimed
+sites, while requiring all cited sites to be among the claimed set and the
+combined citations to cover every claimed site. A regression test mirrors the
+saved model output. **Status: fixed locally; saved-output replay and
+deterministic checks pass.**
+
+### Final full release eval — 2026-09-28
+
+- Report: [`full-2026-09-28T19-39-31.237Z.md`](../evals/reports/full-2026-09-28T19-39-31.237Z.md)
+- Dataset: `tender-readiness-golden-v1`, 63 cases
+- Model: OpenRouter `openai/gpt-6-luna`, prompt v5
+- Verdict: **pass**; completed all 63 cases and passed all 9 configured gates
+- Agent experiment: `20b2d3b2-5ff5-42ce-9e98-7ef42f7634ba`; 46/46 items
+  succeeded; Studio evidence-F1 mean 1.0
+- Workflow experiment: `71362a09-5521-4439-b2cf-dda4a7f4bab9`
+- Workflow routes/statuses: 63/63 matched; human-review recall 22/22; ambiguity
+  recall 12/12; workflow facts 51/51; agent facts 51/51; unsafe-ready outcomes
+  0/44; non-ready pricing calls 0
+- Rule flags are diagnostic rather than a release gate: 81/91 expected flags
+  matched, with 98 predicted (89.0% recall, 82.7% precision). Seventeen cases
+  differed, chiefly because the conservative `TDR-010` uncertainty rule fired
+  in addition to or instead of a more specific labelled rule. Each retained
+  its expected route, status, and pricing count; the report now shows these
+  metrics rather than implying all flags matched.
+- The accepted-baseline comparison passed with agent fact precision/recall
+  100%/100%; the two earlier reports remain attached as diagnostic evidence.
+- **Disposition:** Milestone 4 full-eval acceptance is met for this synthetic
+  dataset. This does not claim results for real tender data or policy.
+
+### Post-run code review — 2026-09-28
+
+- The workflow runner previously trusted each experiment output's own case ID
+  and expected labels. It now binds every result to the canonical dataset case
+  and marks unknown, duplicate, failed, or mismatched items incomplete. All 63
+  saved workflow outcomes reconciled with the new check.
+- A multi-site observation with several citations could duplicate one fact or
+  attribute a site's fact to another source. Fact extraction now uses the site
+  named in each citation and deduplicates identical field/value/site/source
+  facts. Regression tests cover separate source quotes and repeat citations.
+- The readable report now displays rule-flag precision and recall. The accepted
+  full run matched 81/91 expected flags with 98 predicted. These differences
+  remain diagnostic; they did not change the recorded routes or pricing calls.
+- A partial model-provider configuration now writes an incomplete report with
+  an explicit configuration stage instead of exiting before any report exists.
+- Verification: formatting, lint, typecheck, 164 tests, API build, and the
+  saved-output workflow replay passed. No live model eval was rerun after
+  these reporting and scoring changes; the final report remains the recorded
+  2026-09-28 provider-backed run.
+
 ## Follow-up log
 
 | Date       | Report                        | Finding / decision                                                                                 | Status                                                                                           |
@@ -264,3 +388,6 @@ model behaviour beyond the labelled dataset.
 | 2026-09-26 | post-fix v5 full release run  | Safety held; invalid output and over-routing remain                                                | Manual QA incomplete; not a baseline                                                             |
 | 2026-09-26 | bounded v5 full release run   | All 7 gates and 63 expected routes passed                                                          | Accepted synthetic prototype baseline                                                            |
 | 2026-09-26 | post-review full rerun        | OpenRouter key limit rejected 8,192-token requests (HTTP 402); Codex worktree blocked report write | Incomplete; no report; rerun after key limit is raised, writing reports to the writable checkout |
+| 2026-09-28 | post-limit full release rerun | Model returned all facts, but three validator edge cases discarded five and Studio F1 scored zero  | Validator and scorer envelope fixed locally; retain failed report and run a fresh full eval      |
+| 2026-09-28 | post-fix full release rerun   | 49/51 agent facts; separate site-specific quotes in one multi-site association were rejected       | Remaining validator case fixed locally; deterministic verification before next live rerun        |
+| 2026-09-28 | final full release eval       | 63/63 cases; all 9 gates passed; 51/51 agent facts; accepted baseline preserved                    | Milestone 4 full-eval acceptance met for the synthetic dataset                                   |

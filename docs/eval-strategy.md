@@ -124,6 +124,11 @@ The final metric is useful because deterministic-first design should avoid unnec
 
 Thresholds live in `evals/thresholds.json` and are included in each report. Empty denominators fail the corresponding gate. A missing API key, failed item, incomplete experiment, or failed Studio persistence is marked not-run/incomplete and cannot produce a passing report.
 
+Rule flag precision and recall are reported as diagnostics. A safe route can
+carry a generic uncertainty flag instead of a more specific labelled flag, so
+exact flag agreement is not a release gate. Inspect flag differences during
+manual QA and keep them visible in the durable report.
+
 ## PR suite vs release suite
 
 ### Pull request smoke suite
