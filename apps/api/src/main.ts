@@ -15,7 +15,7 @@ const service = new TenderService(
   undefined,
   new MastraTenderInterpreter(),
 );
-const server = createTenderServer(service);
+const server = createTenderServer(service, ['127.0.0.1', 'localhost', '::1'].includes(host));
 
 server.listen(port, host, () => {
   console.info(JSON.stringify({ event: 'api.listening', host, port, statePath }));

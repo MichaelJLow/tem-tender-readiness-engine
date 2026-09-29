@@ -7,13 +7,14 @@ import {
   missingConsumptionTender,
 } from '../../../tests/fixtures/tenders.js';
 import type { LocalState, PricingHandoff, TenderRun } from './contracts.js';
+import { JsonFileTenderRepository } from './file-repository.js';
 import { createTenderServer } from './server.js';
 import type { PricingGateway } from './pricing-gateway.js';
 import type { LocalStateStore, TenderRepository } from './repository.js';
 import { TenderService } from './service.js';
 
 class MemoryStore implements LocalStateStore {
-  state: LocalState = { version: 1, runs: [], handoffs: [] };
+  state: LocalState = { version: 1, runs: [], handoffs: [], reviewEvents: [] };
 
   async read(): Promise<LocalState> {
     return structuredClone(this.state);
@@ -242,6 +243,144 @@ describe('POST /tenders', () => {
     expect(replay.status).toBe(502);
     expect(replayBody.status).toBe('FAILED');
     expect(replayBody.replayed).toBe(true);
+  });
+});
+
+describe('POST /tenders/:runId/reviews', () => {
+  it('rejects review of a ready case without changing the pricing handoff', async () => {
+    const store = new MemoryStore();
+    const repository = new JsonFileTenderRepository(store);
+    const service = new TenderService(repository, new CountingPricingGateway(repository));
+    const server = createTenderServer(service, true);
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+
+    const intakeResponse = await fetch(baseUrl(server) + '/tenders', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(cleanTender),
+    });
+    const intake = (await intakeResponse.json()) as { runId: string; route: string };
+    expect(intake.route).toBe('READY_FOR_PRICING');
+    expect((await store.read()).handoffs).toHaveLength(1);
+
+    const reviewResponse = await fetch(baseUrl(server) + '/tenders/' + intake.runId + '/reviews', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        requestId: 'review-ready-case',
+        action: 'REQUEST_INFORMATION',
+        reason: 'Should not be accepted for a ready case.',
+        sourceIds: [],
+        expectedVersion: 0,
+      }),
+    });
+    expect(reviewResponse.status).toBe(409);
+    expect((await store.read()).reviewEvents).toHaveLength(0);
+    expect((await store.read()).handoffs).toHaveLength(1);
+  });
+
+  it('accepts known rule evidence, persists the decision, and rejects unknown sources', async () => {
+    const store = new MemoryStore();
+    const repository = new JsonFileTenderRepository(store);
+    const service = new TenderService(repository, new CountingPricingGateway(repository));
+    const server = createTenderServer(service, true);
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+
+    const intakeResponse = await fetch(baseUrl(server) + '/tenders', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(conflictingDatesTender),
+    });
+    const intake = (await intakeResponse.json()) as { runId: string; route: string };
+    expect(intakeResponse.status).toBe(200);
+    expect(intake.route).toBe('HUMAN_REVIEW');
+
+    const reviewUrl = baseUrl(server) + '/tenders/' + intake.runId + '/reviews';
+    const submitReview = (
+      sourceIds: string[],
+      requestId: string,
+      expectedVersion: number,
+      action: 'REQUEST_INFORMATION' | 'REOPEN' = 'REQUEST_INFORMATION',
+    ) =>
+      fetch(reviewUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          requestId,
+          action,
+          reason: 'Conflicting contract end dates require confirmation.',
+          sourceIds,
+          expectedVersion,
+        }),
+      });
+
+    const unknown = await submitReview(['unrelated-source'], 'review-unknown', 0);
+    expect(unknown.status).toBe(400);
+    expect((await unknown.json()) as { error: string }).toMatchObject({
+      error: 'UNKNOWN_REVIEW_EVIDENCE_SOURCE',
+    });
+    expect((await store.read()).reviewEvents).toHaveLength(0);
+
+    const accepted = await submitReview(['contract-a', 'contract-b'], 'review-accepted', 0);
+    const decision = (await accepted.json()) as {
+      event: { eventId: string; sourceIds: string[] };
+      reviewVersion: number;
+      reviewState: string;
+    };
+    expect(accepted.status).toBe(200);
+    expect(decision.event.sourceIds).toEqual(['contract-a', 'contract-b']);
+    expect(decision.reviewVersion).toBe(1);
+    expect(decision.reviewState).toBe('RESOLVED');
+
+    const detailResponse = await fetch(baseUrl(server) + '/tenders/' + intake.runId);
+    const detail = (await detailResponse.json()) as {
+      run: { route: string };
+      reviewEvents: { eventId: string; sourceIds: string[] }[];
+      reviewVersion: number;
+    };
+    expect(detailResponse.status).toBe(200);
+    expect(detail.run.route).toBe('HUMAN_REVIEW');
+    expect(detail.reviewEvents).toEqual([decision.event]);
+    expect(detail.reviewVersion).toBe(1);
+    expect((await store.read()).handoffs).toHaveLength(0);
+
+    const replay = await submitReview(['contract-a', 'contract-b'], 'review-accepted', 0);
+    const replayBody = (await replay.json()) as { event: { eventId: string } };
+    expect(replay.status).toBe(200);
+    expect(replayBody.event.eventId).toBe(decision.event.eventId);
+    expect((await store.read()).reviewEvents).toHaveLength(1);
+
+    const stale = await submitReview(['contract-a'], 'review-stale', 0);
+    expect(stale.status).toBe(409);
+    expect((await store.read()).reviewEvents).toHaveLength(1);
+
+    const reopened = await submitReview([], 'review-reopen', 1, 'REOPEN');
+    expect(reopened.status).toBe(200);
+    expect((await reopened.json()) as { reviewState: string; reviewVersion: number }).toMatchObject(
+      {
+        reviewState: 'OPEN',
+        reviewVersion: 2,
+      },
+    );
+
+    const replayAfterReopen = await submitReview(
+      ['contract-a', 'contract-b'],
+      'review-accepted',
+      0,
+    );
+    expect(replayAfterReopen.status).toBe(200);
+    expect(
+      (await replayAfterReopen.json()) as { reviewState: string; reviewVersion: number },
+    ).toMatchObject({
+      reviewState: 'OPEN',
+      reviewVersion: 2,
+    });
+    expect((await store.read()).reviewEvents.map((event) => event.action)).toEqual([
+      'REQUEST_INFORMATION',
+      'REOPEN',
+    ]);
   });
 });
 
