@@ -126,6 +126,8 @@ function summarize(reportPath: string, report: z.infer<typeof EvalReportSchema>)
   const metrics = record(report.metrics);
   const decision = record(metrics.decision);
   const facts = record(decision.criticalFacts);
+  const agentFacts = record(record(metrics.agent).facts);
+  const pricingGuard = record(decision.pricingGuard);
   const unsafe = record(decision.unsafeReady);
   const review = record(decision.humanReviewRecall);
   const routes = RouteMetricsSchema.parse(record(decision.route));
@@ -158,6 +160,11 @@ function summarize(reportPath: string, report: z.infer<typeof EvalReportSchema>)
         expected: number(facts.expected),
         precision: number(facts.precision),
         recall: number(facts.recall),
+      },
+      agentFacts: { matched: number(agentFacts.matched), expected: number(agentFacts.expected) },
+      pricingGuard: {
+        nonReadyWithHandoff: number(pricingGuard.nonReadyWithHandoff),
+        denominator: number(pricingGuard.denominator),
       },
       gates: report.gates,
     },

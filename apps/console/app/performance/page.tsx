@@ -45,6 +45,20 @@ export default async function PerformancePage() {
           drill-down.
         </span>
       </div>
+      <div className="performance-summary">
+        {overview.latest ? (
+          <SummaryCard
+            title="Latest completed full run"
+            label={
+              overview.latest.runId === overview.accepted.runId
+                ? 'Also the baseline'
+                : 'Not promoted to baseline'
+            }
+            run={overview.latest}
+          />
+        ) : null}
+        <SummaryCard title="Accepted baseline" label="Reviewed reference" run={overview.accepted} />
+      </div>
       <RunCard
         title="Accepted baseline"
         label="Reviewed reference"
@@ -74,6 +88,56 @@ export default async function PerformancePage() {
         not production performance claims.
       </p>
     </>
+  );
+}
+
+function SummaryCard({ title, label, run }: { title: string; label: string; run: MetricRun }) {
+  const passedGates = run.metrics.gates.filter((gate) => gate.passed).length;
+  return (
+    <section className="detail-card performance-summary-card">
+      <div className="performance-title">
+        <div>
+          <span className="eyebrow">{label}</span>
+          <h2>{title}</h2>
+          <p>
+            {run.runId} · {displayDate(run.startedAt)}
+          </p>
+        </div>
+        <span className={`pill ${run.verdict === 'pass' ? 'pill-success' : 'pill-review'}`}>
+          {run.verdict.toUpperCase()}
+        </span>
+      </div>
+      <div className="summary-facts">
+        <span>
+          <strong>
+            {passedGates}/{run.metrics.gates.length}
+          </strong>{' '}
+          gates passed
+        </span>
+        <span>
+          <strong>{run.caseCount}</strong> synthetic workflow cases
+        </span>
+        <span>
+          <strong>{run.metrics.unsafeReady.count ?? '—'}</strong> unsafe ready
+        </span>
+        <span>
+          <strong>{run.metrics.pricingGuard.nonReadyWithHandoff ?? '—'}</strong> non-ready pricing
+          calls
+        </span>
+        <span>
+          <strong>
+            {run.metrics.agentFacts.matched ?? '—'}/{run.metrics.agentFacts.expected ?? '—'}
+          </strong>{' '}
+          agent facts matched
+        </span>
+        <span>
+          <strong>
+            {run.metrics.criticalFacts.matched ?? '—'}/{run.metrics.criticalFacts.expected ?? '—'}
+          </strong>{' '}
+          workflow critical facts matched
+        </span>
+      </div>
+    </section>
   );
 }
 

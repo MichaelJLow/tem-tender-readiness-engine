@@ -112,6 +112,8 @@ export interface MetricRun {
       precision: number | null;
       recall: number | null;
     };
+    agentFacts: { matched: number | null; expected: number | null };
+    pricingGuard: { nonReadyWithHandoff: number | null; denominator: number | null };
     gates: { id: string; passed: boolean; detail: string }[];
   };
   studioExperiments: { targetType: 'agent' | 'workflow'; targetId: string; experimentId: string }[];
