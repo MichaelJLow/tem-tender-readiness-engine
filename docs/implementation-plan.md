@@ -233,6 +233,25 @@ synthetic dataset; review and merge of the current branch remain separate.
 
 ## Milestone 5 - Operations console
 
+Implementation planning and the first local console/API slice are tracked in
+[`2026-09-28-milestone-5-operations-console-plan.md`](plans/2026-09-28-milestone-5-operations-console-plan.md).
+
+**In progress (2026-09-29):** the local Next.js console, queue/case detail,
+human-review event path, and read-only eval performance view are implemented
+on `feat/ops-console`. Formatting, lint, typecheck, the 170-test suite, and
+API/console production builds passed on 2026-09-29.
+
+**Manual QA checkpoint:** a synthetic conflicting-date case saved a
+`REQUEST_INFORMATION` review event while its automatic route stayed
+`HUMAN_REVIEW`. The user confirmed that `READY_FOR_PRICING` and
+`NEEDS_INFORMATION` details offer no review actions and that Performance
+distinguishes the accepted baseline from the latest completed run. This
+walkthrough exposed missing structured date values and source IDs in the case
+view; the console and review API now display and accept those recorded evidence
+references. The user visually confirmed the revised case view on
+2026-09-29. Complete behavior verification before Milestone 5 acceptance;
+tasks below remain open.
+
 **Goal:** make the automation operable by a human, not just visible in logs.
 
 ### Core views

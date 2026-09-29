@@ -41,7 +41,7 @@ const output: TenderInterpretation = {
 };
 
 class MemoryStore implements LocalStateStore {
-  state: LocalState = { version: 1, runs: [], handoffs: [] };
+  state: LocalState = { version: 1, runs: [], handoffs: [], reviewEvents: [] };
   async read() {
     return structuredClone(this.state);
   }

@@ -5,5 +5,5 @@
     "outDir": "dist",
     "rootDir": "."
   },
-  "exclude": ["**/*.test.ts", "node_modules", "dist"]
+  "exclude": ["**/*.test.ts", "apps/console/**", "node_modules", "dist"]
 }

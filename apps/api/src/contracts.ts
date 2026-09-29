@@ -158,10 +158,32 @@ export const PricingHandoffSchema = z.object({
 });
 export type PricingHandoff = z.infer<typeof PricingHandoffSchema>;
 
+export const ReviewActionSchema = z.enum([
+  'REQUEST_INFORMATION',
+  'CONFIRM_DUPLICATE',
+  'RESOLVE_MANUALLY',
+  'REOPEN',
+]);
+
+export const ReviewEventSchema = z.object({
+  eventId: z.string().uuid(),
+  requestId: z.string().trim().min(1).max(128),
+  runId: z.string().uuid(),
+  action: ReviewActionSchema,
+  actor: z.string().trim().min(1).max(128),
+  reason: z.string().trim().min(1).max(4000),
+  sourceIds: z.array(z.string().trim().min(1).max(128)).max(32),
+  reviewVersion: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+});
+export type ReviewAction = z.infer<typeof ReviewActionSchema>;
+export type ReviewEvent = z.infer<typeof ReviewEventSchema>;
+
 export const LocalStateSchema = z.object({
   version: z.literal(1),
   runs: z.array(TenderRunSchema),
   handoffs: z.array(PricingHandoffSchema),
+  reviewEvents: z.array(ReviewEventSchema).default([]),
 });
 export type LocalState = z.infer<typeof LocalStateSchema>;
 

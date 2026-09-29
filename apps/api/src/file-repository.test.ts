@@ -125,7 +125,7 @@ describe('JsonFileTenderRepository', () => {
 
   it('rejects corrupted state instead of resetting it', async () => {
     const store = new FileStateStore(statePath);
-    await store.write({ version: 1, runs: [], handoffs: [] });
+    await store.write({ version: 1, runs: [], handoffs: [], reviewEvents: [] });
     await writeFile(statePath, '{broken');
 
     await expect(store.read()).rejects.toThrow('Unable to read tender state');

@@ -17,5 +17,6 @@
     "tests/**/*.ts",
     "evals/**/*.ts",
     "vitest.config.ts"
-  ]
+  ],
+  "exclude": ["apps/console/**"]
 }

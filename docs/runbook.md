@@ -7,6 +7,8 @@ This is a **living operational document**. It describes the local API, including
 ## Local API
 
 - Start with `npm run dev:api` after `npm ci`.
+- Start the operations console in a second terminal with `npm run dev:console`; open `http://localhost:3001`. It reads the API at `TENDER_API_URL` (default `http://127.0.0.1:3000`) and the retained report files in `EVALS_DIR` (default `./evals`). Mastra Studio remains on `4113`. Use only synthetic tender data. The review mutation API is enabled only when `HOST` is loopback; the console's demo operator label is not production authentication.
+- To populate the local console with three repeatable synthetic examples, start the API and run `npm run demo:seed`. The clean example records one mocked handoff; the missing-information and conflicting-date examples do not. Re-running uses the fixture idempotency keys and returns the stored results.
 - Configure `PORT`, `HOST`, and `TENDER_STATE_PATH` with environment variables. Defaults are port `3000`, host `127.0.0.1` (loopback only), and `./data/tender-state.json`. Set `HOST` explicitly only when the API must accept connections from another interface.
 - Structured-only requests do not call a model and do not need a model-provider key. Requests with `textSources` invoke the Mastra Tender Interpretation Agent. Set `OPENROUTER_API_KEY` to use OpenRouter (default model `openai/gpt-6-luna`), or set `OPENAI_API_KEY` to use OpenAI (default model `gpt-6-luna`). `OPENROUTER_MODEL` and `OPENAI_MODEL` override provider defaults. For another OpenAI-compatible provider, set `MODEL_API_KEY`, `MODEL_API_BASE_URL`, and `MODEL_ID`; these generic settings take precedence. Keep keys in an untracked `.env` file or deployment secrets.
 - Model responses default to a 8,192-token output cap to avoid providers reserving unnecessary spend for unusually long responses. Set `MODEL_MAX_OUTPUT_TOKENS` to a positive integer to override it for a provider/model that needs more room.
@@ -51,6 +53,23 @@ Example request body with an optional note (omit `textSources` for structured-on
 ```
 
 Stop the process with Ctrl+C. A repeated request with the same idempotency key and normalized payload returns the stored result and does not create another mock pricing handoff.
+
+## Milestone 5 console walkthrough
+
+With the API and console running, use `npm run demo:seed` to create the three
+synthetic cases. In Queue, open the conflicting-date case. The Contract end
+date evidence panel places the submitted site date beside each recorded date
+fact, its site ID, and source reference. Compare the values before choosing a
+review disposition. Source references in this fixture do not include original
+contract files, so an unresolved conflict should be recorded as
+`REQUEST_INFORMATION` with a reason and the relevant evidence IDs.
+
+Recording a disposition appends an audit event and closes the review task. It
+does not send an information request, change the automatic `HUMAN_REVIEW`
+route, or invoke pricing. Refresh to inspect Review history. Open the clean and
+missing-information cases to confirm they offer no review action. In
+Performance, compare the accepted baseline with the latest completed report;
+the Studio links are optional drill-down.
 
 ## Milestone 3 live model smoke check
 

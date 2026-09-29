@@ -1,15 +1,31 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { resolve } from 'node:path';
 import { z } from 'zod';
-import { IntakeRequestSchema } from './contracts.js';
+import { IntakeRequestSchema, ReviewActionSchema, ReviewEventSchema } from './contracts.js';
+import { readEvalOverview, readEvalReport } from './eval-reports.js';
+import {
+  InvalidReviewTransitionError,
+  ReviewNotRequiredError,
+  ReviewRequestConflictError,
+  ReviewRunNotFoundError,
+  StaleReviewVersionError,
+} from './file-repository.js';
 import { IdempotencyConflictError, TenderProcessingError, TenderService } from './service.js';
 
 const CorrelationIdSchema = z.string().regex(/^[\x21-\x7e]{1,128}$/);
 const MAX_BODY_BYTES = 1_048_576;
+const ReviewCommandSchema = z.object({
+  requestId: z.string().trim().min(1).max(128),
+  action: ReviewActionSchema,
+  reason: z.string().trim().min(1).max(4000),
+  sourceIds: z.array(z.string().trim().min(1).max(128)).max(32).default([]),
+  expectedVersion: z.number().int().nonnegative(),
+});
 
-export function createTenderServer(service: TenderService): Server {
+export function createTenderServer(service: TenderService, allowReviewMutations = false): Server {
   return createServer((request, response) => {
-    void handleRequest(request, response, service);
+    void handleRequest(request, response, service, allowReviewMutations);
   });
 }
 
@@ -17,10 +33,165 @@ async function handleRequest(
   request: IncomingMessage,
   response: ServerResponse,
   service: TenderService,
+  allowReviewMutations: boolean,
 ): Promise<void> {
   const correlationIdResult = parseCorrelationId(request.headers['x-correlation-id']);
   const correlationId = correlationIdResult.success ? correlationIdResult.data : randomUUID();
   response.setHeader('X-Correlation-ID', correlationId);
+
+  if (request.method === 'GET' && request.url === '/tenders') {
+    try {
+      const runs = await service.listRuns();
+      const items = await Promise.all(
+        runs.map(async (run) => {
+          const events = await service.getReviewEvents(run.runId);
+          return {
+            runId: run.runId,
+            tenderId: run.tenderId,
+            status: run.status,
+            route: run.route ?? null,
+            createdAt: run.createdAt,
+            updatedAt: run.updatedAt,
+            failure: run.failure ?? null,
+            reviewVersion: events.length,
+            reviewState: reviewState(events),
+            lastReviewEvent: events.at(-1) ?? null,
+          };
+        }),
+      );
+      sendJson(response, 200, { items });
+    } catch {
+      sendJson(response, 500, { error: 'TENDER_LIST_UNAVAILABLE', correlationId });
+    }
+    return;
+  }
+
+  if (request.method === 'GET' && request.url === '/evals') {
+    try {
+      const overview = await readEvalOverview(resolve(process.env.EVALS_DIR ?? './evals'));
+      sendJson(response, 200, overview);
+    } catch {
+      sendJson(response, 500, { error: 'EVAL_REPORTS_UNAVAILABLE', correlationId });
+    }
+    return;
+  }
+
+  const evalReportMatch = request.url?.match(/^\/evals\/reports\/([A-Za-z0-9._-]{1,128})$/);
+  if (request.method === 'GET' && evalReportMatch?.[1]) {
+    try {
+      const report = await readEvalReport(
+        evalReportMatch[1],
+        resolve(process.env.EVALS_DIR ?? './evals'),
+      );
+      if (!report) {
+        sendJson(response, 404, { error: 'EVAL_REPORT_NOT_FOUND', correlationId });
+        return;
+      }
+      sendJson(response, 200, report);
+    } catch {
+      sendJson(response, 500, { error: 'EVAL_REPORT_UNAVAILABLE', correlationId });
+    }
+    return;
+  }
+
+  const detailMatch = request.url?.match(/^\/tenders\/([0-9a-f-]+)$/i);
+  if (request.method === 'GET' && detailMatch?.[1]) {
+    try {
+      const run = await service.findRun(detailMatch[1]);
+      if (!run) {
+        sendJson(response, 404, { error: 'TENDER_RUN_NOT_FOUND', correlationId });
+        return;
+      }
+      const reviewEvents = await service.getReviewEvents(run.runId);
+      sendJson(response, 200, {
+        run,
+        reviewEvents,
+        reviewState: reviewState(reviewEvents),
+        reviewVersion: reviewEvents.length,
+      });
+    } catch {
+      sendJson(response, 500, { error: 'TENDER_DETAIL_UNAVAILABLE', correlationId });
+    }
+    return;
+  }
+
+  const reviewMatch = request.url?.match(/^\/tenders\/([0-9a-f-]+)\/reviews$/i);
+  if (request.method === 'POST' && reviewMatch?.[1]) {
+    if (!allowReviewMutations) {
+      sendJson(response, 403, { error: 'REVIEW_ACTIONS_LOOPBACK_ONLY', correlationId });
+      return;
+    }
+    try {
+      if (
+        request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() !==
+        'application/json'
+      ) {
+        sendJson(response, 415, { error: 'CONTENT_TYPE_MUST_BE_JSON', correlationId });
+        return;
+      }
+      const body = ReviewCommandSchema.safeParse(await readJsonBody(request));
+      if (!body.success) {
+        sendJson(response, 400, {
+          error: 'INVALID_REVIEW_ACTION',
+          correlationId,
+          issues: body.error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message,
+          })),
+        });
+        return;
+      }
+      const currentRun = await service.findRun(reviewMatch[1]);
+      if (!currentRun) {
+        sendJson(response, 404, { error: 'TENDER_RUN_NOT_FOUND', correlationId });
+        return;
+      }
+      const allowedSources = new Set([
+        ...currentRun.input.textSources.map((source) => source.sourceId),
+        ...currentRun.input.tender.documents.map((document) => document.documentId),
+        ...(currentRun.result?.rules.flatMap((rule) =>
+          rule.evidence.map((evidence) => evidence.sourceId),
+        ) ?? []),
+      ]);
+      if (body.data.sourceIds.some((sourceId) => !allowedSources.has(sourceId))) {
+        sendJson(response, 400, { error: 'UNKNOWN_REVIEW_EVIDENCE_SOURCE', correlationId });
+        return;
+      }
+      const event = ReviewEventSchema.parse({
+        eventId: randomUUID(),
+        requestId: body.data.requestId,
+        runId: reviewMatch[1],
+        action: body.data.action,
+        actor: process.env.REVIEW_ACTOR?.trim() || 'local-demo-operator',
+        reason: body.data.reason,
+        sourceIds: body.data.sourceIds,
+        reviewVersion: body.data.expectedVersion + 1,
+        createdAt: new Date().toISOString(),
+      });
+      const saved = await service.recordReviewEvent(event, body.data.expectedVersion);
+      const latestEvents = await service.getReviewEvents(reviewMatch[1]);
+      sendJson(response, 200, {
+        event: saved,
+        reviewVersion: latestEvents.length,
+        reviewState: reviewState(latestEvents),
+      });
+    } catch (error) {
+      const status =
+        error instanceof ReviewRunNotFoundError
+          ? 404
+          : error instanceof ReviewNotRequiredError || error instanceof InvalidReviewTransitionError
+            ? 409
+            : error instanceof StaleReviewVersionError ||
+                error instanceof ReviewRequestConflictError
+              ? 409
+              : 500;
+      sendJson(response, status, {
+        error: reviewErrorCode(error),
+        correlationId,
+      });
+    }
+    return;
+  }
 
   if (request.method !== 'POST' || request.url !== '/tenders') {
     sendJson(response, 404, { error: 'NOT_FOUND', correlationId });
@@ -114,6 +285,22 @@ async function handleRequest(
     console.error(JSON.stringify({ event: 'tender.intake_failed', correlationId }));
     sendJson(response, 500, { error: 'TENDER_PROCESSING_FAILED', correlationId });
   }
+}
+
+function reviewState(
+  events: { action: z.infer<typeof ReviewActionSchema> }[],
+): 'OPEN' | 'RESOLVED' {
+  const lastAction = events.at(-1)?.action;
+  return lastAction && lastAction !== 'REOPEN' ? 'RESOLVED' : 'OPEN';
+}
+
+function reviewErrorCode(error: unknown): string {
+  if (error instanceof ReviewRunNotFoundError) return 'TENDER_RUN_NOT_FOUND';
+  if (error instanceof ReviewNotRequiredError) return 'REVIEW_NOT_REQUIRED';
+  if (error instanceof StaleReviewVersionError) return 'STALE_REVIEW_VERSION';
+  if (error instanceof ReviewRequestConflictError) return 'REVIEW_REQUEST_CONFLICT';
+  if (error instanceof InvalidReviewTransitionError) return 'INVALID_REVIEW_TRANSITION';
+  return 'REVIEW_ACTION_FAILED';
 }
 
 function parseCorrelationId(value: string | string[] | undefined) {

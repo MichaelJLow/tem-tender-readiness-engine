@@ -118,6 +118,7 @@ The initial workspace layout is:
 
 ```text
 apps/api/         Local API, introduced in Milestone 2
+apps/console/     Local operations console, introduced in Milestone 5
 packages/domain/  Deterministic domain core, introduced in Milestone 1
 integrations/     External workflow assets
 infra/            Deployment and infrastructure assets
@@ -127,3 +128,4 @@ docs/             Architecture, rules, and delivery plan
 
 Start the local API with `npm run dev:api`. It listens on `PORT` (default `3000`) and writes synthetic processing state to `TENDER_STATE_PATH` (default `./data/tender-state.json`, ignored by Git). Submit a JSON `ReadinessInput` to `POST /tenders`; a clean tender returns `READY_FOR_PRICING` and records one mock handoff. Repeating the same idempotency key and payload returns the stored outcome. The local JSON repository supports a single API process.
 
+Start the operations console in a second terminal with `npm run dev:console`; open `http://localhost:3001`. Queue, tender detail, review history, and eval performance are read through the API. Review dispositions are recorded for synthetic `HUMAN_REVIEW` cases and do not change the automatic route or create a pricing handoff. The console binds to loopback and uses a demo operator identity; it is not production authentication. See the [runbook](docs/runbook.md) for local boundaries.

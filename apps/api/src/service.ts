@@ -4,6 +4,7 @@ import {
   IntakeRequestSchema,
   TenderRunSchema,
   fingerprintRequest,
+  type ReviewEvent,
   type IntakeRequest,
   type ReadinessResult,
   type TenderResponse,
@@ -50,6 +51,39 @@ export class TenderService {
 
   submit(rawInput: unknown, correlationId: string): Promise<TenderResponse> {
     const operation = this.queue.then(() => this.submitSerial(rawInput, correlationId));
+    this.queue = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  }
+
+  listRuns(): Promise<TenderRun[]> {
+    if (!this.repository.listRuns) return Promise.reject(new Error('Run listing is unavailable.'));
+    return this.repository.listRuns();
+  }
+
+  findRun(runId: string): Promise<TenderRun | undefined> {
+    if (!this.repository.findRunByRunId) {
+      return Promise.reject(new Error('Run lookup is unavailable.'));
+    }
+    return this.repository.findRunByRunId(runId);
+  }
+
+  async getReviewEvents(runId: string): Promise<ReviewEvent[]> {
+    if (!this.repository.findReviewEvents) {
+      throw new Error('Review history is unavailable.');
+    }
+    return this.repository.findReviewEvents(runId);
+  }
+
+  recordReviewEvent(event: ReviewEvent, expectedVersion: number): Promise<ReviewEvent> {
+    if (!this.repository.appendReviewEvent) {
+      return Promise.reject(new Error('Review actions are unavailable.'));
+    }
+    const operation = this.queue.then(() =>
+      this.repository.appendReviewEvent!(event, expectedVersion),
+    );
     this.queue = operation.then(
       () => undefined,
       () => undefined,
