@@ -24,6 +24,9 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ r
   }
 
   const { run } = detail;
+  const stoppingRules = (run.result?.rules ?? []).filter(
+    (rule) => !rule.passed && rule.severity === 'review',
+  );
   const sourceIds = new Set(run.input.textSources.map((source) => source.sourceId));
   const reviewSourceIds = [
     ...new Set([
@@ -86,9 +89,11 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ r
           </div>
         </div>
         <div className="route-stack">
+          <small>Business route</small>
           <span className={`pill ${tone(run.route)}`}>
             {run.route?.replaceAll('_', ' ') ?? 'No final route'}
           </span>
+          <small>Processing status</small>
           <span className="pill pill-neutral">{run.status}</span>
         </div>
       </div>
@@ -103,6 +108,51 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ r
       ) : null}
       <div className="two-column">
         <div>
+          {run.route === 'HUMAN_REVIEW' && stoppingRules.length > 0 ? (
+            <section className="detail-card stopped-case-card">
+              <span className="eyebrow">WHY AUTOMATION STOPPED</span>
+              <h2>Conflicting evidence requires a reviewer</h2>
+              {stoppingRules.map((rule) => (
+                <div className="rule-row" key={rule.ruleId}>
+                  <div className="rule-title">
+                    <span>{rule.ruleId}</span>
+                    <span className="pill pill-review">Review</span>
+                  </div>
+                  <p>{rule.reason}</p>
+                  {rule.evidence.map((evidence, index) => (
+                    <small className="subline" key={`${evidence.sourceId ?? 'evidence'}-${index}`}>
+                      Evidence: {evidence.sourceId ?? evidence.locator ?? 'structured tender data'}
+                    </small>
+                  ))}
+                </div>
+              ))}
+              {run.input.signals.dateFacts.length > 0 ? (
+                <>
+                  <h3 className="section-label">Contract end date evidence</h3>
+                  <p className="source-copy">
+                    Compare the submitted site date with recorded source facts. Source references do
+                    not establish which date is authoritative.
+                  </p>
+                  <div className="facts-list date-evidence-list">
+                    {dateEvidenceRows.map((fact) => (
+                      <div className="fact" key={fact.id}>
+                        <span>
+                          {fact.siteId} · {fact.source}
+                          {fact.credible ? '' : ' · not marked credible'}
+                        </span>
+                        <strong>{fact.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  {run.input.tender.documents.length === 0 ? (
+                    <p className="fine-print">
+                      This demo includes source references, not the original contract files.
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
+            </section>
+          ) : null}
           <section className="detail-card">
             <h2>Readiness checks</h2>
             {run.result?.rules.map((rule) => (
@@ -147,7 +197,7 @@ export default async function TenderDetailPage({ params }: { params: Promise<{ r
               </div>
             ) : null}
           </section>
-          {run.input.signals.dateFacts.length > 0 ? (
+          {run.input.signals.dateFacts.length > 0 && run.route !== 'HUMAN_REVIEW' ? (
             <section className="detail-card">
               <h2>Contract end date evidence</h2>
               <p className="source-copy">

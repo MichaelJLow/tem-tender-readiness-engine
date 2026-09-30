@@ -1,6 +1,6 @@
 # Tender Readiness Engine
 
-A production-style tender readiness automation for business energy, combining deterministic rules, bounded AI reasoning, human review, evals, and AWS-native infrastructure.
+A production-style tender readiness automation for business energy, combining deterministic rules, bounded AI reasoning, human review, evals, and a small AWS evidence archive.
 
 > **Project status:** early implementation. This repository is intentionally being built in public as a reviewable engineering project.
 
@@ -45,11 +45,11 @@ flowchart TD
 - **Zod** for boundary validation
 - **Mastra + OpenAI** for bounded reasoning tasks
 - **n8n** for integration orchestration
-- **AWS S3** for source documents
-- **AWS-native persistence/runtime** where practical for V1
-- **GitHub Actions** for tests, eval gates, and deployment workflows
+- **AWS S3** for private synthetic source files and demo evidence snapshots
+- **Local JSON state** for the single-process demo; S3 is an archive, not the live database
+- **GitHub Actions** for tests and eval gates
 
-The final AWS implementation choices are documented as architecture decisions as the build progresses rather than presented as assumptions about another team's internal stack.
+The demo keeps the API and Console local. A hosted runtime can be considered separately if a live URL becomes important; no AWS service choice is a claim about another team's internal stack.
 
 ## Evaluation and safety
 
@@ -96,7 +96,7 @@ The system is being built in vertical slices:
 3. bounded Mastra/OpenAI reasoning
 4. eval harness and safety gates
 5. operations console
-6. AWS persistence/runtime
+6. lightweight S3 demo archive
 7. n8n integration
 8. reliability, observability, and CI/CD
 9. stable public release

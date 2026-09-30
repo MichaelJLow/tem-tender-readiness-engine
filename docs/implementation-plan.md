@@ -29,7 +29,7 @@ V1 is ready when an engineer can clone the repo and understand:
 - how a tender moves through the system
 - how behaviour is tested and evaluated
 - how failures are observed and recovered
-- how the application is deployed
+- how the local demo runs and how its synthetic evidence is archived
 - why only `READY_FOR_PRICING` can cross the downstream boundary
 
 The final demo should reliably show:
@@ -236,9 +236,9 @@ synthetic dataset; review and merge of the current branch remain separate.
 Implementation planning and the first local console/API slice are tracked in
 [`2026-09-28-milestone-5-operations-console-plan.md`](plans/2026-09-28-milestone-5-operations-console-plan.md).
 
-**In progress (2026-09-29):** the local Next.js console, queue/case detail,
+**Completed (2026-09-30):** the local Next.js console, queue/case detail,
 human-review event path, and read-only eval performance view are implemented
-on `feat/ops-console`. Formatting, lint, typecheck, the 170-test suite, and
+and merged in PR #9; screenshot readiness followed in PR #10. Formatting, lint, typecheck, the 170-test suite, and
 API/console production builds passed on 2026-09-29.
 
 **Manual QA checkpoint:** a synthetic conflicting-date case saved a
@@ -249,8 +249,8 @@ distinguishes the accepted baseline from the latest completed run. This
 walkthrough exposed missing structured date values and source IDs in the case
 view; the console and review API now display and accept those recorded evidence
 references. The user visually confirmed the revised case view on
-2026-09-29. Complete behavior verification before Milestone 5 acceptance;
-tasks below remain open.
+2026-09-29. The seeded screenshot walkthrough and retained captures demonstrate the
+review audit and ready-only mocked handoff. Milestone 5 acceptance is met.
 
 **Goal:** make the automation operable by a human, not just visible in logs.
 
@@ -263,15 +263,15 @@ tasks below remain open.
 
 ### Tasks
 
-- [ ] Build minimal TypeScript/Next.js internal UI.
-- [ ] Build queue and case detail.
-- [ ] Show deterministic rule results and AI evidence.
-- [ ] Implement human-review actions.
-- [ ] Store immutable review/audit events.
-- [ ] Add a performance/eval view backed by the versioned Milestone 4 report contract, showing the latest accepted run, comparable baseline, safety verdict, metrics, sample sizes, and model/prompt/dataset versions.
-- [ ] Link to Mastra Studio experiments and recent traces for drill-down when available; keep the case evidence and eval report readable after those traces expire.
-- [ ] Keep operational tender/review state in the application repository and expose eval summaries through a read-only backend projection, rather than reading Studio's local database from the UI.
-- [ ] Treat human corrections as candidate regression cases that require review before entering the canonical eval dataset.
+- [x] Build minimal TypeScript/Next.js internal UI.
+- [x] Build queue and case detail.
+- [x] Show deterministic rule results and AI evidence.
+- [x] Implement human-review actions.
+- [x] Store immutable review/audit events.
+- [x] Add a performance/eval view backed by the versioned Milestone 4 report contract, showing the latest accepted run, comparable baseline, safety verdict, metrics, sample sizes, and model/prompt/dataset versions.
+- [x] Link to Mastra Studio experiments and recent traces for drill-down when available; keep the case evidence and eval report readable after those traces expire.
+- [x] Keep operational tender/review state in the application repository and expose eval summaries through a read-only backend projection, rather than reading Studio's local database from the UI.
+- [x] Treat human corrections as candidate regression cases that require review before entering the canonical eval dataset.
 
 ### Acceptance criteria
 
@@ -283,49 +283,44 @@ A reviewer can understand why a case was blocked and resolve it without reading 
 
 ---
 
-## Milestone 6 - AWS storage and runtime
+## Milestone 6 - Lightweight AWS evidence archive
 
-**Goal:** move the working system into a deliberately small AWS-native architecture.
+**Goal:** demonstrate a small, useful AWS storage boundary for the synthetic
+portfolio demo without moving the live API or Operations Console off the local
+single-process setup. The detailed plan is
+[Milestone 6 lightweight S3 archive](plans/2026-09-29-milestone-6-lightweight-s3-archive-plan.md).
 
-### 6A. S3
+The earlier S3 + database + runtime + hosted Console scope was narrowed at the
+user's request. S3 is an archive for synthetic source files, tender-state
+snapshots, and durable eval reports; it is not the live review/idempotency
+database. The API, Console, and Mastra Studio remain local.
 
-- [ ] Create private bucket.
-- [ ] Store original tender documents.
-- [ ] Persist only object references in domain records.
-- [ ] Test missing/unreadable object handling.
+### Tasks
 
-### 6B. AWS-native state
-
-- [ ] Define access patterns before choosing/finalising schema.
-- [ ] Persist tenders, decisions, review state, and idempotency records.
-- [ ] Keep persistence behind repository interfaces.
-
-### 6C. Runtime
-
-- [ ] Deploy TypeScript backend using the smallest practical AWS runtime.
-- [ ] Expose a minimal API.
-- [ ] Confirm Mastra/OpenAI execution works reliably in the selected runtime.
-
-### 6D. IAM and observability
-
-- [ ] Use least-privilege IAM.
-- [ ] Emit structured logs.
-- [ ] Include correlation ID, tender ID, and run ID.
-- [ ] Make technical failures visible.
-
-### 6E. Infrastructure as code
-
-- [ ] Codify the final AWS resources in TypeScript where practical.
+- [ ] Confirm the AWS account, region, remaining credits, and budget alert.
+- [ ] Define one private S3 bucket with public access blocked.
+- [ ] Archive a consistent synthetic state snapshot, accepted baseline, latest
+      completed eval report, and available synthetic source files.
+- [ ] Restore a complete snapshot into a fresh local path with checksum/schema
+      verification and no overwrite of existing state.
+- [ ] Re-run the local Console walkthrough from the restored files.
+- [ ] Document the archive/restore path and the fact that Studio's local
+      experiments and traces are separate.
 
 ### Acceptance criteria
 
-A deployed request can process synthetic data using real AWS storage/state with observable logs and no committed credentials.
+A small synthetic snapshot can be uploaded to private S3, restored into a new
+local directory, and used to show the same three routes, review audit, accepted
+baseline, latest run, and ready-only mocked handoff. No credentials, private
+customer data, or public S3 objects are used.
 
-### Suggested branches
+A live AWS database/runtime and a hosted Console are deferred. If a public demo
+URL becomes important later, plan it separately with a cost and authentication
+decision rather than expanding this milestone.
 
-`feat/aws-s3-storage`  
-`feat/aws-state`  
-`feat/aws-runtime`
+### Suggested branch
+
+feat/aws-demo-archive
 
 ---
 
@@ -421,7 +416,7 @@ Once Milestones 0–9 are complete, build a more realistic fully synthetic tende
 | 2   | Local vertical slice + reasoning | API flow and bounded model integration            |
 | 3   | Evals                            | golden set, metrics, safety gate                  |
 | 4   | Ops console                      | queue, case detail, human review                  |
-| 5   | AWS                              | documents/state/runtime working in cloud          |
+| 5   | Lightweight AWS archive          | state and eval evidence restorable from S3       |
 | 6   | n8n + reliability + CI           | integrated workflow, retries, observable failure  |
 | 7   | Hardening + presentation         | stable release, docs, screenshots, rehearsed demo |
 
