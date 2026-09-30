@@ -1,0 +1,43 @@
+name: Release evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit or tag to verify
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-evidence-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    environment: stable-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run evidence:release
+      - name: Archive the reviewed release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 90
+          path: |
+            evals/release-evidence.json
+            evals/reports/*.json
+            evals/reports/*.md
+            docs/release-qa/*.json

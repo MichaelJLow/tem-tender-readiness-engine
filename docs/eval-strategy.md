@@ -244,6 +244,25 @@ format
 
 Deterministic schema and metric tests run in CI without credentials. Live evals are not an unconditional CI step because they need a configured provider secret and Mastra storage. Run the PR suite before reasoning changes and the full suite before accepting a release baseline. Only reviewed reports should be retained as baselines.
 
+CI builds both the API and Console. A pull request that changes the reasoning implementation, prompt registration, labelled cases, scorers, or thresholds must also commit `evals/pr-evidence.json`, pointing to a completed, passing `pr` report produced from a clean checkout. The credentialless PR job validates that report; it never treats a skipped or unrun live eval as success and never receives provider credentials. Generate the evidence deliberately with `npm run eval:pr`; provider calls and their cost therefore remain an explicit maintainer action.
+
+Stable-release evidence is selected by `evals/release-evidence.json`. It points to a completed, passing, clean full report and a manual-QA JSON record under `docs/release-qa/`. The full report must have a comparable accepted baseline, and both records must name the same source SHA. Run `npm run evidence:release` locally or dispatch the `Release evidence` workflow. That workflow makes no model calls, uploads the portable JSON/Markdown evidence, and uses the protected `stable-release` GitHub environment for reviewer approval. Configure that environment with required reviewers before relying on it as a release control. CODEOWNERS protects the accepted baseline, PR evidence, release evidence, and QA records; branch protection must require Code Owner review and the CI checks.
+
+Manual-QA records use this reviewable shape (all checklist values must be `true`):
+
+```json
+{
+  "schemaVersion": 1,
+  "sourceSha": "40-character-source-commit-sha",
+  "completedAt": "2026-09-30T12:00:00.000Z",
+  "reviewer": "reviewer-name",
+  "ciUrl": "https://github.com/owner/repository/actions/runs/123",
+  "pullRequestUrl": "https://github.com/owner/repository/pull/123",
+  "checklist": { "pricingGuard": true, "conflictCase": true },
+  "notes": "Synthetic release walkthrough completed; no real customer data used."
+}
+```
+
 ### Stable release
 
 ```text

@@ -23,6 +23,8 @@
     "demo:seed": "tsx scripts/seed-console-demo.ts",
     "eval:pr": "tsx evals/run.ts --suite pr",
     "eval:full": "tsx evals/run.ts --suite full",
+    "evidence:pr": "tsx evals/verify-evidence.ts --kind pr --pointer evals/pr-evidence.json",
+    "evidence:release": "tsx evals/verify-evidence.ts --kind release --pointer evals/release-evidence.json",
     "dev:api": "npm run build:api && node --env-file-if-exists=.env dist/apps/api/src/main.js"
   },
   "dependencies": {

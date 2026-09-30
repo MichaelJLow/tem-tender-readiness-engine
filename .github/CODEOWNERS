@@ -1,0 +1,5 @@
+# Changes to accepted evidence pointers require explicit repository-owner review.
+/evals/accepted-baseline.json @MichaelJLow
+/evals/pr-evidence.json @MichaelJLow
+/evals/release-evidence.json @MichaelJLow
+/docs/release-qa/ @MichaelJLow
