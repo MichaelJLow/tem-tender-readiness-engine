@@ -80,14 +80,14 @@ Local API/Console and local JSON state remain the decision path. A manual archiv
 
 ## Verification scenarios
 
-| Setup/input | Action | Expected result |
-| --- | --- | --- |
-| Three seeded synthetic cases and a recorded human review | Stop API and archive | Complete manifest and private objects; source local state unchanged. |
-| Restore to a fresh path | Validate and start API/Console | Same three routes, audit event, accepted/latest report distinction, and one ready-only handoff. |
-| Interrupted upload or missing object | Attempt restore | Clear failure before writing a usable state; no partial overwrite. |
-| Modified object bytes or malformed JSON | Attempt restore | Checksum/schema failure; original local state untouched. |
-| Anonymous request or wrong AWS principal | Read/write object | Access denied. |
-| Baseline pointer differs from latest passing run | Archive and restore | Difference preserved; latest is not silently promoted. |
+| Setup/input                                              | Action                         | Expected result                                                                                 |
+| -------------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Three seeded synthetic cases and a recorded human review | Stop API and archive           | Complete manifest and private objects; source local state unchanged.                            |
+| Restore to a fresh path                                  | Validate and start API/Console | Same three routes, audit event, accepted/latest report distinction, and one ready-only handoff. |
+| Interrupted upload or missing object                     | Attempt restore                | Clear failure before writing a usable state; no partial overwrite.                              |
+| Modified object bytes or malformed JSON                  | Attempt restore                | Checksum/schema failure; original local state untouched.                                        |
+| Anonymous request or wrong AWS principal                 | Read/write object              | Access denied.                                                                                  |
+| Baseline pointer differs from latest passing run         | Archive and restore            | Difference preserved; latest is not silently promoted.                                          |
 
 ## Risks and mitigations
 
@@ -118,4 +118,4 @@ Create the bucket and verify its access policy before uploading. Keep every loca
 - AWS Free Tier credit terms: https://aws.amazon.com/free/terms/
 - AWS Budgets pricing: https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/
 
-Planning capability: user-selected SOL session. This plan does not authorize implementation or AWS resource creation.
+Planning capability: user-selected SOL session. Local implementation was authorized on 2026-09-30. Archive/restore tooling and local verification are complete; see [the verification receipt](../milestone-6-verification.md). Account setup and live AWS resource/upload verification remain pending. The local package/restore path was implemented before bucket setup so it can be verified without credentials.

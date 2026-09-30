@@ -21,6 +21,8 @@
     "build:console": "npm run build --workspace @tem-tender-readiness/console",
     "dev:console": "npm run dev --workspace @tem-tender-readiness/console",
     "demo:seed": "tsx scripts/seed-console-demo.ts",
+    "demo:archive": "tsx scripts/archive-demo.ts",
+    "demo:restore": "tsx scripts/restore-demo.ts",
     "eval:pr": "tsx evals/run.ts --suite pr",
     "eval:full": "tsx evals/run.ts --suite full",
     "dev:api": "npm run build:api && node --env-file-if-exists=.env dist/apps/api/src/main.js"

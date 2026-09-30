@@ -10,21 +10,27 @@ ADRs are added when a choice has meaningful consequences for system behaviour, r
 # ADR-00X: Decision title
 
 ## Status
+
 Accepted | Superseded | Proposed
 
 ## Context
+
 What problem or constraint requires a decision?
 
 ## Decision
+
 What are we choosing?
 
 ## Alternatives considered
+
 What realistic alternatives were considered?
 
 ## Rationale
+
 Why is this the best fit for this project?
 
 ## Consequences
+
 What becomes easier, harder, or constrained because of this choice?
 ```
 
@@ -43,5 +49,7 @@ Likely decisions include:
 Current decisions:
 
 - [ADR-001: Keep the bounded Mastra agent in the API workspace](001-bounded-mastra-agent.md)
+- [ADR-002: Separate review history from automatic decisions](002-local-review-state-and-console-boundary.md)
+- [ADR-003: Archive the local demo as private S3 snapshots](003-private-s3-demo-snapshots.md)
 
 ADRs should describe **this project's** choices. They should not present implementation assumptions as facts about tem's private architecture.

@@ -9,7 +9,7 @@ Make the end-to-end flow and automation boundary explicit: what is deterministic
 ```mermaid
 flowchart TD
     A["Tender submitted<br/>structured fields + notes + documents"] --> B["n8n intake"]
-    B --> C["Persist source documents<br/>S3"]
+    B --> C["Local intake"]
     C --> D["Validate transport + schema<br/>TypeScript / Zod"]
     D --> E["Deterministic readiness checks"]
     E --> F{"Interpretation needed?"}
@@ -135,3 +135,5 @@ Mock pricing gateway
         ↓
 [real pricing / transaction infrastructure outside prototype scope]
 ```
+
+The current local demo retains state and evidence in the application repository. Milestone 6 archives selected synthetic evidence to private S3 outside this decision path; restoring a snapshot does not reprocess cases or create a handoff.

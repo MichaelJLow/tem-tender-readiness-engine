@@ -304,7 +304,7 @@ database. The API, Console, and Mastra Studio remain local.
 - [ ] Restore a complete snapshot into a fresh local path with checksum/schema
       verification and no overwrite of existing state.
 - [ ] Re-run the local Console walkthrough from the restored files.
-- [ ] Document the archive/restore path and the fact that Studio's local
+- [x] Document the archive/restore path and the fact that Studio's local
       experiments and traces are separate.
 
 ### Acceptance criteria
@@ -318,9 +318,14 @@ A live AWS database/runtime and a hosted Console are deferred. If a public demo
 URL becomes important later, plan it separately with a cost and authentication
 decision rather than expanding this milestone.
 
+**Local implementation (2026-09-30):** archive/restore commands now prepare
+and verify bounded synthetic snapshots, preserve the accepted/latest distinction,
+and restore into a fresh path. Real S3 upload/restore and access checks remain
+pending; Milestone 6 is not yet complete. The [local verification receipt](milestone-6-verification.md) records all 184 passing tests and the archive/restore API checks.
+
 ### Suggested branch
 
-feat/aws-demo-archive
+`feat/aws-demo-archive`
 
 ---
 
@@ -416,7 +421,7 @@ Once Milestones 0–9 are complete, build a more realistic fully synthetic tende
 | 2   | Local vertical slice + reasoning | API flow and bounded model integration            |
 | 3   | Evals                            | golden set, metrics, safety gate                  |
 | 4   | Ops console                      | queue, case detail, human review                  |
-| 5   | Lightweight AWS archive          | state and eval evidence restorable from S3       |
+| 5   | Lightweight AWS archive          | state and eval evidence restorable from S3        |
 | 6   | n8n + reliability + CI           | integrated workflow, retries, observable failure  |
 | 7   | Hardening + presentation         | stable release, docs, screenshots, rehearsed demo |
 

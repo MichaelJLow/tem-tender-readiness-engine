@@ -21,7 +21,7 @@ Milestone 5 adds an operator console to an API that currently stores runs and mo
 - Let the UI rewrite the route or mark a blocked tender ready: rejected because it would bypass the deterministic decision path and could create an unsafe pricing side effect.
 - Store review state in browser-local storage: rejected because the history would be lost, per-browser, and unavailable to later operators.
 - Read JSON state and Studio database files directly from the console: rejected because it duplicates storage contracts and couples UI behavior to local-only internals.
-- Add hosted database/auth infrastructure now: deferred to Milestone 6, where runtime and persistence choices are in scope.
+- Add hosted database/auth infrastructure now: deferred to a separate future hosting decision. Milestone 6 now archives local synthetic evidence only; see ADR-003.
 
 ## Rationale
 
