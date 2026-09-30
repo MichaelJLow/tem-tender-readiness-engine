@@ -56,6 +56,15 @@ Stop the process with Ctrl+C. A repeated request with the same idempotency key a
 
 ## Milestone 5 console walkthrough
 
+For a screenshot session, start the API with a new `TENDER_STATE_PATH` (for
+example `data/console-screenshot-state.json`) and a free loopback `PORT`. Point
+the Console and `npm run demo:seed` at that API using `TENDER_API_URL`. Stop any
+existing Console dev process in this checkout before starting another one;
+Next.js uses one build directory per checkout. For clean captures without the
+development badge, run `npm run build:console` and then `npm run start --workspace
+@tem-tender-readiness/console`. Use a 1500 px wide desktop viewport. The
+resulting PNGs and captions are in [the screenshot set](screenshots/operations-console/README.md).
+
 With the API and console running, use `npm run demo:seed` to create the three
 synthetic cases. In Queue, open the conflicting-date case. The Contract end
 date evidence panel places the submitted site date beside each recorded date
@@ -63,13 +72,19 @@ fact, its site ID, and source reference. Compare the values before choosing a
 review disposition. Source references in this fixture do not include original
 contract files, so an unresolved conflict should be recorded as
 `REQUEST_INFORMATION` with a reason and the relevant evidence IDs.
+For this fixture, cite `site-001`, `contract-a`, and `contract-b`; the site
+record and `contract-a` say `2027-03-31`, while `contract-b` says `30/09/2026`.
 
 Recording a disposition appends an audit event and closes the review task. It
 does not send an information request, change the automatic `HUMAN_REVIEW`
 route, or invoke pricing. Refresh to inspect Review history. Open the clean and
 missing-information cases to confirm they offer no review action. In
 Performance, compare the accepted baseline with the latest completed report;
-the Studio links are optional drill-down.
+the Studio links are optional drill-down. The latest full report passed 9/9
+gates on 63 synthetic workflow cases, with 0 unsafe-ready outcomes, 0 non-ready
+pricing calls, 51/51 agent facts, and 51/51 workflow critical facts. The
+accepted baseline passed 7/7 gates on 63 cases, with 51/51 agent facts and
+49/51 workflow critical facts. The latest run is not the accepted baseline.
 
 ## Milestone 3 live model smoke check
 

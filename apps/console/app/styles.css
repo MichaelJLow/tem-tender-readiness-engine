@@ -20,6 +20,35 @@
   align-items: flex-start;
   gap: 16px;
 }
+.performance-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.performance-summary-card {
+  min-width: 0;
+}
+.performance-summary-card .performance-title {
+  flex-wrap: wrap;
+}
+.performance-summary-card .performance-title p {
+  overflow-wrap: anywhere;
+}
+.summary-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  padding-top: 16px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.summary-facts span {
+  min-width: 0;
+}
+.summary-facts strong {
+  color: var(--ink);
+  font-size: 14px;
+}
 .performance-title h2 {
   margin-bottom: 4px;
 }
@@ -84,6 +113,9 @@
   flex-direction: column;
 }
 @media (max-width: 700px) {
+  .performance-summary {
+    grid-template-columns: 1fr;
+  }
   .performance-title {
     flex-direction: column;
   }
@@ -563,7 +595,7 @@ td strong {
 }
 .review-form select,
 .review-form textarea,
-.review-form input {
+.review-form input:not([type='checkbox']) {
   display: block;
   width: 100%;
   margin-top: 6px;
@@ -573,6 +605,12 @@ td strong {
   padding: 10px;
   color: var(--ink);
   font-size: 12px;
+}
+.review-form .source-picker input[type='checkbox'] {
+  flex: 0 0 15px;
+  width: 15px;
+  height: 15px;
+  margin: 0;
 }
 .review-form textarea {
   min-height: 88px;
