@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -23,3 +25,36 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build:api
+      - run: npm run build:console
+
+  reasoning-evidence:
+    name: Reasoning change evidence
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Detect reasoning changes
+        id: changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git diff --quiet "$BASE_SHA" HEAD -- \
+            apps/api/src/reasoning apps/api/src/mastra evals/cases.ts \
+            evals/mastra-scorers.ts evals/thresholds.json; then
+            echo "required=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "required=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Verify committed PR eval evidence
+        if: steps.changes.outputs.required == 'true'
+        run: npm run evidence:pr
+      - name: Record why live evaluation did not run
+        if: steps.changes.outputs.required == 'true'
+        run: echo "Verified committed provider-backed evidence; this credentialless PR job did not make model calls." >> "$GITHUB_STEP_SUMMARY"
