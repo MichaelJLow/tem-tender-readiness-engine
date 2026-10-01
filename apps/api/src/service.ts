@@ -9,6 +9,7 @@ import {
   type ReadinessResult,
   type TenderResponse,
   type TenderRun,
+  type RunFailure,
 } from './contracts.js';
 import type { PricingGateway } from './pricing-gateway.js';
 import type { TenderRepository } from './repository.js';
@@ -20,6 +21,15 @@ import {
   normalizeStructuredConflictEvidence,
   toReadinessSignals,
 } from './reasoning/to-readiness-signals.js';
+import {
+  InvalidReviewTransitionError,
+  ReviewNotRequiredError,
+  ReviewRequestConflictError,
+  ReviewRunNotFoundError,
+  StateReadError,
+  StateWriteError,
+  StaleReviewVersionError,
+} from './file-repository.js';
 
 export class IdempotencyConflictError extends Error {
   constructor() {
@@ -36,6 +46,17 @@ export class TenderProcessingError extends Error {
   ) {
     super(message);
     this.name = 'TenderProcessingError';
+  }
+}
+
+export class StatePersistenceError extends Error {
+  constructor(
+    readonly failure: RunFailure,
+    readonly tenderId?: string,
+    readonly runId?: string,
+  ) {
+    super(failure.message);
+    this.name = 'StatePersistenceError';
   }
 }
 
@@ -60,30 +81,43 @@ export class TenderService {
 
   listRuns(): Promise<TenderRun[]> {
     if (!this.repository.listRuns) return Promise.reject(new Error('Run listing is unavailable.'));
-    return this.repository.listRuns();
+    return this.readState(() => this.repository.listRuns!());
   }
 
   findRun(runId: string): Promise<TenderRun | undefined> {
     if (!this.repository.findRunByRunId) {
       return Promise.reject(new Error('Run lookup is unavailable.'));
     }
-    return this.repository.findRunByRunId(runId);
+    return this.readState(() => this.repository.findRunByRunId!(runId));
   }
 
   async getReviewEvents(runId: string): Promise<ReviewEvent[]> {
     if (!this.repository.findReviewEvents) {
       throw new Error('Review history is unavailable.');
     }
-    return this.repository.findReviewEvents(runId);
+    return this.readState(() => this.repository.findReviewEvents!(runId));
   }
 
   recordReviewEvent(event: ReviewEvent, expectedVersion: number): Promise<ReviewEvent> {
     if (!this.repository.appendReviewEvent) {
       return Promise.reject(new Error('Review actions are unavailable.'));
     }
-    const operation = this.queue.then(() =>
-      this.repository.appendReviewEvent!(event, expectedVersion),
-    );
+    const operation = this.queue.then(async () => {
+      try {
+        return await this.repository.appendReviewEvent!(event, expectedVersion);
+      } catch (error) {
+        if (
+          error instanceof ReviewRunNotFoundError ||
+          error instanceof ReviewNotRequiredError ||
+          error instanceof StaleReviewVersionError ||
+          error instanceof ReviewRequestConflictError ||
+          error instanceof InvalidReviewTransitionError
+        ) {
+          throw error;
+        }
+        throw this.stateError('STATE_WRITE_FAILED', event.runId);
+      }
+    });
     this.queue = operation.then(
       () => undefined,
       () => undefined,
@@ -102,7 +136,10 @@ export class TenderService {
     };
     const requestHash = fingerprintRequest(requestForFingerprint);
     const key = request.tender.idempotencyKey;
-    const priorRun = await this.repository.findRunByIdempotencyKey(key);
+    const priorRun = await this.readState(
+      () => this.repository.findRunByIdempotencyKey(key),
+      request.tender.tenderId,
+    );
 
     if (priorRun) {
       if (priorRun.requestHash !== requestHash) throw new IdempotencyConflictError();
@@ -112,7 +149,10 @@ export class TenderService {
       return this.processRun(priorRun, correlationId, true);
     }
 
-    const activeTender = await this.repository.findRunByTenderId(request.tender.tenderId);
+    const activeTender = await this.readState(
+      () => this.repository.findRunByTenderId(request.tender.tenderId),
+      request.tender.tenderId,
+    );
     const input: IntakeRequest = {
       ...request,
       signals: {
@@ -136,7 +176,7 @@ export class TenderService {
       createdAt: timestamp,
       updatedAt: timestamp,
     });
-    await this.repository.saveRun(run);
+    await this.writeRun(run, 1);
 
     return this.processRun(run, correlationId, false);
   }
@@ -146,17 +186,18 @@ export class TenderService {
     correlationId: string,
     replayed: boolean,
   ): Promise<TenderResponse> {
+    const attempt = (run.failure?.attempt ?? 0) + 1;
     if (!run.result) {
       run.status = 'PROCESSING';
       delete run.failure;
       run.updatedAt = this.now().toISOString();
-      await this.repository.saveRun(run);
+      await this.writeRun(run, attempt);
 
       const duplicateKnown =
         run.input.signals.duplicate.matchesActiveTender ||
         run.input.signals.duplicate.idempotencyKeyPreviouslyProcessed;
       if (run.input.textSources.length > 0 && !duplicateKnown && !run.interpretation) {
-        await this.interpretTextSources(run, replayed, correlationId);
+        await this.interpretTextSources(run, replayed, correlationId, attempt);
       }
 
       let result: ReadinessResult;
@@ -164,13 +205,16 @@ export class TenderService {
         result = evaluateReadiness(run.input);
       } catch {
         run.status = 'FAILED';
+        run.updatedAt = this.now().toISOString();
         run.failure = {
           code: 'READINESS_EVALUATION_FAILED',
           message: 'Readiness evaluation failed.',
           retryable: false,
+          stage: 'READINESS',
+          occurredAt: run.updatedAt,
+          attempt,
         };
-        run.updatedAt = this.now().toISOString();
-        await this.repository.saveRun(run);
+        await this.writeFailureRun(run, attempt, 'READINESS_EVALUATION_FAILED');
         throw new TenderProcessingError(
           'Readiness evaluation failed.',
           responseFromRun(run, replayed, correlationId),
@@ -182,7 +226,7 @@ export class TenderService {
       run.route = result.route;
       run.result = result;
       run.updatedAt = this.now().toISOString();
-      await this.repository.saveRun(run);
+      await this.writeRun(run, attempt);
     }
 
     if (run.result?.route === 'READY_FOR_PRICING') {
@@ -193,15 +237,35 @@ export class TenderService {
           route: run.result.route,
           handoffKey: `${run.tenderId}:${run.idempotencyKey}`,
         });
-      } catch {
+      } catch (error) {
+        if (error instanceof StateReadError || error instanceof StateWriteError) {
+          throw new StatePersistenceError(
+            {
+              code: error instanceof StateReadError ? 'STATE_READ_FAILED' : 'STATE_WRITE_FAILED',
+              message:
+                error instanceof StateReadError
+                  ? 'Tender state could not be read.'
+                  : 'Tender state could not be written.',
+              retryable: true,
+              stage: error instanceof StateReadError ? 'STATE_READ' : 'STATE_WRITE',
+              occurredAt: this.now().toISOString(),
+              attempt,
+            },
+            run.tenderId,
+            run.runId,
+          );
+        }
         run.status = 'FAILED';
+        run.updatedAt = this.now().toISOString();
         run.failure = {
           code: 'PRICING_GATEWAY_FAILED',
           message: 'The mocked pricing handoff failed.',
           retryable: true,
+          stage: 'PRICING',
+          occurredAt: run.updatedAt,
+          attempt,
         };
-        run.updatedAt = this.now().toISOString();
-        await this.repository.saveRun(run);
+        await this.writeFailureRun(run, attempt, 'PRICING_GATEWAY_FAILED');
         throw new TenderProcessingError(
           'Pricing handoff failed.',
           responseFromRun(run, replayed, correlationId),
@@ -212,7 +276,7 @@ export class TenderService {
         run.status = run.result.processingStatus;
         delete run.failure;
         run.updatedAt = this.now().toISOString();
-        await this.repository.saveRun(run);
+        await this.writeRun(run, attempt, 'PRICING_GATEWAY_FAILED');
       }
     }
 
@@ -223,6 +287,7 @@ export class TenderService {
     run: TenderRun,
     replayed: boolean,
     correlationId: string,
+    attempt: number,
   ): Promise<void> {
     const traceId = randomUUID();
     try {
@@ -256,6 +321,7 @@ export class TenderService {
         outcome: 'FAILED',
       };
       run.status = 'FAILED';
+      run.updatedAt = this.now().toISOString();
       run.failure = {
         code,
         message:
@@ -263,9 +329,11 @@ export class TenderService {
             ? 'The model returned invalid or untrusted interpretation output.'
             : 'Tender interpretation failed at the configured model provider.',
         retryable: error instanceof InterpretationError && error.retryable,
+        stage: 'INTERPRETATION',
+        occurredAt: run.updatedAt,
+        attempt,
       };
-      run.updatedAt = this.now().toISOString();
-      await this.repository.saveRun(run);
+      await this.writeFailureRun(run, run.failure.attempt ?? 1, code);
       throw new TenderProcessingError(
         run.failure.message,
         responseFromRun(run, replayed, correlationId),
@@ -274,7 +342,7 @@ export class TenderService {
     }
 
     run.updatedAt = this.now().toISOString();
-    await this.repository.saveRun(run);
+    await this.writeRun(run, attempt);
     console.info(
       JSON.stringify({
         event: 'tender.interpretation_completed',
@@ -287,6 +355,58 @@ export class TenderService {
         durationMs: run.modelTrace?.durationMs,
         outcome: run.modelTrace?.outcome,
       }),
+    );
+  }
+
+  private async readState<T>(operation: () => Promise<T>, tenderId?: string): Promise<T> {
+    try {
+      return await operation();
+    } catch {
+      throw this.stateError('STATE_READ_FAILED', undefined, tenderId);
+    }
+  }
+
+  private async writeRun(run: TenderRun, attempt: number, causeCode?: RunFailure['causeCode']) {
+    try {
+      await this.repository.saveRun(run);
+    } catch {
+      throw new StatePersistenceError(
+        {
+          code: 'STATE_WRITE_FAILED',
+          message: 'Tender state could not be written.',
+          retryable: true,
+          stage: 'STATE_WRITE',
+          occurredAt: this.now().toISOString(),
+          attempt,
+          ...(causeCode ? { causeCode } : {}),
+        },
+        run.tenderId,
+        run.runId,
+      );
+    }
+  }
+
+  private writeFailureRun(run: TenderRun, attempt: number, causeCode: RunFailure['causeCode']) {
+    return this.writeRun(run, attempt, causeCode);
+  }
+
+  private stateError(
+    code: 'STATE_READ_FAILED' | 'STATE_WRITE_FAILED',
+    runId?: string,
+    tenderId?: string,
+  ): StatePersistenceError {
+    const reading = code === 'STATE_READ_FAILED';
+    return new StatePersistenceError(
+      {
+        code,
+        message: reading ? 'Tender state could not be read.' : 'Tender state could not be written.',
+        retryable: true,
+        stage: reading ? 'STATE_READ' : 'STATE_WRITE',
+        occurredAt: this.now().toISOString(),
+        attempt: 1,
+      },
+      tenderId,
+      runId,
     );
   }
 }
