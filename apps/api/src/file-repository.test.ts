@@ -104,9 +104,9 @@ describe('JsonFileTenderRepository', () => {
       new MockPricingGateway(interruptedRepository),
     );
 
-    await expect(firstService.submit(cleanTender, 'correlation-first')).rejects.toThrow(
-      'simulated interruption',
-    );
+    await expect(firstService.submit(cleanTender, 'correlation-first')).rejects.toMatchObject({
+      failure: { code: 'STATE_WRITE_FAILED' },
+    });
 
     const restartedRepository = createRepository();
     const restartedService = new TenderService(
