@@ -1,0 +1,151 @@
+{
+  "name": "Tender intake and transport normalization",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tender-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "2e765e50-1576-44ab-8cdd-ad521e63dc1d",
+      "name": "Tender Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-640, 0],
+      "webhookId": "e039338f-28bc-422f-a44b-032d9405c46b"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst body = item.body;\nconst headers = item.headers ?? {};\nconst errors = [];\n\nif (!body || typeof body !== 'object' || Array.isArray(body)) {\n  errors.push('Body must be a JSON object.');\n}\n\nconst serialized = JSON.stringify(body ?? null);\nif (new TextEncoder().encode(serialized).byteLength > 1048576) {\n  errors.push('Webhook body exceeds the 1 MiB transport limit.');\n}\n\nconst request = body?.request;\nconst correlationId = body?.correlationId ?? headers['x-correlation-id'];\nconst tenderId = request?.tender?.tenderId;\nconst idempotencyKey = request?.tender?.idempotencyKey;\nconst printableIdentifier = (value) => typeof value === 'string' && value.trim().length > 0;\n\nif (!printableIdentifier(correlationId) || correlationId.length > 128 || !/^[\\x21-\\x7e]+$/.test(correlationId)) {\n  errors.push('correlationId must be 1-128 printable ASCII characters.');\n}\nif (!printableIdentifier(tenderId)) {\n  errors.push('request.tender.tenderId is required.');\n}\nif (!printableIdentifier(idempotencyKey)) {\n  errors.push('request.tender.idempotencyKey is required.');\n}\n\nif (errors.length > 0) {\n  return [{ json: { ok: false, statusCode: 400, body: { error: 'TRANSPORT_VALIDATION_FAILED', correlationId: printableIdentifier(correlationId) ? correlationId : null, issues: errors } } }];\n}\n\nreturn [{ json: { ok: true, correlationId, tenderId, idempotencyKey, request } }];"
+      },
+      "id": "4f31e61a-c3e9-4791-9fda-9b9ca9b34935",
+      "name": "Normalize Transport",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8ff7380e-2718-46af-9838-710bdd192382",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2c61ea36-91d9-403c-b36d-bfa71131376e",
+      "name": "Transport Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-160, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.TENDER_API_URL || 'http://host.docker.internal:3000').replace(/\\/$/, '') + '/tenders' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            {
+              "name": "X-Correlation-ID",
+              "value": "={{ $('Normalize Transport').item.json.correlationId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($('Normalize Transport').item.json.request) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "35280978-a177-4758-a931-ae670a2230cb",
+      "name": "Submit to Tender API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, -96],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst correlationId = $('Normalize Transport').item.json.correlationId;\nconst statusCode = Number.isInteger(response.statusCode) ? response.statusCode : 502;\nconst body = response.body && typeof response.body === 'object'\n  ? response.body\n  : { error: 'TENDER_API_UNAVAILABLE', correlationId, detail: response.message ?? 'Tender API request failed.' };\nreturn [{ json: { statusCode, body } }];"
+      },
+      "id": "1664832c-657a-4171-bae6-cb9874d870a8",
+      "name": "Prepare API Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, -96]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": { "responseCode": "={{ $json.statusCode }}" }
+      },
+      "id": "780f4ac1-e1b6-45d9-9dbb-44ef37ab4888",
+      "name": "Return API Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [560, -96]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": { "responseCode": "={{ $json.statusCode }}" }
+      },
+      "id": "22e4591c-ad29-41ea-96e2-6574d39d99fa",
+      "name": "Return Transport Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [80, 112]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Tender Intake Webhook": {
+      "main": [[{ "node": "Normalize Transport", "type": "main", "index": 0 }]]
+    },
+    "Normalize Transport": {
+      "main": [[{ "node": "Transport Valid?", "type": "main", "index": 0 }]]
+    },
+    "Transport Valid?": {
+      "main": [
+        [{ "node": "Submit to Tender API", "type": "main", "index": 0 }],
+        [{ "node": "Return Transport Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Submit to Tender API": {
+      "main": [[{ "node": "Prepare API Response", "type": "main", "index": 0 }]]
+    },
+    "Prepare API Response": {
+      "main": [[{ "node": "Return API Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "fa0ec094-1439-4b24-b474-0e09cf1bd06c",
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}

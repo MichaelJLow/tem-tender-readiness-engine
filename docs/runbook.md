@@ -17,6 +17,20 @@ This is a **living operational document**. It describes the local API, including
 - Interpretation runs inside the API process. The model receives only the tender context needed for site association and the submitted note/extracted text. It has no tools or pricing access. Provider failure returns a technical failure and cannot assign a route or call pricing.
 - A site-scoped extracted fact must cite a quote containing both its value and a unique known site ID, meter identifier, or full address. Unclear or conflicting identity routes to `HUMAN_REVIEW`, including for a single-site tender.
 - Submit a JSON domain `ReadinessInput` to `POST /tenders` with `Content-Type: application/json`.
+
+## Local n8n intake
+
+The credential-free Milestone 7 webhook export, pinned n8n version, synthetic
+fixtures, Docker host-gateway setup, and verification commands live in
+[`integrations/n8n/README.md`](../integrations/n8n/README.md). n8n normalizes
+transport only and forwards the existing API contract; the API continues to own
+validation, idempotency, readiness rules, interpretation, and the pricing guard.
+
+Keep n8n's editor bound to loopback. Do not expose it, the operations Console,
+or review endpoints publicly. Containerized n8n reaches the host API through the
+documented host-gateway name rather than `localhost`; a host-installed n8n can
+use the API's loopback URL.
+
 - The service returns `200` for a completed decision, `202` while a required document remains pending, `400` for invalid JSON/input, `409` when an idempotency key is reused for different content, and `502` when the model provider or mock pricing handoff fails. Invalid model evidence returns a technical failure without a business route.
 - Each response includes `X-Correlation-ID`. Supply a printable `X-Correlation-ID` of up to 128 characters to carry one through the request; otherwise the API generates one.
 - State is stored in a versioned JSON file and writes are atomic within one local process. Do not run multiple API instances against the same file.
