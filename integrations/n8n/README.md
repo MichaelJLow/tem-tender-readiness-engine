@@ -71,7 +71,7 @@ listen on an interface reachable from the n8n container; do not expose the
 Console, review endpoints, or n8n editor publicly.
 
 ```sh
-HOST=0.0.0.0 PORT=3000 TENDER_STATE_PATH=/tmp/eng-5-tender-state.json npm run dev:api
+HOST=0.0.0.0 PORT=3000 TENDER_STATE_PATH=/tmp/eng-7-tender-state.json npm run dev:api
 ```
 
 Start the pinned n8n image in another terminal:
@@ -130,23 +130,41 @@ synthetic source/document references.
 | 5     | `duplicate.json`         | `200`, `COMPLETED` + `DUPLICATE`; it reuses the clean tender ID with a new key, so it must follow step 1  |
 
 ```sh
+set -o pipefail
 for fixture in clean needs-information human-review pending duplicate; do
   printf '\n=== %s ===\n' "$fixture"
   curl --fail-with-body --silent --show-error \
     -H 'Content-Type: application/json' \
     --data "@integrations/n8n/fixtures/$fixture.json" \
-    http://127.0.0.1:5678/webhook/tender-intake
+    http://127.0.0.1:5678/webhook/tender-intake \
+    | tee "/tmp/eng-7-$fixture-response.json"
   printf '\n'
 done
 
 curl --fail-with-body --silent --show-error http://127.0.0.1:3000/tenders
+
+human_run_id=$(node -p \
+  "JSON.parse(require('node:fs').readFileSync('/tmp/eng-7-human-review-response.json')).runId")
+curl --fail-with-body --silent --show-error \
+  "http://127.0.0.1:3000/tenders/$human_run_id"
+
+node --input-type=module -e '
+  import { readFileSync } from "node:fs";
+  const state = JSON.parse(readFileSync("/tmp/eng-7-tender-state.json", "utf8"));
+  if (state.handoffs.length !== 1 || state.handoffs[0].route !== "READY_FOR_PRICING") {
+    throw new Error("Expected exactly one ready-only pricing handoff.");
+  }
+  console.log(state.handoffs[0]);
+'
 ```
 
-The final API projection must contain exactly one pricing handoff, owned by the
-clean run. Verify each response retains its fixture correlation ID and a run ID;
-the human-review response must also retain both synthetic date-fact evidence
-source IDs. The API projection is the authoritative check for source/document
-references because `integrationOutcome` is intentionally only a compact receipt.
+`GET /tenders` is a run overview and does not expose handoffs or rule evidence.
+The disposable state assertion above verifies exactly one pricing handoff, owned
+by the clean run. Verify each saved response retains its fixture correlation ID
+and a run ID. The human-review response and `GET /tenders/{runId}` detail must
+also retain both synthetic date-fact evidence source IDs. The run detail is the
+authoritative API projection for source/document references because
+`integrationOutcome` is intentionally only a compact receipt.
 
 For the technical failure path, stop the API while leaving n8n running and
 submit any valid fixture. Expect HTTP `502`, `TENDER_API_UNAVAILABLE`, the input
