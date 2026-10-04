@@ -17,6 +17,19 @@ This is a **living operational document**. It describes the local API, including
 - Interpretation runs inside the API process. The model receives only the tender context needed for site association and the submitted note/extracted text. It has no tools or pricing access. Provider failure returns a technical failure and cannot assign a route or call pricing.
 - A site-scoped extracted fact must cite a quote containing both its value and a unique known site ID, meter identifier, or full address. Unclear or conflicting identity routes to `HUMAN_REVIEW`, including for a single-site tender.
 - Submit a JSON domain `ReadinessInput` to `POST /tenders` with `Content-Type: application/json`.
+## Local n8n intake
+
+The credential-free Milestone 7 webhook export, pinned n8n version, synthetic
+fixtures, Docker host-gateway setup, and verification commands live in
+[`integrations/n8n/README.md`](../integrations/n8n/README.md). n8n normalizes
+transport only and forwards the existing API contract; the API continues to own
+validation, idempotency, readiness rules, interpretation, and the pricing guard.
+
+Keep n8n's editor bound to loopback. Do not expose it, the operations Console,
+or review endpoints publicly. Containerized n8n reaches the host API through the
+documented host-gateway name rather than `localhost`; a host-installed n8n can
+use the API's loopback URL.
+
 - The service returns `200` for a completed decision, `202` while a required document remains pending, `400` for invalid JSON/input, `409` when an idempotency key is reused for different content, and `502` when the model provider or mock pricing handoff fails. Invalid model evidence returns a technical failure without a business route.
 - Each response includes `X-Correlation-ID`. Supply a printable `X-Correlation-ID` of up to 128 characters to carry one through the request; otherwise the API generates one.
 - State is stored in a versioned JSON file and writes are atomic within one local process. Do not run multiple API instances against the same file.
@@ -189,3 +202,100 @@ This document is considered complete when each implemented failure path includes
 
 Document and n8n-specific cases should be added only when those integration
 boundaries exist.
+
+## Milestone 6 archive and restore
+
+The API, Console and Studio remain local. S3 stores private, manual snapshots
+of synthetic evidence. It is not the live tender database and does not contain
+Studio's DuckDB files, experiments or raw traces. The live S3 upload, restore,
+and private-access checks passed on 4 October 2026; see the
+[Milestone 6 verification receipt](milestone-6-verification.md). The local
+Console walkthrough against the S3 restore is tracked separately in ENG-3.
+
+Use a separate demo state path and `npm run demo:seed`, then record a
+`REQUEST_INFORMATION` disposition for the conflicting-date case with a reason
+and citations to `site-001`, `contract-a` and `contract-b`. Stop the API using
+that file before preparing a snapshot. Other local processes using different
+state files can remain running. Inspect reviewer notes and any optional source
+files to confirm they are synthetic and contain no credentials.
+
+From the repository root, prepare and restore locally without AWS credentials:
+
+```powershell
+npm run demo:archive -- --state data/screenshot-state-2026-09-29.json --output data/archive-local --api-stopped --synthetic
+npm run demo:restore -- --from data/archive-local --output data/restored-local
+```
+
+The parent `data` directory must exist, and each output directory must be new.
+The archive takes `--state` / `--evals`, or `TENDER_STATE_PATH` / `EVALS_DIR`,
+falling back to `data/tender-state.json` / `evals`. Add an individually reviewed
+synthetic file with `--source path/to/synthetic-note.txt`; repeat the option for
+another file. Allowed source extensions are TXT, CSV, JSON and PDF. No PDFs
+are generated or parsed here, and the current seed has source references rather
+than original contract files. Do not add invented source files to fill that gap.
+
+The snapshot contains:
+
+```text
+manifest.json
+state/tender-state.json
+evals/accepted-baseline.json
+evals/reports/<accepted-run>.json
+evals/reports/<accepted-run>.md   # when available
+evals/reports/<latest-run>.json
+evals/reports/<latest-run>.md     # when available
+sources/<number>-<filename>      # only explicitly selected files
+```
+
+The manifest records time, snapshot ID, sizes and SHA-256 checksums. Accepted
+and latest may refer to the same report in a future demo; the pointer remains
+the acceptance authority. Snapshots are limited to 32 files, 16 MiB per file
+and 64 MiB total. State must match the three known seeded cases, their review
+audit and one ready-only mocked handoff. An absent audit or extra case fails
+visibly; use a separate fresh demo state rather than editing existing state.
+
+After account/region/credits and the private bucket are verified, install AWS
+CLI v2 if needed and configure a normal profile outside the repository. A web
+Console sign-in does not by itself authenticate the local CLI. Upload the
+already prepared snapshot with your actual bucket, region, account ID and
+profile (omit `--profile` to use the default credential chain):
+
+```powershell
+npm run demo:archive -- --output data/archive-local --upload-existing --synthetic --bucket YOUR_PRIVATE_BUCKET --region YOUR_REGION --owner YOUR_12_DIGIT_ACCOUNT_ID --profile YOUR_PROFILE
+npm run demo:restore -- --bucket YOUR_PRIVATE_BUCKET --region YOUR_REGION --owner YOUR_12_DIGIT_ACCOUNT_ID --profile YOUR_PROFILE --snapshot SNAPSHOT_ID_FROM_ARCHIVE_OUTPUT --output data/restored-s3
+```
+
+Objects live under `snapshots/<snapshot-id>/`. Upload verifies the local package
+and writes its manifest last, with conditional writes that refuse existing
+keys. A failed upload leaves no complete manifest. For a retry after a partial
+upload, prepare a new snapshot in another fresh output directory; do not delete
+or overwrite an existing S3 prefix. The local snapshot remains intact if an
+AWS operation fails. No CLI stderr, key or environment contents are logged.
+
+Restore verifies every object before creating the destination. Missing files,
+changed checksums, unsupported paths, invalid schemas or broken report pointers
+fail visibly. An existing directory is always refused, even if empty. A local
+write failure can leave an incomplete directory without a manifest; preserve it
+for diagnosis and use a different fresh destination after resolving the error.
+
+To inspect a restored demo, start a separate API against its files on a free
+loopback port, then point the Console at that API:
+
+```powershell
+# API terminal
+$env:TENDER_STATE_PATH = (Resolve-Path data/restored-local/state/tender-state.json).Path
+$env:EVALS_DIR = (Resolve-Path data/restored-local/evals).Path
+$env:PORT = '3002'
+npm run dev:api
+
+# Console terminal: stop this checkout's existing Console before restarting it.
+$env:TENDER_API_URL = 'http://127.0.0.1:3002'
+npm run dev:console
+```
+
+For an S3 restore replace `restored-local` with `restored-s3`. Do not reseed or
+submit cases during this verification. Confirm the same three routes, recorded
+review disposition, distinct accepted/latest metrics and one mocked handoff
+for the ready case. Restarting and viewing the archive must not make another
+handoff. Studio stays on `4113`; its links are optional local drill-down and
+the restored reports remain readable without it.
