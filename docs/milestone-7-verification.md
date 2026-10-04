@@ -89,7 +89,7 @@ implementation blocker remains.
 - [x] Actual execution IDs and observed outcomes are recorded for every scenario.
 - [x] Export rechecked for credentials, secrets, real recipients/customer data,
       and machine-specific credential IDs.
-- [ ] Pull request URL recorded: pending.
+- [x] Pull request URL recorded: https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/19.
 - [ ] Merge commit recorded and substituted for the starting revision: pending.
 - [x] Execution state confirms the API owns the sole `READY_FOR_PRICING` handoff.
 - [x] Implementation review completed with no remaining code or documentation blocker.
