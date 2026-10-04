@@ -60,6 +60,17 @@ export class StatePersistenceError extends Error {
   }
 }
 
+export const DEFAULT_RECOVERY_POLICY = {
+  maxAttempts: 3,
+  backoffMs: [250, 1_000] as readonly number[],
+} as const;
+
+export type RecoveryPolicy = {
+  maxAttempts: number;
+  backoffMs: readonly number[];
+  sleep?: (delayMs: number) => Promise<void>;
+};
+
 export class TenderService {
   private queue: Promise<void> = Promise.resolve();
 
@@ -68,6 +79,7 @@ export class TenderService {
     private readonly pricingGateway: PricingGateway,
     private readonly now: () => Date = () => new Date(),
     private readonly interpreter?: TenderInterpreter,
+    private readonly recoveryPolicy: RecoveryPolicy = DEFAULT_RECOVERY_POLICY,
   ) {}
 
   submit(rawInput: unknown, correlationId: string): Promise<TenderResponse> {
@@ -189,18 +201,22 @@ export class TenderService {
     correlationId: string,
     replayed: boolean,
   ): Promise<TenderResponse> {
-    const attempt = (run.failure?.attempt ?? 0) + 1;
+    const priorFailure = run.failure;
+    let attempt = priorFailure?.stage === 'INTERPRETATION' ? (priorFailure.attempt ?? 0) + 1 : 1;
     if (!run.result) {
       run.status = 'PROCESSING';
-      delete run.failure;
-      run.updatedAt = this.now().toISOString();
-      await this.writeRun(run, attempt);
+      // Keep the retained failure durable until the resumed provider attempt resolves.
+      if (priorFailure?.stage !== 'INTERPRETATION') {
+        delete run.failure;
+        run.updatedAt = this.now().toISOString();
+        await this.writeRun(run, attempt);
+      }
 
       const duplicateKnown =
         run.input.signals.duplicate.matchesActiveTender ||
         run.input.signals.duplicate.idempotencyKeyPreviouslyProcessed;
       if (run.input.textSources.length > 0 && !duplicateKnown && !run.interpretation) {
-        await this.interpretTextSources(run, replayed, correlationId, attempt);
+        attempt = await this.interpretTextSources(run, replayed, correlationId, attempt);
       }
 
       let result: ReadinessResult;
@@ -233,11 +249,66 @@ export class TenderService {
     }
 
     if (run.result?.route === 'READY_FOR_PRICING') {
+      const pricingAttempt =
+        priorFailure?.stage === 'PRICING' ? (priorFailure.attempt ?? 0) + 1 : 1;
+      await this.submitPricingWithRetry(run, replayed, correlationId, pricingAttempt);
+    }
+
+    return responseFromRun(run, replayed, correlationId);
+  }
+
+  private async submitPricingWithRetry(
+    run: TenderRun,
+    replayed: boolean,
+    correlationId: string,
+    initialAttempt: number,
+  ): Promise<void> {
+    let attempt = initialAttempt;
+    while (true) {
+      if (attempt > this.recoveryPolicy.maxAttempts) {
+        const handoffKey = `${run.tenderId}:${run.idempotencyKey}`;
+        const recordedHandoff = await this.readState(() => this.repository.findHandoff(handoffKey));
+        if (recordedHandoff) {
+          run.status = 'COMPLETED';
+          delete run.failure;
+          run.updatedAt = this.now().toISOString();
+          await this.writeRun(run, this.recoveryPolicy.maxAttempts, 'PRICING_GATEWAY_FAILED');
+          return;
+        }
+        run.status = 'FAILED';
+        run.updatedAt = this.now().toISOString();
+        run.failure = {
+          code: 'PRICING_GATEWAY_FAILED',
+          message: `The mocked pricing handoff exhausted ${this.recoveryPolicy.maxAttempts} attempts.`,
+          retryable: false,
+          stage: 'PRICING',
+          occurredAt: run.updatedAt,
+          attempt: this.recoveryPolicy.maxAttempts,
+        };
+        await this.writeFailureRun(run, this.recoveryPolicy.maxAttempts, 'PRICING_GATEWAY_FAILED');
+        throw new TenderProcessingError(
+          'Pricing handoff failed.',
+          responseFromRun(run, replayed, correlationId),
+          502,
+        );
+      }
+
+      run.status = 'PROCESSING';
+      run.updatedAt = this.now().toISOString();
+      run.failure = {
+        code: 'PRICING_GATEWAY_FAILED',
+        message: 'A pricing handoff attempt is in progress; recovery must count this attempt.',
+        retryable: true,
+        stage: 'PRICING',
+        occurredAt: run.updatedAt,
+        attempt,
+      };
+      await this.writeRun(run, attempt);
       try {
         await this.pricingGateway.submit({
           tenderId: run.tenderId,
           runId: run.runId,
-          route: run.result.route,
+          route: 'READY_FOR_PRICING',
           handoffKey: `${run.tenderId}:${run.idempotencyKey}`,
         });
       } catch (error) {
@@ -258,32 +329,37 @@ export class TenderService {
             run.runId,
           );
         }
+        const exhausted = attempt >= this.recoveryPolicy.maxAttempts;
         run.status = 'FAILED';
         run.updatedAt = this.now().toISOString();
         run.failure = {
           code: 'PRICING_GATEWAY_FAILED',
-          message: 'The mocked pricing handoff failed.',
-          retryable: true,
+          message: exhausted
+            ? `The mocked pricing handoff exhausted ${this.recoveryPolicy.maxAttempts} attempts.`
+            : 'The mocked pricing handoff failed and will be retried.',
+          retryable: !exhausted,
           stage: 'PRICING',
           occurredAt: run.updatedAt,
           attempt,
         };
         await this.writeFailureRun(run, attempt, 'PRICING_GATEWAY_FAILED');
+        if (!exhausted) {
+          await this.waitBeforeRetry(attempt);
+          attempt += 1;
+          continue;
+        }
         throw new TenderProcessingError(
           'Pricing handoff failed.',
           responseFromRun(run, replayed, correlationId),
           502,
         );
       }
-      if (run.status === 'FAILED') {
-        run.status = run.result.processingStatus;
-        delete run.failure;
-        run.updatedAt = this.now().toISOString();
-        await this.writeRun(run, attempt, 'PRICING_GATEWAY_FAILED');
-      }
+      run.status = 'COMPLETED';
+      delete run.failure;
+      run.updatedAt = this.now().toISOString();
+      await this.writeRun(run, attempt, 'PRICING_GATEWAY_FAILED');
+      return;
     }
-
-    return responseFromRun(run, replayed, correlationId);
   }
 
   private async interpretTextSources(
@@ -291,61 +367,109 @@ export class TenderService {
     replayed: boolean,
     correlationId: string,
     attempt: number,
-  ): Promise<void> {
-    const traceId = randomUUID();
-    try {
-      if (!this.interpreter) throw new Error('No tender interpreter is configured.');
-      const { output, trace } = await this.interpreter.interpret(run.input, traceId);
-      run.modelTrace = trace;
-      const interpretation = normalizeStructuredConflictEvidence(run.input.textSources, output);
-      const signals = toReadinessSignals(run.input, run.input.textSources, interpretation);
-      run.input = { ...run.input, signals };
-      run.interpretation = interpretation;
-    } catch (error) {
-      const code =
-        error instanceof InterpretationError
-          ? error.code
-          : error instanceof InvalidInterpretationError || error instanceof ZodError
-            ? 'MODEL_OUTPUT_INVALID'
-            : 'MODEL_PROVIDER_FAILED';
-      const trace =
-        error instanceof InterpretationError
-          ? error.trace
-          : run.modelTrace
-            ? { ...run.modelTrace, outcome: 'FAILED' as const }
-            : undefined;
-      run.modelTrace = trace ?? {
-        traceId,
-        model: this.interpreter?.model ?? 'unconfigured',
-        promptVersion: INTERPRETATION_PROMPT_VERSION,
-        startedAt: this.now().toISOString(),
-        completedAt: this.now().toISOString(),
-        durationMs: 0,
-        outcome: 'FAILED',
-      };
-      run.status = 'FAILED';
+  ): Promise<number> {
+    let currentAttempt = attempt;
+    while (true) {
+      if (currentAttempt > this.recoveryPolicy.maxAttempts) {
+        run.status = 'FAILED';
+        run.updatedAt = this.now().toISOString();
+        run.failure = {
+          code: 'MODEL_PROVIDER_FAILED',
+          message: `Tender interpretation exhausted ${this.recoveryPolicy.maxAttempts} provider attempts.`,
+          retryable: false,
+          stage: 'INTERPRETATION',
+          occurredAt: run.updatedAt,
+          attempt: this.recoveryPolicy.maxAttempts,
+        };
+        await this.writeFailureRun(run, this.recoveryPolicy.maxAttempts, 'MODEL_PROVIDER_FAILED');
+        throw new TenderProcessingError(
+          run.failure.message,
+          responseFromRun(run, replayed, correlationId),
+          502,
+        );
+      }
+
+      const traceId = randomUUID();
+      run.status = 'PROCESSING';
       run.updatedAt = this.now().toISOString();
       run.failure = {
-        code,
-        message:
-          code === 'MODEL_OUTPUT_INVALID'
-            ? 'The model returned invalid or untrusted interpretation output.'
-            : 'Tender interpretation failed at the configured model provider.',
-        retryable: error instanceof InterpretationError && error.retryable,
+        code: 'MODEL_PROVIDER_FAILED',
+        message: 'A provider attempt is in progress; recovery must count this attempt.',
+        retryable: true,
         stage: 'INTERPRETATION',
         occurredAt: run.updatedAt,
-        attempt,
+        attempt: currentAttempt,
       };
-      await this.writeFailureRun(run, run.failure.attempt ?? 1, code);
-      throw new TenderProcessingError(
-        run.failure.message,
-        responseFromRun(run, replayed, correlationId),
-        code === 'MODEL_PROVIDER_FAILED' ? 502 : 500,
-      );
+      await this.writeRun(run, currentAttempt);
+      try {
+        if (!this.interpreter) throw new Error('No tender interpreter is configured.');
+        const { output, trace } = await this.interpreter.interpret(run.input, traceId);
+        run.modelTrace = trace;
+        const interpretation = normalizeStructuredConflictEvidence(run.input.textSources, output);
+        const signals = toReadinessSignals(run.input, run.input.textSources, interpretation);
+        run.input = { ...run.input, signals };
+        run.interpretation = interpretation;
+      } catch (error) {
+        const code =
+          error instanceof InterpretationError
+            ? error.code
+            : error instanceof InvalidInterpretationError || error instanceof ZodError
+              ? 'MODEL_OUTPUT_INVALID'
+              : 'MODEL_PROVIDER_FAILED';
+        const trace =
+          error instanceof InterpretationError
+            ? error.trace
+            : run.modelTrace
+              ? { ...run.modelTrace, outcome: 'FAILED' as const }
+              : undefined;
+        run.modelTrace = trace ?? {
+          traceId,
+          model: this.interpreter?.model ?? 'unconfigured',
+          promptVersion: INTERPRETATION_PROMPT_VERSION,
+          startedAt: this.now().toISOString(),
+          completedAt: this.now().toISOString(),
+          durationMs: 0,
+          outcome: 'FAILED',
+        };
+        run.status = 'FAILED';
+        run.updatedAt = this.now().toISOString();
+        const eligible = error instanceof InterpretationError && error.retryable;
+        const exhausted = currentAttempt >= this.recoveryPolicy.maxAttempts;
+        run.failure = {
+          code,
+          message:
+            code === 'MODEL_OUTPUT_INVALID'
+              ? 'The model returned invalid or untrusted interpretation output.'
+              : eligible && exhausted
+                ? `Tender interpretation exhausted ${this.recoveryPolicy.maxAttempts} provider attempts.`
+                : 'Tender interpretation failed at the configured model provider.',
+          retryable: eligible && !exhausted,
+          stage: 'INTERPRETATION',
+          occurredAt: run.updatedAt,
+          attempt: currentAttempt,
+        };
+        await this.writeFailureRun(run, run.failure.attempt ?? 1, code);
+        if (eligible && !exhausted) {
+          await this.waitBeforeRetry(currentAttempt);
+          currentAttempt += 1;
+          run.status = 'PROCESSING';
+          delete run.failure;
+          continue;
+        }
+        throw new TenderProcessingError(
+          run.failure.message,
+          responseFromRun(run, replayed, correlationId),
+          code === 'MODEL_PROVIDER_FAILED' ? 502 : 500,
+        );
+      }
+
+      break;
     }
 
     run.updatedAt = this.now().toISOString();
-    await this.writeRun(run, attempt);
+    run.status = 'PROCESSING';
+    delete run.failure;
+    await this.writeRun(run, currentAttempt);
     console.info(
       JSON.stringify({
         event: 'tender.interpretation_completed',
@@ -359,6 +483,15 @@ export class TenderService {
         outcome: run.modelTrace?.outcome,
       }),
     );
+    return currentAttempt;
+  }
+
+  private waitBeforeRetry(failedAttempt: number): Promise<void> {
+    const delay = this.recoveryPolicy.backoffMs[failedAttempt - 1] ?? 0;
+    const sleep =
+      this.recoveryPolicy.sleep ??
+      ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
+    return sleep(delay);
   }
 
   private async readState<T>(operation: () => Promise<T>, tenderId?: string): Promise<T> {

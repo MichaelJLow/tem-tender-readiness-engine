@@ -94,7 +94,12 @@ class FailOnceOnPricingRecoveryRepository extends MemoryRepository {
 
   override async saveRun(run: TenderRun) {
     const stored = await this.findRunByIdempotencyKey(run.idempotencyKey);
-    if (this.failRecovery && stored?.status === 'FAILED' && run.status === 'COMPLETED') {
+    if (
+      this.failRecovery &&
+      stored?.status === 'PROCESSING' &&
+      stored.failure?.stage === 'PRICING' &&
+      run.status === 'COMPLETED'
+    ) {
       this.failRecovery = false;
       throw new Error('simulated recovery write failure');
     }
@@ -135,9 +140,12 @@ class FakeInterpreter implements TenderInterpreter {
   calls = 0;
   result: TenderInterpretation = output;
   failure?: InterpretationError;
+  failuresBeforeSuccess = Number.POSITIVE_INFINITY;
+  beforeInterpret?: () => Promise<void>;
   async interpret() {
     this.calls += 1;
-    if (this.failure) throw this.failure;
+    await this.beforeInterpret?.();
+    if (this.failure && this.calls <= this.failuresBeforeSuccess) throw this.failure;
     return {
       output: this.result,
       trace: {
@@ -162,6 +170,7 @@ describe('TenderService interpretation boundary', () => {
       new RecordingGateway(repository),
       undefined,
       interpreter,
+      { maxAttempts: 1, backoffMs: [], sleep: async () => undefined },
     );
     const result = await service.submit(cleanTender, 'correlation-structured');
     expect(result.route).toBe('READY_FOR_PRICING');
@@ -176,6 +185,7 @@ describe('TenderService interpretation boundary', () => {
       new RecordingGateway(repository),
       undefined,
       interpreter,
+      { maxAttempts: 1, backoffMs: [], sleep: async () => undefined },
     );
     const request = { ...cleanTender, textSources: [source] };
     const result = await service.submit(request, 'correlation-text');
@@ -338,7 +348,12 @@ describe('TenderService interpretation boundary', () => {
       cleanTender.tender.idempotencyKey,
     );
     expect(afterFailure?.status).toBe('PROCESSING');
-    expect(afterFailure?.failure).toBeUndefined();
+    expect(afterFailure?.failure).toMatchObject({
+      code: 'MODEL_PROVIDER_FAILED',
+      stage: 'INTERPRETATION',
+      attempt: 1,
+      retryable: true,
+    });
     expect(interpreter.calls).toBe(1);
 
     const resumed = await service.submit(request, 'correlation-write-retry');
@@ -407,14 +422,14 @@ describe('TenderService interpretation boundary', () => {
     expect(saved?.failure).toMatchObject({
       code: 'MODEL_PROVIDER_FAILED',
       stage: 'INTERPRETATION',
-      retryable: true,
-      attempt: 1,
+      retryable: false,
+      attempt: 3,
     });
     expect(saved?.failure?.occurredAt).toEqual(expect.any(String));
     expect((await repository.store.read()).handoffs).toHaveLength(0);
   });
 
-  it('retries a retryable provider failure with the same idempotency key', async () => {
+  it('automatically retries a transient provider failure with bounded backoff', async () => {
     const repository = new MemoryRepository();
     const interpreter = new FakeInterpreter();
     const trace = {
@@ -432,44 +447,256 @@ describe('TenderService interpretation boundary', () => {
       true,
       trace,
     );
+    interpreter.failuresBeforeSuccess = 1;
+    const delays: number[] = [];
     const service = new TenderService(
       repository,
       new RecordingGateway(repository),
       undefined,
       interpreter,
+      { maxAttempts: 3, backoffMs: [250, 1_000], sleep: async (ms) => void delays.push(ms) },
     );
     const request = { ...cleanTender, textSources: [source] };
 
-    await expect(service.submit(request, 'correlation-before-retry')).rejects.toMatchObject({
-      httpStatus: 502,
-    });
-    interpreter.failure = undefined;
-    const retried = await service.submit(request, 'correlation-after-retry');
+    const retried = await service.submit(request, 'correlation-before-retry');
 
     expect(retried.status).toBe('COMPLETED');
     expect(retried.route).toBe('READY_FOR_PRICING');
     expect(retried.failure).toBeUndefined();
-    expect(retried.replayed).toBe(true);
+    expect(retried.replayed).toBe(false);
     expect(interpreter.calls).toBe(2);
+    expect(delays).toEqual([250]);
     expect((await repository.store.read()).handoffs).toHaveLength(1);
   });
 
-  it('retries a failed pricing handoff without duplicating the handoff', async () => {
+  it('continues the retained attempt budget after a process restart', async () => {
+    const repository = new MemoryRepository();
+    const firstInterpreter = new FakeInterpreter();
+    firstInterpreter.failure = new InterpretationError(
+      'MODEL_PROVIDER_FAILED',
+      'provider unavailable',
+      true,
+      {
+        traceId: randomUUID(),
+        model: firstInterpreter.model,
+        promptVersion: 'test-prompt-v1',
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: 1,
+        outcome: 'FAILED',
+      },
+    );
+    const request = { ...cleanTender, textSources: [source] };
+    const interruptedService = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      firstInterpreter,
+      {
+        maxAttempts: 2,
+        backoffMs: [250],
+        sleep: async () => {
+          throw new Error('simulated process stop during backoff');
+        },
+      },
+    );
+    await expect(interruptedService.submit(request, 'restart-before')).rejects.toThrow(
+      'simulated process stop',
+    );
+    expect(
+      (await repository.findRunByIdempotencyKey(request.tender.idempotencyKey))?.failure,
+    ).toMatchObject({ attempt: 1, retryable: true });
+
+    const resumedInterpreter = new FakeInterpreter();
+    resumedInterpreter.beforeInterpret = async () => {
+      expect(await repository.findRunByIdempotencyKey(request.tender.idempotencyKey)).toMatchObject(
+        {
+          status: 'PROCESSING',
+          failure: { stage: 'INTERPRETATION', attempt: 2, retryable: true },
+        },
+      );
+    };
+    const resumedGateway = new RecordingGateway(repository);
+    const resumedService = new TenderService(
+      repository,
+      resumedGateway,
+      undefined,
+      resumedInterpreter,
+      { maxAttempts: 2, backoffMs: [250], sleep: async () => undefined },
+    );
+    const resumed = await resumedService.submit(request, 'restart-after');
+
+    expect(resumed).toMatchObject({
+      status: 'COMPLETED',
+      route: 'READY_FOR_PRICING',
+      replayed: true,
+    });
+    expect(resumed.runId).toBe(repository.store.state.runs[0]?.runId);
+    expect(resumedInterpreter.calls).toBe(1);
+    expect(resumedGateway.calls).toBe(1);
+    expect(repository.store.state.handoffs).toHaveLength(1);
+  });
+
+  it('counts an interpretation attempt interrupted while the provider call is in flight', async () => {
+    const repository = new MemoryRepository();
+    const interpreter = new FakeInterpreter();
+    const trace = {
+      traceId: randomUUID(),
+      model: interpreter.model,
+      promptVersion: 'test-prompt-v1',
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: 1,
+      outcome: 'FAILED' as const,
+    };
+    interpreter.beforeInterpret = async () => {
+      if (interpreter.calls === 1) {
+        throw new InterpretationError('MODEL_PROVIDER_FAILED', 'provider unavailable', true, trace);
+      }
+      if (interpreter.calls === 2) await new Promise<void>(() => undefined);
+    };
+    const request = { ...cleanTender, textSources: [source] };
+    const interruptedService = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+      { maxAttempts: 2, backoffMs: [0], sleep: async () => undefined },
+    );
+    void interruptedService.submit(request, 'interpretation-in-flight');
+    while (interpreter.calls < 2) await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(await repository.findRunByIdempotencyKey(request.tender.idempotencyKey)).toMatchObject({
+      status: 'PROCESSING',
+      failure: { stage: 'INTERPRETATION', attempt: 2, retryable: true },
+    });
+
+    const resumedInterpreter = new FakeInterpreter();
+    const resumedService = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      resumedInterpreter,
+      { maxAttempts: 2, backoffMs: [0], sleep: async () => undefined },
+    );
+    await expect(
+      resumedService.submit(request, 'interpretation-in-flight-replay'),
+    ).rejects.toMatchObject({
+      httpStatus: 502,
+      response: {
+        status: 'FAILED',
+        failure: {
+          code: 'MODEL_PROVIDER_FAILED',
+          stage: 'INTERPRETATION',
+          attempt: 2,
+          retryable: false,
+        },
+      },
+    });
+
+    expect(interpreter.calls).toBe(2);
+    expect(resumedInterpreter.calls).toBe(0);
+    expect((await repository.store.read()).handoffs).toHaveLength(0);
+  });
+
+  it('automatically retries a failed pricing handoff without duplicating the handoff', async () => {
     const repository = new MemoryRepository();
     const gateway = new RecordingGateway(repository);
     gateway.failuresRemaining = 1;
     const service = new TenderService(repository, gateway);
 
-    await expect(
-      service.submit(cleanTender, 'correlation-pricing-before-retry'),
-    ).rejects.toMatchObject({ httpStatus: 502 });
-    const retried = await service.submit(cleanTender, 'correlation-pricing-after-retry');
+    const retried = await service.submit(cleanTender, 'correlation-pricing-before-retry');
 
     expect(retried.status).toBe('COMPLETED');
     expect(retried.route).toBe('READY_FOR_PRICING');
     expect(retried.failure).toBeUndefined();
-    expect(retried.replayed).toBe(true);
+    expect(retried.replayed).toBe(false);
     expect(gateway.calls).toBe(2);
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+  });
+
+  it('stops after pricing retry exhaustion and does not treat a retained ready route as success', async () => {
+    const repository = new MemoryRepository();
+    const gateway = new RecordingGateway(repository);
+    gateway.failuresRemaining = 4;
+    const service = new TenderService(repository, gateway, undefined, undefined, {
+      maxAttempts: 3,
+      backoffMs: [250, 1_000],
+      sleep: async () => undefined,
+    });
+
+    await expect(service.submit(cleanTender, 'pricing-exhaustion')).rejects.toMatchObject({
+      httpStatus: 502,
+      response: {
+        status: 'FAILED',
+        route: 'READY_FOR_PRICING',
+        failure: { retryable: false, attempt: 3 },
+      },
+    });
+    const replay = await service.submit(cleanTender, 'pricing-exhaustion-replay');
+
+    expect(replay).toMatchObject({
+      status: 'FAILED',
+      route: 'READY_FOR_PRICING',
+      replayed: true,
+    });
+    expect(gateway.calls).toBe(3);
+    expect((await repository.store.read()).handoffs).toHaveLength(0);
+  });
+
+  it('counts a pricing attempt interrupted in flight and reconciles a saved handoff', async () => {
+    const repository = new MemoryRepository();
+    let calls = 0;
+    let markInFlight!: () => void;
+    const inFlight = new Promise<void>((resolve) => {
+      markInFlight = resolve;
+    });
+    const interruptedGateway: PricingGateway = {
+      async submit(input) {
+        calls += 1;
+        if (calls === 1) throw new Error('temporary gateway failure');
+        if (calls === 2) {
+          const handoff: PricingHandoff = {
+            handoffId: randomUUID(),
+            handoffKey: input.handoffKey,
+            tenderId: input.tenderId,
+            runId: input.runId,
+            route: 'READY_FOR_PRICING',
+            createdAt: new Date().toISOString(),
+          };
+          await repository.saveHandoff(handoff);
+          markInFlight();
+          return new Promise<PricingHandoff>(() => undefined);
+        }
+        throw new Error('unexpected extra gateway attempt');
+      },
+    };
+    const request = cleanTender;
+    const interruptedService = new TenderService(
+      repository,
+      interruptedGateway,
+      undefined,
+      undefined,
+      { maxAttempts: 2, backoffMs: [0], sleep: async () => undefined },
+    );
+    void interruptedService.submit(request, 'pricing-in-flight');
+    await inFlight;
+    expect(await repository.findRunByIdempotencyKey(request.tender.idempotencyKey)).toMatchObject({
+      status: 'PROCESSING',
+      failure: { stage: 'PRICING', attempt: 2, retryable: true },
+    });
+
+    const resumedGateway = new RecordingGateway(repository);
+    const resumedService = new TenderService(repository, resumedGateway, undefined, undefined, {
+      maxAttempts: 2,
+      backoffMs: [0],
+      sleep: async () => undefined,
+    });
+    const resumed = await resumedService.submit(request, 'pricing-in-flight-replay');
+
+    expect(resumed).toMatchObject({ status: 'COMPLETED', route: 'READY_FOR_PRICING' });
+    expect(calls).toBe(2);
+    expect(resumedGateway.calls).toBe(0);
     expect((await repository.store.read()).handoffs).toHaveLength(1);
   });
 
@@ -477,20 +704,23 @@ describe('TenderService interpretation boundary', () => {
     const repository = new FailOnceOnPricingRecoveryRepository();
     const gateway = new RecordingGateway(repository);
     gateway.failuresRemaining = 1;
-    const service = new TenderService(repository, gateway);
-
-    await expect(service.submit(cleanTender, 'pricing-first')).rejects.toMatchObject({
-      httpStatus: 502,
+    const service = new TenderService(repository, gateway, undefined, undefined, {
+      maxAttempts: 3,
+      backoffMs: [0, 0],
+      sleep: async () => undefined,
     });
+
     repository.failRecovery = true;
-    await expect(service.submit(cleanTender, 'pricing-recovery-write')).rejects.toMatchObject({
+    await expect(service.submit(cleanTender, 'pricing-first')).rejects.toMatchObject({
       failure: { code: 'STATE_WRITE_FAILED', causeCode: 'PRICING_GATEWAY_FAILED' },
     });
     const afterFailure = await repository.findRunByIdempotencyKey(
       cleanTender.tender.idempotencyKey,
     );
-    expect(afterFailure?.status).toBe('FAILED');
-    expect(afterFailure?.failure?.code).toBe('PRICING_GATEWAY_FAILED');
+    expect(afterFailure).toMatchObject({
+      status: 'PROCESSING',
+      failure: { code: 'PRICING_GATEWAY_FAILED', stage: 'PRICING', attempt: 2, retryable: true },
+    });
     expect((await repository.store.read()).handoffs).toHaveLength(1);
 
     const resumed = await service.submit(cleanTender, 'pricing-recovery-retry');

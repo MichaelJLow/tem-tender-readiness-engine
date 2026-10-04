@@ -173,7 +173,7 @@ export class MastraTenderInterpreter implements TenderInterpreter {
           })),
         }),
         {
-          modelSettings: { maxOutputTokens: maxModelOutputTokens() },
+          modelSettings: { maxOutputTokens: maxModelOutputTokens(), maxRetries: 0 },
           structuredOutput: { schema: TenderInterpretationSchema, errorStrategy: 'warn' },
           abortSignal: AbortSignal.timeout(this.timeoutMs),
         },
