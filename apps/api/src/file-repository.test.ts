@@ -160,9 +160,11 @@ describe('JsonFileTenderRepository', () => {
     );
     const service = new TenderService(repository, new MockPricingGateway(repository));
 
-    await expect(service.submit(cleanTender, 'correlation-read-during-save')).rejects.toMatchObject({
-      failure: { code: 'STATE_READ_FAILED', stage: 'STATE_READ', retryable: true },
-    });
+    await expect(service.submit(cleanTender, 'correlation-read-during-save')).rejects.toMatchObject(
+      {
+        failure: { code: 'STATE_READ_FAILED', stage: 'STATE_READ', retryable: true },
+      },
+    );
   });
 
   it('classifies a state read failure during review append as a read failure', async () => {
