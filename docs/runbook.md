@@ -21,9 +21,9 @@ This is a **living operational document**. It describes the local API, including
 
 The credential-free Milestone 7 webhook export, pinned n8n version, synthetic
 fixtures, Docker host-gateway setup, and verification commands live in
-[`integrations/n8n/README.md`](../integrations/n8n/README.md). n8n normalizes
-transport only and forwards the existing API contract; the API continues to own
-validation, idempotency, readiness rules, interpretation, and the pricing guard.
+[`integrations/n8n/README.md`](../integrations/n8n/README.md). n8n normalizes transport, forwards the existing API contract, and records
+synthetic integration outcomes. The API continues to own validation,
+idempotency, readiness rules, interpretation, and the pricing guard.
 
 Keep n8n's editor bound to loopback. Do not expose it, the operations Console,
 or review endpoints publicly. Containerized n8n reaches the host API through the
@@ -161,9 +161,11 @@ it is never reported as if the model or gateway write had succeeded.
 | `READINESS_EVALUATION_FAILED` / `READINESS` | HTTP `500`, failed run without a successful route transition, and correlated failure log.                                                                                                                          | Terminal until code/input handling is corrected.                                                   | Preserve the synthetic input and rule context, fix and test deterministic evaluation, then replay the idempotency key.                                              |
 | `PRICING_GATEWAY_FAILED` / `PRICING`        | HTTP `502`, failed technical status with the already-decided `READY_FOR_PRICING` route, and correlated failure log.                                                                                                | Retryable.                                                                                         | Verify gateway health and whether the handoff key already exists, then replay the same idempotency key. The gateway's idempotency guard prevents a second handoff.  |
 
-The local JSON repository is the implemented persistence boundary. Source
-document storage/parsing and an n8n workflow are not implemented yet, so the
-runbook does not claim operational failure codes for those future boundaries.
+The local JSON repository is the implemented persistence boundary. The n8n
+intake and outcome workflow is documented in
+[`integrations/n8n/README.md`](../integrations/n8n/README.md); it does not own
+these API failure codes. Source document storage and parsing are not implemented,
+so this table does not claim failure codes for those future boundaries.
 
 ## Recovery model
 
@@ -200,8 +202,9 @@ This document is considered complete when each implemented failure path includes
 - safe replay procedure,
 - verification that no duplicate side effect occurred.
 
-Document and n8n-specific cases should be added only when those integration
-boundaries exist.
+Add document storage and parsing failure cases when those boundaries exist.
+Rehearse n8n transport and outcome handling using the synthetic workflow
+fixtures documented in [`integrations/n8n/README.md`](../integrations/n8n/README.md).
 
 ## Milestone 6 archive and restore
 
