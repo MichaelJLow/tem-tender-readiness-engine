@@ -141,7 +141,7 @@ describe('Mastra interpreter failure classification', () => {
       retryable: false,
     });
     expect((generate.mock.calls[0] as unknown[])[1]).toMatchObject({
-      modelSettings: { maxOutputTokens: 8_192 },
+      modelSettings: { maxOutputTokens: 8_192, maxRetries: 0 },
       structuredOutput: { errorStrategy: 'warn' },
     });
   });
