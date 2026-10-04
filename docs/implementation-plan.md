@@ -297,13 +297,15 @@ database. The API, Console, and Mastra Studio remain local.
 
 ### Tasks
 
-- [ ] Confirm the AWS account, region, remaining credits, and budget alert.
+- [x] Confirm AWS account access and region, and record the existing budget alert.
+- [ ] Check the promotional AWS credit balance/expiry (account-administration
+      follow-up; not part of archive correctness acceptance).
 - [x] Define one private S3 bucket with public access blocked.
 - [x] Archive a consistent synthetic state snapshot, accepted baseline, latest
       completed eval report, and available synthetic source files.
 - [x] Restore a complete snapshot into a fresh local path with checksum/schema
       verification and no overwrite of existing state.
-- [ ] Re-run the local Console walkthrough from the restored files.
+- [x] Re-run the local Console walkthrough from the S3-restored files.
 - [x] Document the archive/restore path and the fact that Studio's local
       experiments and traces are separate.
 
@@ -318,13 +320,16 @@ A live AWS database/runtime and a hosted Console are deferred. If a public demo
 URL becomes important later, plan it separately with a cost and authentication
 decision rather than expanding this milestone.
 
-**Local implementation (2026-09-30):** archive/restore commands prepare and
-verify bounded synthetic snapshots, preserve the accepted/latest distinction,
-and restore into a fresh path. The [verification receipt](milestone-6-verification.md)
-records the 184-test implementation run and the live AWS upload, restore,
-and access results from 2026-10-04. The Console walkthrough from the S3-restored
-files remains open under ENG-3, and the account's credit balance/expiry has not
-been checked; Milestone 6 remains incomplete.
+**Accepted (2026-10-04):** archive/restore commands prepare and verify bounded
+synthetic snapshots, preserve the accepted/latest distinction, and restore into
+a fresh path. The [verification receipt](milestone-6-verification.md) records
+the 184-test implementation run, live private-S3 upload and restore, access
+checks, and Console walkthrough from a fresh S3 restore.
+[PR #14](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/14)
+merged the archive branch and live S3 evidence;
+[PR #16](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/16)
+merged the restored-Console evidence. The promotional AWS credit balance/expiry
+remains an explicit, non-blocking account-administration follow-up.
 
 ### Suggested branch
 

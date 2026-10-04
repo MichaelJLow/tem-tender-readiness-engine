@@ -211,9 +211,10 @@ fixtures documented in [`integrations/n8n/README.md`](../integrations/n8n/README
 The API, Console and Studio remain local. S3 stores private, manual snapshots
 of synthetic evidence. It is not the live tender database and does not contain
 Studio's DuckDB files, experiments or raw traces. The live S3 upload, restore,
-and private-access checks passed on 4 October 2026; see the
-[Milestone 6 verification receipt](milestone-6-verification.md). The local
-Console walkthrough against the S3 restore is tracked separately in ENG-3.
+private-access checks, and local Console walkthrough against a fresh S3 restore
+passed on 4 October 2026; see the
+[Milestone 6 acceptance receipt](milestone-6-verification.md). Checking the
+promotional AWS credit balance/expiry remains a non-blocking account follow-up.
 
 Use a separate demo state path and `npm run demo:seed`, then record a
 `REQUEST_INFORMATION` disposition for the conflicting-date case with a reason
