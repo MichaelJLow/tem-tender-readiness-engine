@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for Milestone 6 implementation; live AWS verification pending.
+Accepted for Milestone 6 implementation; live S3 upload, restore, and private-access verification completed on 2026-10-04. The restored Console walkthrough and AWS credit balance/expiry check remain open; see the [verification receipt](../milestone-6-verification.md).
 
 ## Context
 

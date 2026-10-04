@@ -118,4 +118,4 @@ Create the bucket and verify its access policy before uploading. Keep every loca
 - AWS Free Tier credit terms: https://aws.amazon.com/free/terms/
 - AWS Budgets pricing: https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/
 
-Planning capability: user-selected SOL session. Local implementation was authorized on 2026-09-30. Archive/restore tooling and local verification are complete; see [the verification receipt](../milestone-6-verification.md). Account setup and live AWS resource/upload verification remain pending. The local package/restore path was implemented before bucket setup so it can be verified without credentials.
+Planning capability: user-selected SOL session. Local implementation was authorized on 2026-09-30. Archive/restore tooling and live S3 upload, restore, and private-access checks completed on 2026-10-04; see [the verification receipt](../milestone-6-verification.md). The AWS credit balance/expiry and restored Console walkthrough remain open, so Milestone 6 is not complete. The live API and Console remain local.
