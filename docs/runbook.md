@@ -196,12 +196,16 @@ readiness errors, invalid transport/input, explicit terminal provider errors,
 and pending document processing stop immediately. `PROCESSING` without a route
 is pending work, never transport failure and never implicit readiness.
 
-Every failed attempt is persisted with its stage and attempt number before the
-backoff. A restarted API continues at the next retained attempt rather than
-resetting the budget. At exhaustion the run remains `FAILED`, the failure is
-marked `retryable: false`, and its message names the exhausted limit. A retained
-`READY_FOR_PRICING` route on an exhausted pricing run is evidence of the
-business decision only; it must not be reported as a successful handoff.
+Each attempt number is persisted before its provider call, and each failed
+attempt remains persisted before the backoff. A restarted API continues at the
+next retained attempt rather than repeating an interrupted call or resetting
+the budget. At exhaustion the run remains `FAILED`, the failure is marked
+`retryable: false`, and its message names the exhausted limit. Before
+terminalizing an interrupted final pricing attempt, the API checks for the
+stable-key handoff to recover a success that was saved before the process
+stopped. A retained `READY_FOR_PRICING` route on an exhausted pricing run is
+evidence of the business decision only; it must not be reported as a successful
+handoff.
 
 ### Safe replay and verification receipt
 

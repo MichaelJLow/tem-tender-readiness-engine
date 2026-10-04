@@ -265,6 +265,45 @@ export class TenderService {
   ): Promise<void> {
     let attempt = initialAttempt;
     while (true) {
+      if (attempt > this.recoveryPolicy.maxAttempts) {
+        const handoffKey = `${run.tenderId}:${run.idempotencyKey}`;
+        const recordedHandoff = await this.readState(() => this.repository.findHandoff(handoffKey));
+        if (recordedHandoff) {
+          run.status = 'COMPLETED';
+          delete run.failure;
+          run.updatedAt = this.now().toISOString();
+          await this.writeRun(run, this.recoveryPolicy.maxAttempts, 'PRICING_GATEWAY_FAILED');
+          return;
+        }
+        run.status = 'FAILED';
+        run.updatedAt = this.now().toISOString();
+        run.failure = {
+          code: 'PRICING_GATEWAY_FAILED',
+          message: `The mocked pricing handoff exhausted ${this.recoveryPolicy.maxAttempts} attempts.`,
+          retryable: false,
+          stage: 'PRICING',
+          occurredAt: run.updatedAt,
+          attempt: this.recoveryPolicy.maxAttempts,
+        };
+        await this.writeFailureRun(run, this.recoveryPolicy.maxAttempts, 'PRICING_GATEWAY_FAILED');
+        throw new TenderProcessingError(
+          'Pricing handoff failed.',
+          responseFromRun(run, replayed, correlationId),
+          502,
+        );
+      }
+
+      run.status = 'PROCESSING';
+      run.updatedAt = this.now().toISOString();
+      run.failure = {
+        code: 'PRICING_GATEWAY_FAILED',
+        message: 'A pricing handoff attempt is in progress; recovery must count this attempt.',
+        retryable: true,
+        stage: 'PRICING',
+        occurredAt: run.updatedAt,
+        attempt,
+      };
+      await this.writeRun(run, attempt);
       try {
         await this.pricingGateway.submit({
           tenderId: run.tenderId,
@@ -315,12 +354,10 @@ export class TenderService {
           502,
         );
       }
-      if (run.status === 'FAILED') {
-        run.status = 'COMPLETED';
-        delete run.failure;
-        run.updatedAt = this.now().toISOString();
-        await this.writeRun(run, attempt, 'PRICING_GATEWAY_FAILED');
-      }
+      run.status = 'COMPLETED';
+      delete run.failure;
+      run.updatedAt = this.now().toISOString();
+      await this.writeRun(run, attempt, 'PRICING_GATEWAY_FAILED');
       return;
     }
   }
@@ -333,7 +370,37 @@ export class TenderService {
   ): Promise<number> {
     let currentAttempt = attempt;
     while (true) {
+      if (currentAttempt > this.recoveryPolicy.maxAttempts) {
+        run.status = 'FAILED';
+        run.updatedAt = this.now().toISOString();
+        run.failure = {
+          code: 'MODEL_PROVIDER_FAILED',
+          message: `Tender interpretation exhausted ${this.recoveryPolicy.maxAttempts} provider attempts.`,
+          retryable: false,
+          stage: 'INTERPRETATION',
+          occurredAt: run.updatedAt,
+          attempt: this.recoveryPolicy.maxAttempts,
+        };
+        await this.writeFailureRun(run, this.recoveryPolicy.maxAttempts, 'MODEL_PROVIDER_FAILED');
+        throw new TenderProcessingError(
+          run.failure.message,
+          responseFromRun(run, replayed, correlationId),
+          502,
+        );
+      }
+
       const traceId = randomUUID();
+      run.status = 'PROCESSING';
+      run.updatedAt = this.now().toISOString();
+      run.failure = {
+        code: 'MODEL_PROVIDER_FAILED',
+        message: 'A provider attempt is in progress; recovery must count this attempt.',
+        retryable: true,
+        stage: 'INTERPRETATION',
+        occurredAt: run.updatedAt,
+        attempt: currentAttempt,
+      };
+      await this.writeRun(run, currentAttempt);
       try {
         if (!this.interpreter) throw new Error('No tender interpreter is configured.');
         const { output, trace } = await this.interpreter.interpret(run.input, traceId);
