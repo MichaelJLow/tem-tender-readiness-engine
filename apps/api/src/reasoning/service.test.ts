@@ -21,158 +21,764 @@ const output: TenderInterpretation = {
       sourceId: source.sourceId,
       relevance: 'RELEVANT',
       confidence: 0.99,
-      ambiguo×M8æÚ$z{-®éÜj×Ë››Ù\Ë™]™\J
-Ø[™Y]JHOˆØ[™Y]K˜Ü™Y[X[ÈOOH[™Yš[™Y
-JKĞ™JYJNÂ‚ˆÛÛœİ^Ü^H”ÓÓ‹œİš[™ÚYJÛÜšÙ›İÊNÂˆ^Xİ
-^Ü^
-K››İĞÛÛZ[Š	Õ‹IÊNÂˆ^Xİ
-^Ü^
-K››İĞÛÛZ[Š	ÜŞ\İ[T›Û\	ÊNÂˆ^Xİ
-^Ü^
-K››İÓX]Ú
-Ø\V×ËWOÚÙ^KÚJNÂˆ^Xİ
-ˆÛÜšÙ›İË››Ù\Ë™š[\Š
-Ø[™Y]JHOˆØ[™Y]K\HOOH	Û‹[›Ù\ËX˜\ÙKš™\]Y\İ	ÊKˆ
-KÒ]™S[™İ
-JNÂˆ^Xİ
-ÛÜšÙ›İË››Ù\Ë›X\
+      ambiguous: false,
+      explanation: 'The contract end date is clear.',
+      evidence: [{ sourceId: source.sourceId, quote: 'site-001 ends on 2027-03-31' }],
+    },
+  ],
+  observations: [
+    {
+      field: 'contractEndDate',
+      value: '2027-03-31',
+      siteIds: ['site-001'],
+      confidence: 0.99,
+      ambiguous: false,
+      evidence: [{ sourceId: source.sourceId, quote: 'site-001 ends on 2027-03-31' }],
+    },
+  ],
+  siteAssociations: [],
+  conflicts: [],
+};
 
-Ø[™Y]JHOˆØ[™Y]K\JKš›Ú[Š	È	ÊJK››İÓX]Ú
-ˆÙ[XZ[Û]Ù[™ÜšYÛXÚËÚKˆ
-NÂˆJNÂ‚ˆ]
-	Ù›ÜØ\™ÈÛ›HH^\İ[™ÈTH™\]Y\İÚ]HÛÜœ™[][ÛˆXY\‰Ë
+class MemoryStore implements LocalStateStore {
+  state: LocalState = { version: 1, runs: [], handoffs: [], reviewEvents: [] };
+  async read() {
+    return structuredClone(this.state);
+  }
+  async write(state: LocalState) {
+    this.state = structuredClone(state);
+  }
+}
 
-HOˆÂˆÛÛœİİX›Z]H›ÙJ	ÔİX›Z]È[™\ˆTIÊNÂˆ^Xİ
-İX›Z]œ\˜[Y]\œË\›
-KĞÛÛZ[Š	ÕS‘T—ĞTWÕT“	ÊNÂˆ^Xİ
-İX›Z]œ\˜[Y]\œË\›
-KĞÛÛZ[Š	Ëİ[™\œÉÊNÂˆ^Xİ
-İX›Z]œ\˜[Y]\œË˜›ÙJKĞÛÛZ[Š	Ó›Ü›X[^™H˜[œÜÜ	ÊNÂˆ^Xİ
-”ÓÓ‹œİš[™ÚYJİX›Z]œ\˜[Y]\œËšXY\”\˜[Y]\œÊJKĞÛÛZ[Š	ÖPÛÜœ™[][Û‹RQ	ÊNÂˆ^Xİ
-”ÓÓ‹œİš[™ÚYJİX›Z]œ\˜[Y]\œË›Ü[ÛœÊJKĞÛÛZ[Š	Û™]™\‘\œ›Ü‰ÊNÂˆ^Xİ
-İX›Z]œ™]SÛ‘˜Z[ÏÈ˜[ÙJKĞ™J˜[ÙJNÂˆ^Xİ
-İX›Z]›X^šY\ÊKĞ™U[™Yš[™Y
+class MemoryRepository implements TenderRepository {
+  readonly store = new MemoryStore();
+  async findRunByIdempotencyKey(key: string) {
+    return (await this.store.read()).runs.find((run) => run.idempotencyKey === key);
+  }
+  async findRunByTenderId(tenderId: string) {
+    return (await this.store.read()).runs.find((run) => run.tenderId === tenderId);
+  }
+  async saveRun(run: TenderRun) {
+    const state = await this.store.read();
+    const index = state.runs.findIndex((item) => item.runId === run.runId);
+    if (index < 0) state.runs.push(structuredClone(run));
+    else state.runs[index] = structuredClone(run);
+    await this.store.write(state);
+  }
+  async findHandoff(key: string) {
+    return (await this.store.read()).handoffs.find((handoff) => handoff.handoffKey === key);
+  }
+  async saveHandoff(handoff: PricingHandoff) {
+    const state = await this.store.read();
+    if (!state.handoffs.some((item) => item.handoffKey === handoff.handoffKey)) {
+      state.handoffs.push(structuredClone(handoff));
+      await this.store.write(state);
+    }
+  }
+}
 
-NÂˆ^Xİ
-İX›Z]ØZ]™]ÙY[•šY\ÊKĞ™U[™Yš[™Y
+class FailOnceAfterInterpretationRepository extends MemoryRepository {
+  private shouldFail = true;
 
-NÂˆ^Xİ
-”ÓÓ‹œİš[™ÚYJÛÜšÙ›İÊJK››İĞÛÛZ[Š	ËÜ™]šY]ÜÉÊNÂˆJNÂ‚ˆ]
-	ÚÙY\ÈH^ÜYÙXšÛÚÈ[˜Xİ]™H[[[ˆÜ\˜]Üˆ[\ÜÈ[™Xİ]˜]\È]	Ë
+  override async saveRun(run: TenderRun) {
+    if (this.shouldFail && run.interpretation) {
+      this.shouldFail = false;
+      throw new Error('simulated state write failure');
+    }
+    await super.saveRun(run);
+  }
+}
 
-HOˆÂˆ^Xİ
-›ÙJ	Õ[™\ˆ[ZÙHÙXšÛÚÉÊKœ\˜[Y]\œÊKÓX]ÚØš™Xİ
-ÂˆY]Ùˆ	ÔÔÕ	Ëˆ]ˆ	İ[™\‹Z[ZÙIËˆ™\ÜÛœÙS[ÙNˆ	Ü™\ÜÛœÙS›ÙIËˆJNÂˆJNÂ‚ˆ]
-	Ü™\Ù\™\ÈTH˜[Y][Ûˆİ]\È[™™\ÜÛœÙH]Z[ÉË\Ş[˜È
+class FailOnceOnPricingRecoveryRepository extends MemoryRepository {
+  failRecovery = false;
 
-HOˆÂˆÛÛœİ\Q\œ›ÜˆHÂˆ\œ›Üˆ	ÒS•SQÕS‘T‰ËˆÛÜœ™[][Û’Yˆ	Û‹Z[˜[YLIËˆ\ÜİY\ÎˆŞÈ]ˆ	İ[™\‹˜İ\İÛY\‰ËY\ÜØYÙNˆ	Ò[˜[Y[œ]	ÈWKˆNÂˆ]ØZ]^Xİ
-ˆ™\\™P\T™\ÜÛœÙJÈİ]\ĞÛÙNˆ›ÙNˆ\Q\œ›ÜˆK	Û‹Z[˜[YLIÊKˆ
-Kœ™\ÛÛ™\ËÑ\]X[
-Èİ]\ĞÛÙNˆ›ÙNˆ\Q\œ›ÜˆJNÂˆJNÂ‚ˆ]
-	İ\›œÈ[ˆ[œ™XXÚX›HTH[ÈHš\ÚX›HÛÜœ™[]YØ]]Ø^H˜Z[\™IË\Ş[˜È
+  override async saveRun(run: TenderRun) {
+    const stored = await this.findRunByIdempotencyKey(run.idempotencyKey);
+    if (
+      this.failRecovery &&
+      stored?.status === 'PROCESSING' &&
+      stored.failure?.stage === 'PRICING' &&
+      run.status === 'COMPLETED'
+    ) {
+      this.failRecovery = false;
+      throw new Error('simulated recovery write failure');
+    }
+    await super.saveRun(run);
+  }
+}
 
-HOˆÂˆ]ØZ]^Xİ
-ˆ™\\™P\T™\ÜÛœÙJÈY\ÜØYÙNˆ	ĞÛÛ›™Xİ[Ûˆ™Y\ÙY	ÈK	Û‹X\KYİÛ‹LIÊKˆ
-Kœ™\ÛÛ™\ËÑ\]X[
-Âˆİ]\ĞÛÙNˆL‹ˆ›ÙNˆÂˆ\œ›Üˆ	ÕS‘T—ĞTWÕSURSP“IËˆÛÜœ™[][Û’Yˆ	Û‹X\KYİÛ‹LIËˆ]Z[ˆ	ĞÛÛ›™Xİ[Ûˆ™Y\ÙY	ËˆKˆJNÂˆJNÂ‚ˆ]™XXÚ
-ÂˆÉĞÓÓTUQ	Ë	Ô‘PQWÑ“Ô—Ô’PÒS‘ÉË	Ô’PÒS‘×ÒS‘Ñ‘—Ô‘PÓÔ‘Q	×KˆÉĞÓÓTUQ	Ë	Ó‘QQ×ÒS‘“Ô“PUSÓ‰Ë	ÒS‘“Ô“PUSÓ—Ô‘TUQTÕÔ‘PÓÔ‘Q	×KˆÉĞÓÓTUQ	Ë	ÒSPS—Ô‘U’QUÉË	ÒSPS—Ô‘U’QU×ĞURSP“I×KˆÉĞÓÓTUQ	Ë	ÑTPĞUIË	ÑTPĞUWÔ‘PÓÔ‘Q	×KˆJJ	Ü™XÛÜ™ÈH	\È
-È	\Èİ]ÛÛYH\È	\ÉË\Ş[˜È
-İ]\Ë›İ]K\JHOˆÂˆÛÛœİ[’YH	Ì™MXMXMKXYMLMËXMLËXLLÎMØMÍY˜˜IÎÂˆÛÛœİ™\İ[H]ØZ]™XÛÜ™[YÜ˜][Û“İ]ÛÛYJÂˆİ]\ĞÛÙNˆŒˆ›ÙNˆÂˆ[™\’Yˆ	İ[™\‹[İ]ÛÛYKLIËˆ[’YˆÛÜœ™[][Û’Yˆ	Û‹[İ]ÛÛYKLIËˆİ]\Ëˆ›İ]Kˆ[\Îˆ×Kˆ™\^YYˆ˜[ÙKˆKˆJNÂ‚ˆ^Xİ
-™\İ[
-KÓX]ÚØš™Xİ
-Âˆİ]\ĞÛÙNˆŒˆ›ÙNˆÂˆ[YÜ˜][Û“İ]ÛÛYNˆÂˆ\Kˆ[’Yˆ[™\’Yˆ	İ[™\‹[İ]ÛÛYKLIËˆİ]›İ[™Y\ÜØYÙ\ÔÙ[ˆˆKˆKˆJNÂˆJNÂ‚ˆ]
-	ÛØœÙ\™\ÈHTK[İÛ™YšXÚ[™È[™Ù™ˆÚ]İ][š]X][™ÈHÙXÛÛ™[™Ù™‰Ë\Ş[˜È
+class RecordingGateway implements PricingGateway {
+  readonly repository: MemoryRepository;
+  failuresRemaining = 0;
+  calls = 0;
+  constructor(repository: MemoryRepository) {
+    this.repository = repository;
+  }
+  async submit(input: Parameters<PricingGateway['submit']>[0]) {
+    this.calls += 1;
+    if (this.failuresRemaining > 0) {
+      this.failuresRemaining -= 1;
+      throw new Error('temporary gateway failure');
+    }
+    const prior = await this.repository.findHandoff(input.handoffKey);
+    if (prior) return prior;
+    const handoff: PricingHandoff = {
+      handoffId: randomUUID(),
+      handoffKey: input.handoffKey,
+      tenderId: input.tenderId,
+      runId: input.runId,
+      route: 'READY_FOR_PRICING',
+      createdAt: new Date().toISOString(),
+    };
+    await this.repository.saveHandoff(handoff);
+    return handoff;
+  }
+}
 
-HOˆÂˆÛÛœİ™\İ[H]ØZ]™XÛÜ™[YÜ˜][Û“İ]ÛÛYJÂˆİ]\ĞÛÙNˆŒˆ›ÙNˆÂˆ[™\’Yˆ	İ[™\‹XÛX[‹LIËˆ[’Yˆ	ÌXY™˜NXŒL‹MMØ‹NLÍ‹NMM˜Ì™X‰Ëˆİ]\Îˆ	ĞÓÓTUQ	Ëˆ›İ]Nˆ	Ô‘PQWÑ“Ô—Ô’PÒS‘ÉËˆKˆJNÂ‚ˆ^Xİ
-™\İ[˜›ÙJKÓX]ÚØš™Xİ
-Âˆ[YÜ˜][Û“İ]ÛÛYNˆÂˆšXÚ[™ÓİÛ™\ˆ	ÕS‘T—ĞTIËˆ[™Ù™”İ]\Îˆ	ÔÕPĞÑQQQ	Ëˆ[™Ù™][\Ò[š]X]YUÛÜšÙ›İÎˆˆKˆJNÂˆJNÂ‚ˆ]
-	ØÜ™X]\ÈHİX›HŞ[]XÈ[™›Ü›X][Û‹\™\]Y\İ™XÙZ\[™Ù[™È›ÈY\ÜØYÙIË\Ş[˜È
+class FakeInterpreter implements TenderInterpreter {
+  readonly model = 'fake-model';
+  calls = 0;
+  result: TenderInterpretation = output;
+  failure?: InterpretationError;
+  failuresBeforeSuccess = Number.POSITIVE_INFINITY;
+  beforeInterpret?: () => Promise<void>;
+  async interpret() {
+    this.calls += 1;
+    await this.beforeInterpret?.();
+    if (this.failure && this.calls <= this.failuresBeforeSuccess) throw this.failure;
+    return {
+      output: this.result,
+      trace: {
+        traceId: randomUUID(),
+        model: this.model,
+        promptVersion: 'test-prompt-v1',
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: 1,
+        outcome: 'SUCCEEDED' as const,
+      },
+    };
+  }
+}
 
-HOˆÂˆÛÛœİ™\\™YHÂˆİ]\ĞÛÙNˆŒˆ›ÙNˆÂˆ[™\’Yˆ	İ[™\‹[Z\ÜÚ[™ËLIËˆ[’Yˆ	Ù˜XØ™XËNŒMËMYKXËLŒ™XMŒXXIËˆİ]\Îˆ	ĞÓÓTUQ	Ëˆ›İ]Nˆ	Ó‘QQ×ÒS‘“Ô“PUSÓ‰ËˆKˆNÂˆÛÛœİš\œİH]ØZ]™XÛÜ™[YÜ˜][Û“İ]ÛÛYJ™\\™Y
-NÂˆÛÛœİ™Y[]™\HH]ØZ]™XÛÜ™[YÜ˜][Û“İ]ÛÛYJÂˆ‹‹œ™\\™Yˆ›ÙNˆÈ‹‹œ™\\™Y˜›ÙK™\^YYˆYHKˆJNÂ‚ˆ^Xİ
-š\œİ˜›ÙJKÓX]ÚØš™Xİ
-Âˆ[YÜ˜][Û“İ]ÛÛYNˆÂˆÙ^Nˆ	Ú[™›Ü›X][Û‹\™\]Y\İ™˜XØ™XËNŒMËMYKXËLŒ™XMŒXXIËˆŞ[]XÎˆYKˆ[]™\Tİ]\Îˆ	Ó“ÕÔÑS•	Ëˆİ]›İ[™Y\ÜØYÙ\ÔÙ[ˆˆKˆJNÂˆ^Xİ
-™Y[]™\K˜›ÙJKÓX]ÚØš™Xİ
-Âˆ[YÜ˜][Û“İ]ÛÛYNˆÂˆÙ^Nˆ	Ú[™›Ü›X][Û‹\™\]Y\İ™˜XØ™XËNŒMËMYKXËLŒ™XMŒXXIËˆKˆJNÂˆJNÂ‚ˆ]
-	Û[šÜÈH^\İ[™ÈÛÛœÛÛHØ\ÙHÚ]İ]Ü™X][™È[›İ\ˆ™]šY]È\ÚÉË\Ş[˜È
+describe('TenderService interpretation boundary', () => {
+  it('skips interpretation for structured-only requests', async () => {
+    const repository = new MemoryRepository();
+    const interpreter = new FakeInterpreter();
+    const service = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+      { maxAttempts: 1, backoffMs: [], sleep: async () => undefined },
+    );
+    const result = await service.submit(cleanTender, 'correlation-structured');
+    expect(result.route).toBe('READY_FOR_PRICING');
+    expect(interpreter.calls).toBe(0);
+  });
 
-HOˆÂˆÛÛœİ[’YH	ØŒYŒMÌXŒNËMMX˜˜ÎMXYNLMMŒØŒ‰ÎÂˆÛÛœİ™\İ[H]ØZ]™XÛÜ™[YÜ˜][Û“İ]ÛÛYJÂˆİ]\ĞÛÙNˆŒˆ›ÙNˆÈ[™\’Yˆ	İ[™\‹XÛÛ™›XİLIË[’Yİ]\Îˆ	ĞÓÓTUQ	Ë›İ]Nˆ	ÒSPS—Ô‘U’QUÉÈKˆJNÂ‚ˆ^Xİ
-™\İ[˜›ÙJKÓX]ÚØš™Xİ
-Âˆ[YÜ˜][Û“İ]ÛÛYNˆÂˆÛÛœÛÛT]ˆİ[™\œËÉÜ[’YXˆ™]šY]Õ\ÚĞÜ™X]YUÛÜšÙ›İÎˆ˜[ÙKˆKˆJNÂˆJNÂ‚ˆ]
-	ÚÙY\È[™[™ÈØİ[Y[›ØÙ\ÜÚ[™ÈÙ\\˜]Hœ›ÛHH\Ú[™\ÜÈ›İ]IË\Ş[˜È
+  it('interprets text once and persists evidence before routing', async () => {
+    const repository = new MemoryRepository();
+    const interpreter = new FakeInterpreter();
+    const service = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+      { maxAttempts: 1, backoffMs: [], sleep: async () => undefined },
+    );
+    const request = { ...cleanTender, textSources: [source] };
+    const result = await service.submit(request, 'correlation-text');
+    const replay = await service.submit(request, 'correlation-replay');
+    const saved = await repository.findRunByIdempotencyKey(cleanTender.tender.idempotencyKey);
 
-HOˆÂˆÛÛœİ™\İ[H]ØZ]™XÛÜ™[YÜ˜][Û“İ]ÛÛYJÂˆİ]\ĞÛÙNˆŒ‹ˆ›ÙNˆÂˆ[™\’Yˆ	İ[™\‹\[™[™ËLIËˆ[’Yˆ	ÎNLMXÍMÙKMŒY‹XLÙ™MÌØŒÌÎ™MIËˆİ]\Îˆ	Ô“ĞÑTÔÒS‘ÉËˆKˆJNÂ‚ˆ^Xİ
-™\İ[
-KÓX]ÚØš™Xİ
-Âˆİ]\ĞÛÙNˆŒ‹ˆ›ÙNˆÈ[YÜ˜][Û“İ]ÛÛYNˆÈ\Nˆ	ÔS‘S‘ÉËİ]›İ[™Y\ÜØYÙ\ÔÙ[ˆHKˆJNÂˆJNÂ‚ˆ]™XXÚ
-ÂˆÍL‹	ÑRSQ	Ë	Ô‘PQWÑ“Ô—Ô’PÒS‘ÉËÈÛÙNˆ	Ô’PÒS‘×ÑĞUUĞVWÑRSQ	ÈWKˆÍL‹	ÑRSQ	Ë[™Yš[™YÈÛÙNˆ	ÓSÑSÔ“Õ’QT—ÑRSQ	ÈWKˆÍL‹[™Yš[™Y[™Yš[™Y[™Yš[™YKˆÍ[™Yš[™Y[™Yš[™Y[™Yš[™YKˆJJˆ	İZÙ\ÈHXÚšXØ[\œ›Üˆ]›Üˆ	ZHÚ]İ]\È	\È[™›İ]H	\ÉËˆ\Ş[˜È
-İ]\ĞÛÙKİ]\Ë›İ]K˜Z[\™JHOˆÂˆÛÛœİ™\İ[H]ØZ]™XÛÜ™[YÜ˜][Û“İ]ÛÛYJÂˆİ]\ĞÛÙKˆ›ÙNˆÂˆ\œ›Ü‚ˆİ]\ĞÛÙHOOHˆÈ	ÒS•SQÕS‘T‰Âˆˆİ]\ÈOOH[™Yš[™YˆÈ	ÕS‘T—ĞTWÕSURSP“IÂˆˆ[™Yš[™Yˆ[™\’Yˆ	İ[™\‹Y\œ›Ü‹LIËˆ[’Yˆ	ÌÍŒYMMØ˜ËMKNL‹XN™ÎY˜ØÌÉËˆİ]\Ëˆ›İ]Kˆ˜Z[\™KˆKˆJNÂ‚ˆ^Xİ
-™\İ[
-KÓX]ÚØš™Xİ
-Âˆİ]\ĞÛÙKˆ›ÙNˆÂˆ[YÜ˜][Û“İ]ÛÛYNˆÂˆ\Nˆ	ÕPÒ’PĞSÑT”“Ô‰Ëˆ\Ú[™\ÜÔ›İ]T™]Z[™Yˆ›İ]HÏÈ[ˆİ]›İ[™Y\ÜØYÙ\ÔÙ[ˆˆKˆKˆJNÂˆKˆ
-NÂ‚ˆ]
-	Ù˜Z[È[ˆ[™^XİYİXØÙ\ÜÙ[™\ÜÛœÙHÛÜÙY\ÈHXÚšXØ[\œ›Ü‰Ë\Ş[˜È
+    expect(result.route).toBe('READY_FOR_PRICING');
+    expect(result.interpretation?.observations).toHaveLength(1);
+    expect(result.modelTrace?.outcome).toBe('SUCCEEDED');
+    expect(replay.replayed).toBe(true);
+    expect(interpreter.calls).toBe(1);
+    expect(saved?.input.tender.sites[0]?.contractEndDate).toBe('2027-03-31');
+    expect(saved?.input.signals.dateFacts).toHaveLength(1);
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+  });
 
-HOˆÂˆÛÛœİ™\İ[H]ØZ]™XÛÜ™[YÜ˜][Û“İ]ÛÛYJÂˆİ]\ĞÛÙNˆŒˆ›ÙNˆÂˆÛÜœ™[][Û’Yˆ	Û‹][™^XİYLIËˆ[™\’Yˆ	İ[™\‹][™^XİYLIËˆ[’Yˆ	ÍÍÌØÍÍY‹MÙMÍXKX˜XKL™˜ÍÍMŒ™MIËˆİ]\Îˆ	ĞÓÓTUQ	Ëˆ›İ]Nˆ	ÕS’Ó“ÕÓ‰ËˆKˆJNÂ‚ˆ^Xİ
-™\İ[
-KÓX]ÚØš™Xİ
-Âˆİ]\ĞÛÙNˆL‹ˆ›ÙNˆÂˆ[YÜ˜][Û“İ]ÛÛYNˆÂˆ\Nˆ	ÕPÒ’PĞSÑT”“Ô‰Ëˆ˜Z[\™Nˆ	ÕS‘VPÕQÕS‘T—Ô‘TÔÓ”ÑIËˆKˆKˆJNÂˆJNÂŸJNÂ‚™\ØÜšX™J	Ûˆ˜[œÜÜš^\™\È[™›Ü›X[^˜][Û‰Ë
+  it('routes a text-to-structured conflict to review when the model adds an unsupported tender citation', async () => {
+    const repository = new MemoryRepository();
+    const gateway = new RecordingGateway(repository);
+    const interpreter = new FakeInterpreter();
+    const conflictingSource = {
+      ...source,
+      text: 'The contract for site-001 ends on 2026-09-30.',
+    };
+    const quote = 'contract for site-001 ends on 2026-09-30';
+    interpreter.result = {
+      ...output,
+      sourceAssessments: [
+        {
+          ...output.sourceAssessments[0]!,
+          evidence: [{ sourceId: source.sourceId, quote }],
+        },
+      ],
+      observations: [
+        {
+          ...output.observations[0]!,
+          value: '2026-09-30',
+          evidence: [{ sourceId: source.sourceId, quote }],
+        },
+      ],
+      conflicts: [
+        {
+          explanation: 'The text date conflicts with the contract date in the structured tender.',
+          evidence: [
+            { sourceId: source.sourceId, quote },
+            { sourceId: 'tender', quote: 'siteId: site-001; contractEndDate: 2027-03-31' },
+          ],
+        },
+      ],
+    };
+    const service = new TenderService(repository, gateway, undefined, interpreter);
 
-HOˆÂˆ]
-	Û›Ü›X[^™\ÈHÛX[ˆš^\™HÚ]İ]Ú[™Ú[™È]ÈTH™\]Y\İ	Ë\Ş[˜È
+    const result = await service.submit(
+      { ...cleanTender, textSources: [conflictingSource] },
+      'correlation-structured-conflict',
+    );
 
-HOˆÂˆ^Xİ
-[ZÙT™\]Y\İØÚ[XKœ\œÙJÛX[‹œ™\]Y\İ
-JKÑ\]X[
-ÛX[‹œ™\]Y\İ
-NÂˆ]ØZ]^Xİ
-›Ü›X[^™JÛX[ŠJKœ™\ÛÛ™\ËÓX]ÚØš™Xİ
-ÂˆÚÎˆYKˆÛÜœ™[][Û’Yˆ	Û‹XÛX[‹LIËˆ[™\’Yˆ	İ[™\‹[‹XÛX[‹LIËˆY[\İ[˜ŞRÙ^Nˆ	Ú[ZÙK[‹XÛX[‹LIËˆ™\]Y\İˆÛX[‹œ™\]Y\İˆJNÂˆJNÂ‚ˆ]
-	ØXØÙ\ÈÛÜœ™[][Ûˆœ›ÛHHÙXšÛÚÈXY\ˆÚ]İ]Ú[™Ú[™ÈY[YšY\œÉË\Ş[˜È
+    expect(result.route).toBe('HUMAN_REVIEW');
+    expect(gateway.calls).toBe(0);
+    expect(result.interpretation?.conflicts[0]?.evidence).toEqual([
+      { sourceId: source.sourceId, quote },
+    ]);
+    expect(result.rules.find((rule) => rule.ruleId === 'TDR-006')?.route).toBe('HUMAN_REVIEW');
+  });
 
-HOˆÂˆÛÛœİ›ÙHHÈ™\]Y\İˆÛX[‹œ™\]Y\İNÂˆ]ØZ]^Xİ
-›Ü›X[^™J›ÙKÈ	ŞXÛÜœ™[][Û‹ZY	Îˆ	Û‹ZXY\‹LIÈJJKœ™\ÛÛ™\ËÓX]ÚØš™Xİ
-ÂˆÚÎˆYKˆÛÜœ™[][Û’Yˆ	Û‹ZXY\‹LIËˆ[™\’Yˆ	İ[™\‹[‹XÛX[‹LIËˆY[\İ[˜ŞRÙ^Nˆ	Ú[ZÙK[‹XÛX[‹LIËˆJNÂˆJNÂ‚ˆ]
-	ÚÙY\È“ÕH[™ĞÕSQS•ÕV[œ]Ú]H˜[YØİ[Y[™Y™\™[˜ÙIË\Ş[˜È
+  it('does not hand off a model-assigned fact quoted for an unknown site', async () => {
+    const repository = new MemoryRepository();
+    const gateway = new RecordingGateway(repository);
+    const interpreter = new FakeInterpreter();
+    const unknownSiteSource = {
+      ...source,
+      text: 'Site site-999 contract ends on 2027-03-31.',
+    };
+    interpreter.result = {
+      ...output,
+      sourceAssessments: [
+        {
+          ...output.sourceAssessments[0]!,
+          evidence: [{ sourceId: source.sourceId, quote: unknownSiteSource.text }],
+        },
+      ],
+      observations: [
+        {
+          ...output.observations[0]!,
+          evidence: [{ sourceId: source.sourceId, quote: unknownSiteSource.text }],
+        },
+      ],
+    };
+    const service = new TenderService(repository, gateway, undefined, interpreter);
 
-HOˆÂˆ^Xİ
-[ZÙT™\]Y\İØÚ[XKœ\œÙJ^™X\š[™Ëœ™\]Y\İ
-JKÑ\]X[
-^™X\š[™Ëœ™\]Y\İ
-NÂˆÛÛœİ™\]Y\İH^™X\š[™Ëœ™\]Y\İ\ÈœÛÛ”™XÛÜ™ÂˆÛÛœİ^Ûİ\˜Ù\ÈH™\]Y\İ^Ûİ\˜Ù\È\ÈœÛÛ”™XÛÜ™×NÂˆ^Xİ
-^Ûİ\˜Ù\Ë›X\
+    const result = await service.submit(
+      { ...cleanTender, textSources: [unknownSiteSource] },
+      'correlation-unknown-site',
+    );
+    expect(result.route).toBe('HUMAN_REVIEW');
+    expect(gateway.calls).toBe(0);
+    expect((await repository.store.read()).handoffs).toHaveLength(0);
+  });
 
-Ûİ\˜ÙJHOˆÛİ\˜ÙKšÚ[™
-JKÑ\]X[
-ÉÓ“ÕIË	ÑĞÕSQS•ÕV	×JNÂˆ^Xİ
-^Ûİ\˜Ù\ÖÌWOË™Øİ[Y[Y
-KĞ™J	ÙØİ[Y[[‹LIÊNÂˆ]ØZ]^Xİ
-›Ü›X[^™J^™X\š[™ÊJKœ™\ÛÛ™\ËÓX]ÚØš™Xİ
-ÈÚÎˆYK™\]Y\İJNÂˆJNÂ‚ˆ]™XXÚ
-ÂˆÉØÛÜœ™[][ÛˆQ	ËÈ™\]Y\İˆÛX[‹œ™\]Y\İK	ØÛÜœ™[][Û’Y	×KˆÂˆ	İ[™\ˆQ	ËˆÂˆÛÜœ™[][Û’Yˆ	ÛZ\ÜÚ[™Ë][™\‹ZY	Ëˆ™\]Y\İˆÈ‹‹ŠÛX[‹œ™\]Y\İ\ÈœÛÛ”™XÛÜ™
-K[™\ˆÈY[\İ[˜ŞRÙ^Nˆ	ÚÙ^KLIÈHKˆKˆ	Ü™\]Y\İ[™\‹[™\’Y	ËˆKˆÂˆ	ÚY[\İ[˜ŞHÙ^IËˆÂˆÛÜœ™[][Û’Yˆ	ÛZ\ÜÚ[™ËZY[\İ[˜ŞKZÙ^IËˆ™\]Y\İˆÈ‹‹ŠÛX[‹œ™\]Y\İ\ÈœÛÛ”™XÛÜ™
-K[™\ˆÈ[™\’Yˆ	İ[™\‹LIÈHKˆKˆ	Ü™\]Y\İ[™\‹šY[\İ[˜ŞRÙ^IËˆKˆJJ	Ü™Z™XİÈHZ\ÜÚ[™È	\Èš\ÚX›IË\Ş[˜È
-ÛX™[›ÙK^XİY\ÜİYJHOˆÂˆÛÛœİ™\İ[H]ØZ]›Ü›X[^™J›ÙJNÂˆ^Xİ
-™\İ[
-KÓX]ÚØš™Xİ
-ÂˆÚÎˆ˜[ÙKˆİ]\ĞÛÙNˆˆ›ÙNˆÈ\œ›Üˆ	ÕS”ÔÔ•ÕSQUSÓ—ÑRSQ	ÈKˆJNÂˆ^Xİ
-”ÓÓ‹œİš[™ÚYJ™\İ[
-JKĞÛÛZ[Š^XİY\ÜİYJNÂˆJNÂ‚ˆ]
-	Ü™Z™XİÈHÙXšÛÚÈ›ÙH\™Ù\ˆ[ˆHZP‰Ë\Ş[˜È
+  it('reuses persisted interpretation when resuming before readiness evaluation', async () => {
+    const repository = new MemoryRepository();
+    const firstInterpreter = new FakeInterpreter();
+    const firstService = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      firstInterpreter,
+    );
+    const request = { ...cleanTender, textSources: [source] };
+    await firstService.submit(request, 'correlation-first-attempt');
 
-HOˆÂˆÛÛœİİ™\œÚ^™YHÂˆ‹‹˜ÛX[‹ˆY[™Îˆ	Ş	Ëœ™\X]
-WÌÍMÍŠKˆNÂˆÛÛœİ™\İ[H]ØZ]›Ü›X[^™Jİ™\œÚ^™Y
-NÂˆ^Xİ
-™\İ[
-KÓX]ÚØš™Xİ
-ÂˆÚÎˆ˜[ÙKˆİ]\ĞÛÙNˆˆ›ÙNˆÈ\œ›Üˆ	ÕS”ÔÔ•ÕSQUSÓ—ÑRSQ	ÈKˆJNÂˆ^Xİ
-”ÓÓ‹œİš[™ÚYJ™\İ[
-JKĞÛÛZ[Š	ÌHZP‰ÊNÂˆJNÂ‚ˆ]
-	ÛX]™\È]Z[YÛÛ˜Xİ˜[Y][ÛˆÈHTHØÚ[XIË\Ş[˜È
+    const interruptedRun = repository.store.state.runs[0]!;
+    interruptedRun.status = 'PROCESSING';
+    delete interruptedRun.route;
+    delete interruptedRun.result;
 
-HOˆÂˆÛÛœİ[˜[Y™\]Y\İHÂˆ[™\ˆÈ[™\’Yˆ	İ[™\‹Z[˜[Y	ËY[\İ[˜ŞRÙ^Nˆ	Ú[˜[YLIÈKˆNÂˆ]ØZ]^Xİ
-ˆ›Ü›X[^™JÈÛÜœ™[][Û’Yˆ	Û‹Z[˜[YLIË™\]Y\İˆ[˜[Y™\]Y\İJKˆ
-Kœ™\ÛÛ™\ËÓX]ÚØš™Xİ
-ÈÚÎˆYK™\]Y\İˆ[˜[Y™\]Y\İJNÂˆ^Xİ
-[ZÙT™\]Y\İØÚ[XKœØY™T\œÙJ[˜[Y™\]Y\İ
-KœİXØÙ\ÜÊKĞ™J˜[ÙJNÂˆJNÂŸJNÂ
+    const retryInterpreter = new FakeInterpreter();
+    retryInterpreter.failure = new InterpretationError(
+      'MODEL_PROVIDER_FAILED',
+      'provider unavailable',
+      true,
+      {
+        traceId: randomUUID(),
+        model: retryInterpreter.model,
+        promptVersion: 'test-prompt-v1',
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: 1,
+        outcome: 'FAILED',
+      },
+    );
+    const resumedService = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      retryInterpreter,
+    );
+
+    const resumed = await resumedService.submit(request, 'correlation-resume');
+    expect(resumed.route).toBe('READY_FOR_PRICING');
+    expect(retryInterpreter.calls).toBe(0);
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+  });
+
+  it('does not classify an interpretation persistence failure as a model failure', async () => {
+    const repository = new FailOnceAfterInterpretationRepository();
+    const interpreter = new FakeInterpreter();
+    const service = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+    );
+    const request = { ...cleanTender, textSources: [source] };
+
+    await expect(service.submit(request, 'correlation-write-failure')).rejects.toMatchObject({
+      failure: { code: 'STATE_WRITE_FAILED' },
+    });
+    const afterFailure = await repository.findRunByIdempotencyKey(
+      cleanTender.tender.idempotencyKey,
+    );
+    expect(afterFailure?.status).toBe('PROCESSING');
+    expect(afterFailure?.failure).toMatchObject({
+      code: 'MODEL_PROVIDER_FAILED',
+      stage: 'INTERPRETATION',
+      attempt: 1,
+      retryable: true,
+    });
+    expect(interpreter.calls).toBe(1);
+
+    const resumed = await service.submit(request, 'correlation-write-retry');
+    expect(resumed.status).toBe('COMPLETED');
+    expect(resumed.route).toBe('READY_FOR_PRICING');
+    expect(resumed.failure).toBeUndefined();
+    expect(interpreter.calls).toBe(2);
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+  });
+
+  it('routes a known duplicate without calling the interpreter', async () => {
+    const repository = new MemoryRepository();
+    const interpreter = new FakeInterpreter();
+    const service = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+    );
+    await service.submit(cleanTender, 'correlation-first');
+    const duplicate = {
+      ...cleanTender,
+      tender: { ...cleanTender.tender, idempotencyKey: 'another-key' },
+      textSources: [source],
+    };
+
+    const result = await service.submit(duplicate, 'correlation-duplicate');
+    expect(result.route).toBe('DUPLICATE');
+    expect(result.status).toBe('COMPLETED');
+    expect(interpreter.calls).toBe(0);
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+  });
+
+  it('fails without a route or pricing handoff when the provider fails', async () => {
+    const repository = new MemoryRepository();
+    const interpreter = new FakeInterpreter();
+    const trace = {
+      traceId: randomUUID(),
+      model: interpreter.model,
+      promptVersion: 'test-prompt-v1',
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: 1,
+      outcome: 'FAILED' as const,
+    };
+    interpreter.failure = new InterpretationError(
+      'MODEL_PROVIDER_FAILED',
+      'provider unavailable',
+      true,
+      trace,
+    );
+    const service = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+    );
+
+    await expect(
+      service.submit({ ...cleanTender, textSources: [source] }, 'correlation-failure'),
+    ).rejects.toMatchObject({ httpStatus: 502 });
+    const saved = await repository.findRunByIdempotencyKey(cleanTender.tender.idempotencyKey);
+    expect(saved?.status).toBe('FAILED');
+    expect(saved?.route).toBeUndefined();
+    expect(saved?.result).toBeUndefined();
+    expect(saved?.failure).toMatchObject({
+      code: 'MODEL_PROVIDER_FAILED',
+      stage: 'INTERPRETATION',
+      retryable: false,
+      attempt: 3,
+    });
+    expect(saved?.failure?.occurredAt).toEqual(expect.any(String));
+    expect((await repository.store.read()).handoffs).toHaveLength(0);
+  });
+
+  it('automatically retries a transient provider failure with bounded backoff', async () => {
+    const repository = new MemoryRepository();
+    const interpreter = new FakeInterpreter();
+    const trace = {
+      traceId: randomUUID(),
+      model: interpreter.model,
+      promptVersion: 'test-prompt-v1',
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: 1,
+      outcome: 'FAILED' as const,
+    };
+    interpreter.failure = new InterpretationError(
+      'MODEL_PROVIDER_FAILED',
+      'provider unavailable',
+      true,
+      trace,
+    );
+    interpreter.failuresBeforeSuccess = 1;
+    const delays: number[] = [];
+    const service = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+      { maxAttempts: 3, backoffMs: [250, 1_000], sleep: async (ms) => void delays.push(ms) },
+    );
+    const request = { ...cleanTender, textSources: [source] };
+
+    const retried = await service.submit(request, 'correlation-before-retry');
+
+    expect(retried.status).toBe('COMPLETED');
+    expect(retried.route).toBe('READY_FOR_PRICING');
+    expect(retried.failure).toBeUndefined();
+    expect(retried.replayed).toBe(false);
+    expect(interpreter.calls).toBe(2);
+    expect(delays).toEqual([250]);
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+  });
+
+  it('continues the retained attempt budget after a process restart', async () => {
+    const repository = new MemoryRepository();
+    const firstInterpreter = new FakeInterpreter();
+    firstInterpreter.failure = new InterpretationError(
+      'MODEL_PROVIDER_FAILED',
+      'provider unavailable',
+      true,
+      {
+        traceId: randomUUID(),
+        model: firstInterpreter.model,
+        promptVersion: 'test-prompt-v1',
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: 1,
+        outcome: 'FAILED',
+      },
+    );
+    const request = { ...cleanTender, textSources: [source] };
+    const interruptedService = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      firstInterpreter,
+      {
+        maxAttempts: 2,
+        backoffMs: [250],
+        sleep: async () => {
+          throw new Error('simulated process stop during backoff');
+        },
+      },
+    );
+    await expect(interruptedService.submit(request, 'restart-before')).rejects.toThrow(
+      'simulated process stop',
+    );
+    expect(
+      (await repository.findRunByIdempotencyKey(request.tender.idempotencyKey))?.failure,
+    ).toMatchObject({ attempt: 1, retryable: true });
+
+    const resumedInterpreter = new FakeInterpreter();
+    resumedInterpreter.beforeInterpret = async () => {
+      expect(await repository.findRunByIdempotencyKey(request.tender.idempotencyKey)).toMatchObject(
+        {
+          status: 'PROCESSING',
+          failure: { stage: 'INTERPRETATION', attempt: 2, retryable: true },
+        },
+      );
+    };
+    const resumedGateway = new RecordingGateway(repository);
+    const resumedService = new TenderService(
+      repository,
+      resumedGateway,
+      undefined,
+      resumedInterpreter,
+      { maxAttempts: 2, backoffMs: [250], sleep: async () => undefined },
+    );
+    const resumed = await resumedService.submit(request, 'restart-after');
+
+    expect(resumed).toMatchObject({
+      status: 'COMPLETED',
+      route: 'READY_FOR_PRICING',
+      replayed: true,
+    });
+    expect(resumed.runId).toBe(repository.store.state.runs[0]?.runId);
+    expect(resumedInterpreter.calls).toBe(1);
+    expect(resumedGateway.calls).toBe(1);
+    expect(repository.store.state.handoffs).toHaveLength(1);
+  });
+
+  it('counts an interpretation attempt interrupted while the provider call is in flight', async () => {
+    const repository = new MemoryRepository();
+    const interpreter = new FakeInterpreter();
+    const trace = {
+      traceId: randomUUID(),
+      model: interpreter.model,
+      promptVersion: 'test-prompt-v1',
+      startedAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+      durationMs: 1,
+      outcome: 'FAILED' as const,
+    };
+    interpreter.beforeInterpret = async () => {
+      if (interpreter.calls === 1) {
+        throw new InterpretationError('MODEL_PROVIDER_FAILED', 'provider unavailable', true, trace);
+      }
+      if (interpreter.calls === 2) await new Promise<void>(() => undefined);
+    };
+    const request = { ...cleanTender, textSources: [source] };
+    const interruptedService = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+      { maxAttempts: 2, backoffMs: [0], sleep: async () => undefined },
+    );
+    void interruptedService.submit(request, 'interpretation-in-flight');
+    while (interpreter.calls < 2) await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(await repository.findRunByIdempotencyKey(request.tender.idempotencyKey)).toMatchObject({
+      status: 'PROCESSING',
+      failure: { stage: 'INTERPRETATION', attempt: 2, retryable: true },
+    });
+
+    const resumedInterpreter = new FakeInterpreter();
+    const resumedService = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      resumedInterpreter,
+      { maxAttempts: 2, backoffMs: [0], sleep: async () => undefined },
+    );
+    await expect(
+      resumedService.submit(request, 'interpretation-in-flight-replay'),
+    ).rejects.toMatchObject({
+      httpStatus: 502,
+      response: {
+        status: 'FAILED',
+        failure: {
+          code: 'MODEL_PROVIDER_FAILED',
+          stage: 'INTERPRETATION',
+          attempt: 2,
+          retryable: false,
+        },
+      },
+    });
+
+    expect(interpreter.calls).toBe(2);
+    expect(resumedInterpreter.calls).toBe(0);
+    expect((await repository.store.read()).handoffs).toHaveLength(0);
+  });
+
+  it('automatically retries a failed pricing handoff without duplicating the handoff', async () => {
+    const repository = new MemoryRepository();
+    const gateway = new RecordingGateway(repository);
+    gateway.failuresRemaining = 1;
+    const service = new TenderService(repository, gateway);
+
+    const retried = await service.submit(cleanTender, 'correlation-pricing-before-retry');
+
+    expect(retried.status).toBe('COMPLETED');
+    expect(retried.route).toBe('READY_FOR_PRICING');
+    expect(retried.failure).toBeUndefined();
+    expect(retried.replayed).toBe(false);
+    expect(gateway.calls).toBe(2);
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+  });
+
+  it('stops after pricing retry exhaustion and does not treat a retained ready route as success', async () => {
+    const repository = new MemoryRepository();
+    const gateway = new RecordingGateway(repository);
+    gateway.failuresRemaining = 4;
+    const service = new TenderService(repository, gateway, undefined, undefined, {
+      maxAttempts: 3,
+      backoffMs: [250, 1_000],
+      sleep: async () => undefined,
+    });
+
+    await expect(service.submit(cleanTender, 'pricing-exhaustion')).rejects.toMatchObject({
+      httpStatus: 502,
+      response: {
+        status: 'FAILED',
+        route: 'READY_FOR_PRICING',
+        failure: { retryable: false, attempt: 3 },
+      },
+    });
+    const replay = await service.submit(cleanTender, 'pricing-exhaustion-replay');
+
+    expect(replay).toMatchObject({
+      status: 'FAILED',
+      route: 'READY_FOR_PRICING',
+      replayed: true,
+    });
+    expect(gateway.calls).toBe(3);
+    expect((await repository.store.read()).handoffs).toHaveLength(0);
+  });
+
+  it('counts a pricing attempt interrupted in flight and reconciles a saved handoff', async () => {
+    const repository = new MemoryRepository();
+    let calls = 0;
+    let markInFlight!: () => void;
+    const inFlight = new Promise<void>((resolve) => {
+      markInFlight = resolve;
+    });
+    const interruptedGateway: PricingGateway = {
+      async submit(input) {
+        calls += 1;
+        if (calls === 1) throw new Error('temporary gateway failure');
+        if (calls === 2) {
+          const handoff: PricingHandoff = {
+            handoffId: randomUUID(),
+            handoffKey: input.handoffKey,
+            tenderId: input.tenderId,
+            runId: input.runId,
+            route: 'READY_FOR_PRICING',
+            createdAt: new Date().toISOString(),
+          };
+          await repository.saveHandoff(handoff);
+          markInFlight();
+          return new Promise<PricingHandoff>(() => undefined);
+        }
+        throw new Error('unexpected extra gateway attempt');
+      },
+    };
+    const request = cleanTender;
+    const interruptedService = new TenderService(
+      repository,
+      interruptedGateway,
+      undefined,
+      undefined,
+      { maxAttempts: 2, backoffMs: [0], sleep: async () => undefined },
+    );
+    void interruptedService.submit(request, 'pricing-in-flight');
+    await inFlight;
+    expect(await repository.findRunByIdempotencyKey(request.tender.idempotencyKey)).toMatchObject({
+      status: 'PROCESSING',
+      failure: { stage: 'PRICING', attempt: 2, retryable: true },
+    });
+
+    const resumedGateway = new RecordingGateway(repository);
+    const resumedService = new TenderService(repository, resumedGateway, undefined, undefined, {
+      maxAttempts: 2,
+      backoffMs: [0],
+      sleep: async () => undefined,
+    });
+    const resumed = await resumedService.submit(request, 'pricing-in-flight-replay');
+
+    expect(resumed).toMatchObject({ status: 'COMPLETED', route: 'READY_FOR_PRICING' });
+    expect(calls).toBe(2);
+    expect(resumedGateway.calls).toBe(0);
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+  });
+
+  it('does not label a pricing recovery write failure as a gateway failure', async () => {
+    const repository = new FailOnceOnPricingRecoveryRepository();
+    const gateway = new RecordingGateway(repository);
+    gateway.failuresRemaining = 1;
+    const service = new TenderService(repository, gateway, undefined, undefined, {
+      maxAttempts: 3,
+      backoffMs: [0, 0],
+      sleep: async () => undefined,
+    });
+
+    repository.failRecovery = true;
+    await expect(service.submit(cleanTender, 'pricing-first')).rejects.toMatchObject({
+      failure: { code: 'STATE_WRITE_FAILED', causeCode: 'PRICING_GATEWAY_FAILED' },
+    });
+    const afterFailure = await repository.findRunByIdempotencyKey(
+      cleanTender.tender.idempotencyKey,
+    );
+    expect(afterFailure).toMatchObject({
+      status: 'PROCESSING',
+      failure: { code: 'PRICING_GATEWAY_FAILED', stage: 'PRICING', attempt: 2, retryable: true },
+    });
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+
+    const resumed = await service.submit(cleanTender, 'pricing-recovery-retry');
+    expect(resumed.status).toBe('COMPLETED');
+    expect(resumed.failure).toBeUndefined();
+    expect((await repository.store.read()).handoffs).toHaveLength(1);
+  });
+
+  it('treats invalid source evidence as a technical failure', async () => {
+    const repository = new MemoryRepository();
+    const interpreter = new FakeInterpreter();
+    interpreter.result = {
+      ...output,
+      observations: [
+        {
+          ...output.observations[0]!,
+          evidence: [{ sourceId: source.sourceId, quote: 'fabricated evidence' }],
+        },
+      ],
+    };
+    const service = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+    );
+
+    await expect(
+      service.submit({ ...cleanTender, textSources: [source] }, 'correlation-invalid'),
+    ).rejects.toBeInstanceOf(TenderProcessingError);
+    const saved = await repository.findRunByIdempotencyKey(cleanTender.tender.idempotencyKey);
+    expect(saved?.failure?.code).toBe('MODEL_OUTPUT_INVALID');
+    expect(saved?.route).toBeUndefined();
+    expect((await repository.store.read()).handoffs).toHaveLength(0);
+  });
+
+  it('classifies schema-invalid interpreter output as MODEL_OUTPUT_INVALID', async () => {
+    const repository = new MemoryRepository();
+    const interpreter = new FakeInterpreter();
+    interpreter.result = {
+      ...output,
+      summary: '',
+    } as unknown as TenderInterpretation;
+    const service = new TenderService(
+      repository,
+      new RecordingGateway(repository),
+      undefined,
+      interpreter,
+    );
+
+    await expect(
+      service.submit({ ...cleanTender, textSources: [source] }, 'correlation-schema-invalid'),
+    ).rejects.toMatchObject({
+      httpStatus: 500,
+      response: { failure: { code: 'MODEL_OUTPUT_INVALID', retryable: false } },
+    });
+    const saved = await repository.findRunByIdempotencyKey(cleanTender.tender.idempotencyKey);
+    expect(saved?.failure?.code).toBe('MODEL_OUTPUT_INVALID');
+    expect((await repository.store.read()).handoffs).toHaveLength(0);
+  });
+});
