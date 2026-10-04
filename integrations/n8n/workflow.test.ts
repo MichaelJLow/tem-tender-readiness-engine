@@ -106,7 +106,9 @@ describe('n8n tender intake export', () => {
     const submit = node('Submit to Tender API');
     expect(submit.parameters.url).toContain('TENDER_API_URL');
     expect(submit.parameters.url).toContain('/tenders');
-    expect(submit.parameters.body).toContain('Normalize Transport');
+    expect(submit.parameters.contentType).toBe('json');
+    expect(submit.parameters.specifyBody).toBe('json');
+    expect(submit.parameters.jsonBody).toContain('Normalize Transport');
     expect(JSON.stringify(submit.parameters.headerParameters)).toContain('X-Correlation-ID');
     expect(JSON.stringify(submit.parameters.options)).toContain('neverError');
     expect(JSON.stringify(workflow)).not.toContain('/reviews');

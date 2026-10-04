@@ -188,3 +188,6 @@ the API independently enforces the same byte ceiling. Automated export and
 fixture checks run with `npm test -- integrations/n8n/workflow.test.ts`.
 Record executed results using the receipt template and evidence rules in
 [`docs/milestone-7-verification.md`](../../docs/milestone-7-verification.md).
+The receipt also explains the repository-external npm/CDN workaround used when
+Docker is unavailable; the recommended fresh setup remains the pinned Docker
+image above.

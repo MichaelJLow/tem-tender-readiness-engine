@@ -351,12 +351,13 @@ been checked; Milestone 6 remains incomplete.
 
 ### Acceptance criteria
 
-The n8n canvas contains integration orchestration, not a hidden second implementation of business policy. The export and automated contract checks are
-implemented. Milestone acceptance remains open until a reviewer completes the
-fresh-runtime execution matrix and records merged PR evidence in the
-[Milestone 7 verification receipt](milestone-7-verification.md). Document
-registration/upload is outside the implemented local contract: the workflow
-accepts structured data and already-extracted document text only.
+The n8n canvas contains integration orchestration, not a hidden second implementation of business policy. The export, automated contract checks, and
+fresh-runtime execution matrix are complete in the
+[Milestone 7 verification receipt](milestone-7-verification.md). Milestone
+acceptance remains open only for PR review, merge, and recording the immutable
+merge evidence. Document registration/upload is outside the implemented local
+contract: the workflow accepts structured data and already-extracted document
+text only.
 
 ### Suggested branch
 
