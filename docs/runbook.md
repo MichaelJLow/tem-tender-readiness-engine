@@ -17,6 +17,7 @@ This is a **living operational document**. It describes the local API, including
 - Interpretation runs inside the API process. The model receives only the tender context needed for site association and the submitted note/extracted text. It has no tools or pricing access. Provider failure returns a technical failure and cannot assign a route or call pricing.
 - A site-scoped extracted fact must cite a quote containing both its value and a unique known site ID, meter identifier, or full address. Unclear or conflicting identity routes to `HUMAN_REVIEW`, including for a single-site tender.
 - Submit a JSON domain `ReadinessInput` to `POST /tenders` with `Content-Type: application/json`.
+
 ## Local n8n intake
 
 The credential-free Milestone 7 webhook export, pinned n8n version, synthetic
@@ -24,6 +25,12 @@ fixtures, Docker host-gateway setup, and verification commands live in
 [`integrations/n8n/README.md`](../integrations/n8n/README.md). n8n normalizes transport, forwards the existing API contract, and records
 synthetic integration outcomes. The API continues to own validation,
 idempotency, readiness rules, interpretation, and the pricing guard.
+
+The [Milestone 7 verification receipt](milestone-7-verification.md) records the
+source revision, exact checks, and live-runtime evidence gate. Do not mark the
+milestone complete from unit tests alone: import the tracked JSON into a fresh
+pinned n8n runtime, execute every scenario, and attach the resulting execution
+evidence and merged PR before closing the milestone.
 
 Keep n8n's editor bound to loopback. Do not expose it, the operations Console,
 or review endpoints publicly. Containerized n8n reaches the host API through the

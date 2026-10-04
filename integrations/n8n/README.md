@@ -115,6 +115,45 @@ query `GET /tenders` to correlate that run. Repeating the same request returns
 the same stored outcome with `replayed: true`, the same integration key, and does
 not create a second pricing handoff.
 
+### Reproducible route walkthrough
+
+Use a fresh disposable API state file, then send these fixtures **in order**.
+They are derived from the repository's domain fixtures and retain deliberately
+synthetic source/document references.
+
+| Order | Fixture                  | Expected HTTP and observed workflow outcome                                                               |
+| ----- | ------------------------ | --------------------------------------------------------------------------------------------------------- |
+| 1     | `clean.json`             | `200`, `COMPLETED` + `READY_FOR_PRICING`, one API-owned handoff, `PRICING_HANDOFF_RECORDED`               |
+| 2     | `needs-information.json` | `200`, `COMPLETED` + `NEEDS_INFORMATION`, `INFORMATION_REQUEST_RECORDED`, no message or handoff           |
+| 3     | `human-review.json`      | `200`, `COMPLETED` + `HUMAN_REVIEW`, `HUMAN_REVIEW_AVAILABLE` with the run-based Console path, no handoff |
+| 4     | `pending.json`           | `202`, `PROCESSING` with no business route, `PENDING`, no handoff                                         |
+| 5     | `duplicate.json`         | `200`, `COMPLETED` + `DUPLICATE`; it reuses the clean tender ID with a new key, so it must follow step 1  |
+
+```sh
+for fixture in clean needs-information human-review pending duplicate; do
+  printf '\n=== %s ===\n' "$fixture"
+  curl --fail-with-body --silent --show-error \
+    -H 'Content-Type: application/json' \
+    --data "@integrations/n8n/fixtures/$fixture.json" \
+    http://127.0.0.1:5678/webhook/tender-intake
+  printf '\n'
+done
+
+curl --fail-with-body --silent --show-error http://127.0.0.1:3000/tenders
+```
+
+The final API projection must contain exactly one pricing handoff, owned by the
+clean run. Verify each response retains its fixture correlation ID and a run ID;
+the human-review response must also retain both synthetic date-fact evidence
+source IDs. The API projection is the authoritative check for source/document
+references because `integrationOutcome` is intentionally only a compact receipt.
+
+For the technical failure path, stop the API while leaving n8n running and
+submit any valid fixture. Expect HTTP `502`, `TENDER_API_UNAVAILABLE`, the input
+correlation ID, `integrationOutcome.type: TECHNICAL_ERROR`, and zero outbound
+messages. Restart the API before continuing. This is a transport failure test;
+do not edit a successful response or use pinned canvas data as evidence.
+
 The text-bearing fixture includes one `NOTE` and one `DOCUMENT_TEXT` with a valid
 document reference. It requires a configured model provider because semantic
 interpretation is API-owned:
@@ -147,3 +186,5 @@ curl --silent --show-error -H 'Content-Type: application/json' \
 The workflow's 1 MiB transport limit can be checked with a generated request;
 the API independently enforces the same byte ceiling. Automated export and
 fixture checks run with `npm test -- integrations/n8n/workflow.test.ts`.
+Record executed results using the receipt template and evidence rules in
+[`docs/milestone-7-verification.md`](../../docs/milestone-7-verification.md).
