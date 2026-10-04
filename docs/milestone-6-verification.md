@@ -91,3 +91,35 @@ existing budget alert was previously recorded in Linear.
 Studio experiments and raw traces are separate local evidence. This snapshot
 retains portable evaluation reports and application state, without copying
 Studio's database or claiming that its experiments have been restored.
+
+## ENG-3 Console walkthrough
+
+Verified on 4 October 2026 against a fresh local restore of the S3 snapshot above.
+
+- Restore command: `npm run demo:restore`, using the existing private bucket,
+  region and snapshot listed in the live AWS verification. The destination was
+  `data/eng3-s3-restored-2026-10-04`. The manifest, member hashes/sizes, tender
+  state and evaluation report schemas validated before restore completed.
+- The API and Console were pointed at the restored copy using
+  `TENDER_STATE_PATH` and `EVALS_DIR`. The inspected queue contains exactly
+  three completed fixtures: `READY_FOR_PRICING`, `NEEDS_INFORMATION` and
+  `HUMAN_REVIEW`.
+- The conflicting-dates case remains `HUMAN_REVIEW`. Its review event is
+  `REQUEST_INFORMATION`, with the confirmation reason and citations
+  `site-001`, `contract-a` and `contract-b` intact.
+- The stored state contains exactly one mocked pricing handoff, belonging to
+  the `tender-clean-001` ready run. Case and performance views, followed by a
+  fresh API process reading the restored state, left the state-file SHA-256
+  unchanged (`9404633455014D742FA1D4FB081D30E7E59D6BF1129251710F39930B8E712047`)
+  and the handoff count at one.
+- The accepted report remains
+  `full-2026-09-26T23-53-52.654Z` with 49/51 workflow critical facts. The
+  distinct latest report remains `full-2026-09-28T19-39-31.237Z` with 51/51;
+  it was not promoted over the accepted pointer.
+- A restore attempt targeting the already-existing destination was refused,
+  and its state-file hash remained unchanged. No tender was submitted and no
+  fixtures were reseeded to produce this result.
+
+All inspected application records are synthetic. This walkthrough restores
+application state and portable evaluation reports only; Studio experiments
+and raw traces remain separate evidence.
