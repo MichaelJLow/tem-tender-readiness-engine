@@ -176,8 +176,21 @@ describe('synthetic demo archive', () => {
     await expect(prepare()).rejects.toThrow('audit history');
   });
 
-  it('fails visibly on missing completion manifest or missing member', async () => {
+  it('fails visibly on a missing member before creating the restore directory', async () => {
     await prepare();
+    const localReader = localSnapshotReader(prepared);
+    const missingMemberReader = {
+      async read(path: string, maximumBytes: number) {
+        if (path === 'state/tender-state.json') throw new Error('Object not found.');
+        return localReader.read(path, maximumBytes);
+      },
+    };
+    const destination = join(directory, 'missing-member-restore');
+    await expect(restoreSnapshot(missingMemberReader, destination)).rejects.toThrow(
+      'Object not found.',
+    );
+    await expect(access(destination)).rejects.toThrow();
+
     await rm(join(prepared, 'manifest.json'));
     await expect(verifySnapshot(localSnapshotReader(prepared))).rejects.toThrow();
     // A failed/partial snapshot stays available for diagnosis but cannot be restored.

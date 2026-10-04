@@ -298,10 +298,10 @@ database. The API, Console, and Mastra Studio remain local.
 ### Tasks
 
 - [ ] Confirm the AWS account, region, remaining credits, and budget alert.
-- [ ] Define one private S3 bucket with public access blocked.
-- [ ] Archive a consistent synthetic state snapshot, accepted baseline, latest
+- [x] Define one private S3 bucket with public access blocked.
+- [x] Archive a consistent synthetic state snapshot, accepted baseline, latest
       completed eval report, and available synthetic source files.
-- [ ] Restore a complete snapshot into a fresh local path with checksum/schema
+- [x] Restore a complete snapshot into a fresh local path with checksum/schema
       verification and no overwrite of existing state.
 - [ ] Re-run the local Console walkthrough from the restored files.
 - [x] Document the archive/restore path and the fact that Studio's local
@@ -318,10 +318,13 @@ A live AWS database/runtime and a hosted Console are deferred. If a public demo
 URL becomes important later, plan it separately with a cost and authentication
 decision rather than expanding this milestone.
 
-**Local implementation (2026-09-30):** archive/restore commands now prepare
-and verify bounded synthetic snapshots, preserve the accepted/latest distinction,
-and restore into a fresh path. Real S3 upload/restore and access checks remain
-pending; Milestone 6 is not yet complete. The [local verification receipt](milestone-6-verification.md) records all 184 passing tests and the archive/restore API checks.
+**Local implementation (2026-09-30):** archive/restore commands prepare and
+verify bounded synthetic snapshots, preserve the accepted/latest distinction,
+and restore into a fresh path. The [verification receipt](milestone-6-verification.md)
+records the 184-test implementation run and the live AWS upload, restore,
+and access results from 2026-10-04. The Console walkthrough from the S3-restored
+files remains open under ENG-3, and the account's credit balance/expiry has not
+been checked; Milestone 6 remains incomplete.
 
 ### Suggested branch
 

@@ -43,13 +43,50 @@ files. HTTP queue/detail/eval projections returned successfully and verified:
 - Latest run `full-2026-09-28T19-39-31.237Z` retained 51/51 workflow facts.
 - Restored state bytes matched the original and did not change during viewing.
 
+## Live AWS verification
+
+Verified on 4 October 2026 against the existing demo bucket using AWS CLI
+2.37.9 and profile `tem-demo` in `us-east-2`.
+
+- Bucket: `tender-readiness-demo-archive-20260930-7f32a19e`.
+- Caller: the account root principal; the account ID is intentionally omitted
+  from this public receipt. This confirms the actual caller and does not claim
+  least-privilege CLI access.
+- Bucket checks: all four Block Public Access settings are enabled; default
+  encryption is SSE-S3 (`AES256`); versioning is enabled; object ownership is
+  `BucketOwnerEnforced`.
+- Fresh uploaded snapshot:
+  `snapshot-2026-10-04T17-34-01-079Z-2580fa54-d3a8-423f-8cb2-c3ab64a72f66`.
+  The six package members were the synthetic tender state, accepted-baseline
+  pointer, and accepted/latest JSON and Markdown reports. The repository
+  uploader completed successfully and publishes the manifest after members.
+- Restore: `npm run demo:restore` retrieved the snapshot into the fresh path
+  `data/eng2-s3-restored-2026-10-04`; checksum and schema validation passed.
+  It retained the separate accepted run
+  `full-2026-09-26T23-53-52.654Z` and latest run
+  `full-2026-09-28T19-39-31.237Z`.
+- Anonymous access: an unsigned `HEAD` request to the uploaded manifest
+  returned HTTP 403.
+- Existing-prefix protection: re-uploading the same package and snapshot ID
+  exited unsuccessfully. S3 still showed exactly one version for each member
+  and the manifest after the attempt.
+- Failure-path check: the archive unit suite now explicitly verifies that a
+  missing member fails before a restore directory is created. All 14 focused
+  archive tests passed. The suite also checks that the manifest is written
+  last and is absent after an interrupted upload.
+
+The CLI used a temporary root-principal login because no restricted CLI role
+was available in this environment. Sign out after verification; future routine
+archive runs should use a dedicated principal scoped to this bucket's
+`snapshots/` prefix.
+
 ## Remaining acceptance
 
-No AWS resource has been created and no snapshot has been uploaded. The S3 CLI
-transport still requires real account/profile setup and live verification.
-Confirm account, region, credits and spending alert; configure one private
-bucket; upload and restore; verify private access; then inspect the Console
-against the S3-restored files. Milestone 6 remains incomplete until this is done.
+The live archive transport and private-access checks are complete. The local
+Console walkthrough against this S3 restore remains tracked by ENG-3, and the
+Milestone 6 acceptance is not complete until that walkthrough passes. The
+AWS credit balance/expiry was not checked during this verification. The
+existing budget alert was previously recorded in Linear.
 
 Studio experiments and raw traces are separate local evidence. This snapshot
 retains portable evaluation reports and application state, without copying

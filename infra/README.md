@@ -2,7 +2,9 @@
 
 Milestone 6 uses one private S3 bucket for synthetic demo evidence snapshots.
 The API, Operations Console and Mastra Studio remain local. Account access,
-resource creation, cost/credit checks and real S3 verification are pending.
+the bucket configuration, and the S3 archive/restore transport have been
+verified; the AWS credit balance/expiry remains unchecked. See the
+[Milestone 6 verification receipt](../docs/milestone-6-verification.md).
 
 ## Minimal setup
 
