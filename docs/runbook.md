@@ -17,6 +17,7 @@ This is a **living operational document**. It describes the local API, including
 - Interpretation runs inside the API process. The model receives only the tender context needed for site association and the submitted note/extracted text. It has no tools or pricing access. Provider failure returns a technical failure and cannot assign a route or call pricing.
 - A site-scoped extracted fact must cite a quote containing both its value and a unique known site ID, meter identifier, or full address. Unclear or conflicting identity routes to `HUMAN_REVIEW`, including for a single-site tender.
 - Submit a JSON domain `ReadinessInput` to `POST /tenders` with `Content-Type: application/json`.
+
 ## Local n8n intake
 
 The credential-free Milestone 7 webhook export, pinned n8n version, synthetic
@@ -178,6 +179,64 @@ A retry/replay action must be idempotent. In particular, it must not:
 - send a second pricing request,
 - create duplicate information requests,
 - create duplicate review tasks.
+
+### Bounded automatic recovery policy
+
+The Tender API is the only automatic retry owner for the two implemented
+transient stages. It makes at most **three total attempts per stage** (the
+original call plus two retries), waiting **250 ms** and then **1,000 ms**. Each
+model attempt retains the interpreter's **20,000 ms timeout**. n8n and the model
+SDK do not add another application-level retry loop. State read/write failures
+are not retried automatically because the API cannot safely prove what was
+persisted; recover storage first and use the replay procedure below.
+
+Only `MODEL_PROVIDER_FAILED` errors classified as timeout/transient and
+`PRICING_GATEWAY_FAILED` are eligible. `MODEL_OUTPUT_INVALID`, deterministic
+readiness errors, invalid transport/input, explicit terminal provider errors,
+and pending document processing stop immediately. `PROCESSING` without a route
+is pending work, never transport failure and never implicit readiness.
+
+Every failed attempt is persisted with its stage and attempt number before the
+backoff. A restarted API continues at the next retained attempt rather than
+resetting the budget. At exhaustion the run remains `FAILED`, the failure is
+marked `retryable: false`, and its message names the exhausted limit. A retained
+`READY_FOR_PRICING` route on an exhausted pricing run is evidence of the
+business decision only; it must not be reported as a successful handoff.
+
+### Safe replay and verification receipt
+
+1. Preserve the failed run and inspect `failure.code`, `failure.stage`,
+   `failure.attempt`, `failure.retryable`, `runId`, and `correlationId`. Do not
+   edit/delete state or invent a new key to evade exhaustion.
+2. For an interrupted retry where `retryable: true`, restore the provider or
+   mocked gateway and resubmit the **byte-equivalent normalized request** with
+   its original `tender.idempotencyKey`. A different correlation ID is allowed
+   for the operator action; the run ID and effect keys remain unchanged.
+3. For `retryable: false`, stop automatic replay. Diagnose and correct the
+   provider/prompt/input or gateway condition, run the relevant tests/evals,
+   and obtain human approval before any separately controlled resubmission.
+4. Compare state before and after. The original `runId` must remain; handoffs
+   with key `<tenderId>:<idempotencyKey>`, information-request receipts with key
+   `information-request:<runId>`, and review events must not increase beyond the
+   intended single effect.
+
+The deterministic recovery tests use the synthetic clean fixture and its exact
+identity: submit `integrations/n8n/fixtures/clean.json`, whose envelope contains
+`correlationId: n8n-clean-001`, `tenderId: tender-n8n-clean-001`, and
+`idempotencyKey: n8n-clean-key-001`. Replay the same file unchanged:
+
+```sh
+curl --fail-with-body --silent --show-error \
+  -H 'Content-Type: application/json' \
+  --data @integrations/n8n/fixtures/clean.json \
+  http://127.0.0.1:5678/webhook/tender-intake
+```
+
+Record these counts from the disposable state: `runs = 1`, `handoffs = 1`,
+`reviewEvents = 0`; the gateway test also records three initiated calls and zero
+handoffs on exhaustion. Success after retry and restart recovery record one
+handoff only. Provider terminal/invalid-output tests record zero handoffs.
+These are synthetic verification counts, not production customer evidence.
 
 ## Failure scenarios to rehearse
 

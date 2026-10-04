@@ -104,6 +104,9 @@ describe('n8n tender intake export', () => {
     expect(submit.parameters.body).toContain('Normalize Transport');
     expect(JSON.stringify(submit.parameters.headerParameters)).toContain('X-Correlation-ID');
     expect(JSON.stringify(submit.parameters.options)).toContain('neverError');
+    expect(submit.parameters).not.toHaveProperty('retryOnFail');
+    expect(submit.parameters).not.toHaveProperty('maxTries');
+    expect(submit.parameters).not.toHaveProperty('waitBetweenTries');
     expect(JSON.stringify(workflow)).not.toContain('/reviews');
   });
 

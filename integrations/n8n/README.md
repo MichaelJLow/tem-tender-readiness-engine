@@ -38,6 +38,13 @@ Transport failures return visible 4xx JSON responses. Tender API responses,
 including validation and processing failures, retain their HTTP status and body.
 Malformed JSON is rejected by n8n before the normalization node runs.
 
+The Tender API is the sole retry owner for model-provider and mocked-pricing
+failures. The HTTP Request node has no automatic retry configuration: n8n makes
+one API call per webhook delivery and must not wrap a failed response in its own
+retry loop. An operator may redeliver the original envelope only as described in
+the runbook; the API's retained attempt count and idempotency key remain
+authoritative.
+
 ## Outcome contract
 
 Successful API response bodies are returned unchanged except for an added
