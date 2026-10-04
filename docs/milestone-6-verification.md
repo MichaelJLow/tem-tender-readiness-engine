@@ -82,11 +82,11 @@ archive runs should use a dedicated principal scoped to this bucket's
 
 ## Remaining acceptance
 
-The live archive transport and private-access checks are complete. The local
-Console walkthrough against this S3 restore remains tracked by ENG-3, and the
-Milestone 6 acceptance is not complete until that walkthrough passes. The
-AWS credit balance/expiry was not checked during this verification. The
-existing budget alert was previously recorded in Linear.
+The live archive transport, private-access checks and ENG-3 local Console
+walkthrough are complete. ENG-4 tracks recording Milestone 6 acceptance and
+preparing the existing archive branch for review. The AWS credit balance/expiry
+was not checked during this verification. The existing budget alert was
+previously recorded in Linear.
 
 Studio experiments and raw traces are separate local evidence. This snapshot
 retains portable evaluation reports and application state, without copying
