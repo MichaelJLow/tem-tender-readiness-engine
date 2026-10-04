@@ -1,4 +1,4 @@
-# Milestone 6 local archive verification
+# Milestone 6 archive acceptance receipt
 
 Verified on 30 September 2026 on `feat/aws-demo-archive`.
 
@@ -80,13 +80,27 @@ was available in this environment. Sign out after verification; future routine
 archive runs should use a dedicated principal scoped to this bucket's
 `snapshots/` prefix.
 
-## Remaining acceptance
+## Acceptance and delivery status
 
-The live archive transport, private-access checks and ENG-3 local Console
-walkthrough are complete. ENG-4 tracks recording Milestone 6 acceptance and
-preparing the existing archive branch for review. The AWS credit balance/expiry
-was not checked during this verification. The existing budget alert was
-previously recorded in Linear.
+Milestone 6 archive acceptance is complete. The 30 September local-only run
+established deterministic packaging and restore behaviour; the 4 October AWS
+run separately established upload, fresh restore, private access, and
+existing-prefix protection in `us-east-2`; the ENG-3 walkthrough then
+established that the restored API/Console preserves the three routes, review
+audit, accepted/latest distinction, and single ready-only mocked handoff.
+
+The implementation and live S3 evidence were merged to `main` in
+[PR #14](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/14).
+The restored-Console acceptance evidence was merged in
+[PR #16](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/16).
+ENG-4 records the reconciled milestone status in a separate reviewable PR; it
+must not be marked Done until that PR has successful CI, user approval, and
+merge evidence.
+
+The promotional AWS credit balance/expiry was not available to the repository
+CLI verification and remains a non-blocking account-administration follow-up.
+The existing budget alert was previously recorded in Linear. This limitation
+does not weaken the recorded archive/restore or private-access results.
 
 Studio experiments and raw traces are separate local evidence. This snapshot
 retains portable evaluation reports and application state, without copying

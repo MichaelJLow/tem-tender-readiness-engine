@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted for Milestone 6 implementation; live S3 upload, restore, and private-access verification completed on 2026-10-04. The restored Console walkthrough and AWS credit balance/expiry check remain open; see the [verification receipt](../milestone-6-verification.md).
+Accepted and verified for Milestone 6. Live S3 upload, fresh restore,
+private-access checks, and the restored Console walkthrough completed on
+2026-10-04; see the [acceptance receipt](../milestone-6-verification.md).
+Promotional AWS credit balance/expiry is a non-blocking account follow-up.
 
 ## Context
 
@@ -60,5 +63,6 @@ not arbitrary application backups. Expand its contract deliberately if the demo
 fixtures change. Reviewer notes and optional files still require human inspection
 as synthetic; common credential detection is an additional guard, not proof.
 Studio experiments and traces remain separate; portable eval reports are retained.
-Real upload/restore and private-access verification must complete before
-Milestone 6 is checked off. Cloud hosting requires its own later decision.
+Real upload/restore, private-access verification, and the restored Console
+walkthrough completed before Milestone 6 was accepted. Cloud hosting requires
+its own later decision.

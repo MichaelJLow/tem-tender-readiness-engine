@@ -105,11 +105,14 @@ Creating the bucket, IAM access, budget alert, and uploading files require acces
 
 Create the bucket and verify its access policy before uploading. Keep every local source file. Rollback of the application is simply to stop using the archive scripts; no current runtime depends on S3. Preserve desired snapshots before any later bucket teardown, which is a separate decision.
 
-## Open gates
+## Gate outcomes
 
-1. Before implementation touches AWS: confirm region, account access, credits, and a small spending alert.
-2. Before declaring completion: run one real synthetic archive/restore walkthrough, or mark cloud verification pending if credentials are unavailable.
-3. Public cloud hosting can be considered later as its own plan if the portfolio genuinely needs a live URL.
+1. Account access, `us-east-2`, and the existing budget alert were recorded;
+   promotional credit balance/expiry remains a non-blocking account follow-up.
+2. The real synthetic S3 archive/restore and private-access checks passed on
+   2026-10-04, followed by a Console walkthrough from a fresh S3 restore.
+3. Public cloud hosting remains deferred and requires its own cost and
+   authentication decision if a live URL becomes important.
 
 ## References
 
@@ -118,4 +121,4 @@ Create the bucket and verify its access policy before uploading. Keep every loca
 - AWS Free Tier credit terms: https://aws.amazon.com/free/terms/
 - AWS Budgets pricing: https://aws.amazon.com/aws-cost-management/aws-budgets/pricing/
 
-Planning capability: user-selected SOL session. Local implementation was authorized on 2026-09-30. Archive/restore tooling and live S3 upload, restore, and private-access checks completed on 2026-10-04; see [the verification receipt](../milestone-6-verification.md). The AWS credit balance/expiry and restored Console walkthrough remain open, so Milestone 6 is not complete. The live API and Console remain local.
+Planning capability: user-selected SOL session. Local implementation was authorized on 2026-09-30. Archive/restore tooling, live S3 upload and restore, private-access checks, and the restored Console walkthrough completed on 2026-10-04; see [the acceptance receipt](../milestone-6-verification.md). Milestone 6 is accepted. The promotional AWS credit balance/expiry remains a non-blocking account-administration follow-up. The live API, Console, and Studio remain local.

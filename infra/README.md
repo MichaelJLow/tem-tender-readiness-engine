@@ -3,8 +3,9 @@
 Milestone 6 uses one private S3 bucket for synthetic demo evidence snapshots.
 The API, Operations Console and Mastra Studio remain local. Account access,
 the bucket configuration, and the S3 archive/restore transport have been
-verified; the AWS credit balance/expiry remains unchecked. See the
-[Milestone 6 verification receipt](../docs/milestone-6-verification.md).
+verified and accepted. The promotional AWS credit balance/expiry remains an
+account-administration follow-up, not an archive correctness gate. See the
+[Milestone 6 acceptance receipt](../docs/milestone-6-verification.md).
 
 ## Minimal setup
 
