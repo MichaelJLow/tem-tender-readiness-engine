@@ -96,7 +96,8 @@ Studio's database or claiming that its experiments have been restored.
 
 Verified on 4 October 2026 against a fresh local restore of the S3 snapshot above.
 
-- Restore command: `npm run demo:restore`, using the existing private bucket,
+- Restore entrypoint: `scripts/restore-demo.ts` via the repository's `tsx`
+  runtime, using the existing private bucket,
   region and snapshot listed in the live AWS verification. The destination was
   `data/eng3-s3-restored-2026-10-04`. The manifest, member hashes/sizes, tender
   state and evaluation report schemas validated before restore completed.
