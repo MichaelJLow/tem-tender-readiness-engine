@@ -377,7 +377,9 @@ export class TenderService {
       throw new StatePersistenceError(
         {
           code: reading ? 'STATE_READ_FAILED' : 'STATE_WRITE_FAILED',
-          message: reading ? 'Tender state could not be read.' : 'Tender state could not be written.',
+          message: reading
+            ? 'Tender state could not be read.'
+            : 'Tender state could not be written.',
           retryable: true,
           stage: reading ? 'STATE_READ' : 'STATE_WRITE',
           occurredAt: this.now().toISOString(),
