@@ -1,6 +1,8 @@
 # Milestone 6 archive acceptance receipt
 
-Verified on 30 September 2026 on `feat/aws-demo-archive`.
+Local implementation was verified on 30 September 2026 on
+`feat/aws-demo-archive`; live AWS and restored-Console acceptance followed on
+4 October 2026.
 
 ## Saved work and checks
 

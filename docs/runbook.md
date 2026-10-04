@@ -17,7 +17,6 @@ This is a **living operational document**. It describes the local API, including
 - Interpretation runs inside the API process. The model receives only the tender context needed for site association and the submitted note/extracted text. It has no tools or pricing access. Provider failure returns a technical failure and cannot assign a route or call pricing.
 - A site-scoped extracted fact must cite a quote containing both its value and a unique known site ID, meter identifier, or full address. Unclear or conflicting identity routes to `HUMAN_REVIEW`, including for a single-site tender.
 - Submit a JSON domain `ReadinessInput` to `POST /tenders` with `Content-Type: application/json`.
-
 ## Local n8n intake
 
 The credential-free Milestone 7 webhook export, pinned n8n version, synthetic

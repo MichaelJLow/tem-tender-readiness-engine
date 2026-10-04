@@ -324,10 +324,12 @@ decision rather than expanding this milestone.
 synthetic snapshots, preserve the accepted/latest distinction, and restore into
 a fresh path. The [verification receipt](milestone-6-verification.md) records
 the 184-test implementation run, live private-S3 upload and restore, access
-checks, and Console walkthrough from a fresh S3 restore. PR #14 merged the
-archive branch and live S3 evidence; PR #16 merged the restored-Console
-evidence. The promotional AWS credit balance/expiry remains an explicit,
-non-blocking account-administration follow-up.
+checks, and Console walkthrough from a fresh S3 restore.
+[PR #14](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/14)
+merged the archive branch and live S3 evidence;
+[PR #16](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/16)
+merged the restored-Console evidence. The promotional AWS credit balance/expiry
+remains an explicit, non-blocking account-administration follow-up.
 
 ### Suggested branch
 
