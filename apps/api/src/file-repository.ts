@@ -20,7 +20,9 @@ export class FileStateStore implements LocalStateStore {
       return LocalStateSchema.parse(JSON.parse(contents) as unknown);
     } catch (error) {
       if (isMissingFile(error)) return { version: 1, runs: [], handoffs: [], reviewEvents: [] };
-      throw new Error(`Unable to read tender state at ${this.filePath}.`, { cause: error });
+      throw new StateReadError(`Unable to read tender state at ${this.filePath}.`, {
+        cause: error,
+      });
     }
   }
 
@@ -33,9 +35,19 @@ export class FileStateStore implements LocalStateStore {
       await writeFile(tempPath, `${JSON.stringify(validatedState, null, 2)}\n`, { flag: 'wx' });
       await rename(tempPath, this.filePath);
     } catch (error) {
-      throw new Error(`Unable to write tender state at ${this.filePath}.`, { cause: error });
+      throw new StateWriteError(`Unable to write tender state at ${this.filePath}.`, {
+        cause: error,
+      });
     }
   }
+}
+
+export class StateReadError extends Error {
+  override name = 'StateReadError';
+}
+
+export class StateWriteError extends Error {
+  override name = 'StateWriteError';
 }
 
 export class JsonFileTenderRepository implements TenderRepository {

@@ -11,7 +11,13 @@ import {
   ReviewRunNotFoundError,
   StaleReviewVersionError,
 } from './file-repository.js';
-import { IdempotencyConflictError, TenderProcessingError, TenderService } from './service.js';
+import {
+  IdempotencyConflictError,
+  StatePersistenceError,
+  TenderProcessingError,
+  TenderService,
+} from './service.js';
+import type { RunFailure } from './contracts.js';
 
 const CorrelationIdSchema = z.string().regex(/^[\x21-\x7e]{1,128}$/);
 const MAX_BODY_BYTES = 1_048_576;
@@ -60,7 +66,8 @@ async function handleRequest(
         }),
       );
       sendJson(response, 200, { items });
-    } catch {
+    } catch (error) {
+      logStateBoundaryFailure(error, correlationId);
       sendJson(response, 500, { error: 'TENDER_LIST_UNAVAILABLE', correlationId });
     }
     return;
@@ -109,7 +116,8 @@ async function handleRequest(
         reviewState: reviewState(reviewEvents),
         reviewVersion: reviewEvents.length,
       });
-    } catch {
+    } catch (error) {
+      logStateBoundaryFailure(error, correlationId);
       sendJson(response, 500, { error: 'TENDER_DETAIL_UNAVAILABLE', correlationId });
     }
     return;
@@ -189,6 +197,9 @@ async function handleRequest(
         error: reviewErrorCode(error),
         correlationId,
       });
+      if (error instanceof StatePersistenceError) {
+        logOperationalFailure(error.failure, correlationId, error.tenderId, error.runId);
+      }
     }
     return;
   }
@@ -199,6 +210,7 @@ async function handleRequest(
   }
 
   if (!correlationIdResult.success) {
+    logTransportFailure('INVALID_CORRELATION_ID', correlationId);
     sendJson(response, 400, { error: 'INVALID_CORRELATION_ID', correlationId });
     return;
   }
@@ -206,6 +218,7 @@ async function handleRequest(
   if (
     request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json'
   ) {
+    logTransportFailure('CONTENT_TYPE_MUST_BE_JSON', correlationId);
     sendJson(response, 415, { error: 'CONTENT_TYPE_MUST_BE_JSON', correlationId });
     return;
   }
@@ -215,15 +228,18 @@ async function handleRequest(
     body = await readJsonBody(request);
   } catch (error) {
     if (error instanceof BodyTooLargeError) {
+      logTransportFailure('REQUEST_BODY_TOO_LARGE', correlationId);
       sendJson(response, 413, { error: 'REQUEST_BODY_TOO_LARGE', correlationId });
       return;
     }
+    logTransportFailure('INVALID_JSON', correlationId);
     sendJson(response, 400, { error: 'INVALID_JSON', correlationId });
     return;
   }
 
   const validation = IntakeRequestSchema.safeParse(body);
   if (!validation.success) {
+    logTransportFailure('INVALID_TENDER', correlationId);
     sendJson(response, 400, {
       error: 'INVALID_TENDER',
       correlationId,
@@ -266,24 +282,82 @@ async function handleRequest(
       sendJson(response, 409, { error: 'IDEMPOTENCY_KEY_CONFLICT', correlationId });
       return;
     }
+    if (error instanceof StatePersistenceError) {
+      sendJson(response, 500, {
+        error: error.failure.code,
+        correlationId,
+        failure: error.failure,
+        ...(error.tenderId ? { tenderId: error.tenderId } : {}),
+        ...(error.runId ? { runId: error.runId } : {}),
+      });
+      logOperationalFailure(error.failure, correlationId, error.tenderId, error.runId);
+      return;
+    }
     if (error instanceof TenderProcessingError) {
       sendJson(response, error.httpStatus, error.response);
-      console.error(
-        JSON.stringify({
-          event: 'tender.processing_failed',
-          tenderId: error.response.tenderId,
-          runId: error.response.runId,
+      if (error.response.failure) {
+        logOperationalFailure(
+          error.response.failure,
           correlationId,
-          status: error.response.status,
-          failure: error.response.failure?.code,
-          traceId: error.response.modelTrace?.traceId,
-          model: error.response.modelTrace?.model,
-        }),
-      );
+          error.response.tenderId,
+          error.response.runId,
+          error.response.status,
+          error.response.modelTrace?.traceId,
+          error.response.modelTrace?.model,
+        );
+      }
       return;
     }
     console.error(JSON.stringify({ event: 'tender.intake_failed', correlationId }));
     sendJson(response, 500, { error: 'TENDER_PROCESSING_FAILED', correlationId });
+  }
+}
+
+function logTransportFailure(reason: string, correlationId: string): void {
+  logOperationalFailure(
+    {
+      code: 'API_TRANSPORT_FAILED',
+      message: reason,
+      retryable: false,
+      stage: 'API_TRANSPORT',
+      occurredAt: new Date().toISOString(),
+      attempt: 1,
+    },
+    correlationId,
+  );
+}
+
+function logOperationalFailure(
+  failure: RunFailure,
+  correlationId: string,
+  tenderId?: string,
+  runId?: string,
+  status: string = 'FAILED',
+  traceId?: string,
+  model?: string,
+): void {
+  console.error(
+    JSON.stringify({
+      event: 'tender.operation_failed',
+      timestamp: failure.occurredAt ?? new Date().toISOString(),
+      correlationId,
+      ...(tenderId ? { tenderId } : {}),
+      ...(runId ? { runId } : {}),
+      status,
+      failureCode: failure.code,
+      failureStage: failure.stage,
+      retryable: failure.retryable,
+      attempt: failure.attempt,
+      causeCode: failure.causeCode,
+      ...(traceId ? { traceId } : {}),
+      ...(model ? { model } : {}),
+    }),
+  );
+}
+
+function logStateBoundaryFailure(error: unknown, correlationId: string): void {
+  if (error instanceof StatePersistenceError) {
+    logOperationalFailure(error.failure, correlationId, error.tenderId, error.runId);
   }
 }
 

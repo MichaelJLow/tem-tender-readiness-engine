@@ -17,14 +17,13 @@ This is a **living operational document**. It describes the local API, including
 - Interpretation runs inside the API process. The model receives only the tender context needed for site association and the submitted note/extracted text. It has no tools or pricing access. Provider failure returns a technical failure and cannot assign a route or call pricing.
 - A site-scoped extracted fact must cite a quote containing both its value and a unique known site ID, meter identifier, or full address. Unclear or conflicting identity routes to `HUMAN_REVIEW`, including for a single-site tender.
 - Submit a JSON domain `ReadinessInput` to `POST /tenders` with `Content-Type: application/json`.
-
 ## Local n8n intake
 
 The credential-free Milestone 7 webhook export, pinned n8n version, synthetic
 fixtures, Docker host-gateway setup, and verification commands live in
-[`integrations/n8n/README.md`](../integrations/n8n/README.md). n8n normalizes
-transport only and forwards the existing API contract; the API continues to own
-validation, idempotency, readiness rules, interpretation, and the pricing guard.
+[`integrations/n8n/README.md`](../integrations/n8n/README.md). n8n normalizes transport, forwards the existing API contract, and records
+synthetic integration outcomes. The API continues to own validation,
+idempotency, readiness rules, interpretation, and the pricing guard.
 
 Keep n8n's editor bound to loopback. Do not expose it, the operations Console,
 or review endpoints publicly. Containerized n8n reaches the host API through the
@@ -142,33 +141,36 @@ Regardless of implementation details, the system must preserve these behaviours:
 - Every run should be traceable through a correlation/run ID.
 - Human overrides should be recorded as immutable audit events.
 
-## Planned failure taxonomy
+## Failure taxonomy and operator response
 
-The exact error types will be finalised during implementation. Candidate classes include:
+The API emits one-line JSON logs. `tender.operation_failed` contains a timestamp,
+failure code and stage, retryability, attempt number, correlation ID, and the
+tender/run IDs when they exist. Model failures also carry the trace ID. Logs do
+not include request bodies, source text, credentials, provider errors, or file
+contents. A state-write failure while recording another failure uses
+`STATE_WRITE_FAILED` and preserves the original classification in `causeCode`;
+it is never reported as if the model or gateway write had succeeded.
 
-```text
-DOCUMENT_STORAGE_FAILED
-DOCUMENT_PARSE_FAILED
-MODEL_PROVIDER_FAILED
-MODEL_OUTPUT_INVALID
-STATE_WRITE_FAILED
-PRICING_GATEWAY_FAILED
-WORKFLOW_TIMEOUT
-```
+| Failure / stage                             | Detection and retained state                                                                                                                                                                                       | Retryability                                                                                       | Operator action                                                                                                                                                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `API_TRANSPORT_FAILED` / `API_TRANSPORT`    | HTTP `400`, `413`, or `415`; correlated `tender.operation_failed` log. No run is created.                                                                                                                          | Terminal for the unchanged request.                                                                | Correct the correlation header, content type, size, JSON, or schema issue and submit a new valid request.                                                           |
+| `STATE_READ_FAILED` / `STATE_READ`          | HTTP `500` response and correlated failure log; tender ID is present after request validation, but a run ID may not exist. Existing state is not changed.                                                          | Retryable after storage recovery.                                                                  | Preserve and inspect the configured state file and filesystem access. Restore readability, then replay the same idempotency key.                                    |
+| `STATE_WRITE_FAILED` / `STATE_WRITE`        | HTTP `500` response and correlated failure log. The response/log includes a run ID if it was already allocated and `causeCode` if recording another failure failed. The attempted update may be absent from state. | Retryable after storage recovery.                                                                  | Inspect disk space, permissions, and the state file without deleting it. Restore writes, inspect the retained run/handoff, then replay the same idempotency key.    |
+| `MODEL_PROVIDER_FAILED` / `INTERPRETATION`  | HTTP `502`, failed run without a route, failed model trace, and correlated failure log.                                                                                                                            | The response says whether the provider error was transient/timeout (`true`) or terminal (`false`). | For retryable failures, verify provider health/configuration and replay the same idempotency key. For terminal failures, correct configuration before replay.       |
+| `MODEL_OUTPUT_INVALID` / `INTERPRETATION`   | HTTP `500`, failed run without a route, failed trace, and correlated failure log.                                                                                                                                  | Terminal for the same model output.                                                                | Inspect the trace/schema diagnostics without copying source text into logs. Correct the model/prompt/schema issue and use the eval gate before a controlled replay. |
+| `READINESS_EVALUATION_FAILED` / `READINESS` | HTTP `500`, failed run without a successful route transition, and correlated failure log.                                                                                                                          | Terminal until code/input handling is corrected.                                                   | Preserve the synthetic input and rule context, fix and test deterministic evaluation, then replay the idempotency key.                                              |
+| `PRICING_GATEWAY_FAILED` / `PRICING`        | HTTP `502`, failed technical status with the already-decided `READY_FOR_PRICING` route, and correlated failure log.                                                                                                | Retryable.                                                                                         | Verify gateway health and whether the handoff key already exists, then replay the same idempotency key. The gateway's idempotency guard prevents a second handoff.  |
 
-Each failed run should expose enough context to identify:
+The local JSON repository is the implemented persistence boundary. The n8n
+intake and outcome workflow is documented in
+[`integrations/n8n/README.md`](../integrations/n8n/README.md); it does not own
+these API failure codes. Source document storage and parsing are not implemented,
+so this table does not claim failure codes for those future boundaries.
 
-- tender ID
-- run/correlation ID
-- error type
-- failed step
-- retry count
-- last successful step
-- timestamp
+## Recovery model
 
-## Planned recovery model
-
-Failures will be classified as either **retryable** or **terminal**.
+Failures are classified as either **retryable** or **terminal** in the response,
+persisted run when persistence remains available, and structured log.
 
 A retry/replay action must be idempotent. In particular, it must not:
 
@@ -181,12 +183,13 @@ A retry/replay action must be idempotent. In particular, it must not:
 
 Before the stable interview release, document and test the real recovery procedure for:
 
-1. OpenAI/provider failure
-2. source-document storage/read failure
-3. invalid model output
-4. downstream pricing gateway `500`
-5. duplicate webhook delivery
-6. state persistence failure
+1. configured model-provider timeout/transient failure
+2. invalid model output
+3. mocked pricing gateway failure
+4. duplicate API delivery
+5. state read failure
+6. state write failure, including while a failure record is being saved
+7. malformed, oversized, or unsupported API transport input
 
 ## Runbook completion criteria
 
@@ -199,7 +202,9 @@ This document is considered complete when each implemented failure path includes
 - safe replay procedure,
 - verification that no duplicate side effect occurred.
 
-Until those behaviours exist in code, this file should remain deliberately concise.
+Add document storage and parsing failure cases when those boundaries exist.
+Rehearse n8n transport and outcome handling using the synthetic workflow
+fixtures documented in [`integrations/n8n/README.md`](../integrations/n8n/README.md).
 
 ## Milestone 6 archive and restore
 

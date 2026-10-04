@@ -125,10 +125,27 @@ export const RunFailureSchema = z.object({
     'READINESS_EVALUATION_FAILED',
     'MODEL_PROVIDER_FAILED',
     'MODEL_OUTPUT_INVALID',
+    'STATE_READ_FAILED',
+    'STATE_WRITE_FAILED',
+    'API_TRANSPORT_FAILED',
   ]),
   message: z.string().min(1),
   retryable: z.boolean(),
+  stage: z
+    .enum(['API_TRANSPORT', 'STATE_READ', 'STATE_WRITE', 'INTERPRETATION', 'READINESS', 'PRICING'])
+    .optional(),
+  occurredAt: z.string().datetime().optional(),
+  attempt: z.number().int().positive().optional(),
+  causeCode: z
+    .enum([
+      'PRICING_GATEWAY_FAILED',
+      'READINESS_EVALUATION_FAILED',
+      'MODEL_PROVIDER_FAILED',
+      'MODEL_OUTPUT_INVALID',
+    ])
+    .optional(),
 });
+export type RunFailure = z.infer<typeof RunFailureSchema>;
 
 export const TenderRunSchema = z.object({
   runId: z.string().uuid(),

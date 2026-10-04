@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanTender } from '../../../tests/fixtures/tenders.js';
 import type { LocalState } from './contracts.js';
 import type { LocalStateStore } from './repository.js';
-import { FileStateStore, JsonFileTenderRepository } from './file-repository.js';
+import { FileStateStore, JsonFileTenderRepository, StateReadError } from './file-repository.js';
 import { MockPricingGateway } from './pricing-gateway.js';
 import { TenderService } from './service.js';
 
@@ -28,6 +28,37 @@ class InterruptOnCompletionStore implements LocalStateStore {
       throw new Error('simulated interruption before completion was persisted');
     }
     await this.store.write(state);
+  }
+}
+
+class ReadFailureOnSaveStore implements LocalStateStore {
+  private reads = 0;
+
+  constructor(private readonly store: LocalStateStore) {}
+
+  async read(): Promise<LocalState> {
+    this.reads += 1;
+    if (this.reads === 3) throw new StateReadError('synthetic state read failure');
+    return this.store.read();
+  }
+
+  write(state: LocalState): Promise<void> {
+    return this.store.write(state);
+  }
+}
+
+class ToggleReadFailureStore implements LocalStateStore {
+  failRead = false;
+
+  constructor(private readonly store: LocalStateStore) {}
+
+  read(): Promise<LocalState> {
+    if (this.failRead) throw new StateReadError('synthetic review state read failure');
+    return this.store.read();
+  }
+
+  write(state: LocalState): Promise<void> {
+    return this.store.write(state);
   }
 }
 
@@ -104,9 +135,9 @@ describe('JsonFileTenderRepository', () => {
       new MockPricingGateway(interruptedRepository),
     );
 
-    await expect(firstService.submit(cleanTender, 'correlation-first')).rejects.toThrow(
-      'simulated interruption',
-    );
+    await expect(firstService.submit(cleanTender, 'correlation-first')).rejects.toMatchObject({
+      failure: { code: 'STATE_WRITE_FAILED' },
+    });
 
     const restartedRepository = createRepository();
     const restartedService = new TenderService(
@@ -121,6 +152,46 @@ describe('JsonFileTenderRepository', () => {
     expect(replay.route).toBe('READY_FOR_PRICING');
     expect(state.runs).toHaveLength(1);
     expect(state.handoffs).toHaveLength(1);
+  });
+
+  it('classifies a state read failure during save as a read failure', async () => {
+    const repository = new JsonFileTenderRepository(
+      new ReadFailureOnSaveStore(new FileStateStore(statePath)),
+    );
+    const service = new TenderService(repository, new MockPricingGateway(repository));
+
+    await expect(service.submit(cleanTender, 'correlation-read-during-save')).rejects.toMatchObject(
+      {
+        failure: { code: 'STATE_READ_FAILED', stage: 'STATE_READ', retryable: true },
+      },
+    );
+  });
+
+  it('classifies a state read failure during review append as a read failure', async () => {
+    const store = new ToggleReadFailureStore(new FileStateStore(statePath));
+    const repository = new JsonFileTenderRepository(store);
+    const service = new TenderService(repository, new MockPricingGateway(repository));
+    const result = await service.submit(cleanTender, 'correlation-review-state-read');
+    store.failRead = true;
+
+    await expect(
+      service.recordReviewEvent(
+        {
+          eventId: randomUUID(),
+          requestId: 'review-read-failure',
+          runId: result.runId,
+          action: 'REQUEST_INFORMATION',
+          actor: 'synthetic-reviewer',
+          reason: 'Synthetic read failure test.',
+          sourceIds: [],
+          reviewVersion: 1,
+          createdAt: new Date().toISOString(),
+        },
+        0,
+      ),
+    ).rejects.toMatchObject({
+      failure: { code: 'STATE_READ_FAILED', stage: 'STATE_READ', retryable: true },
+    });
   });
 
   it('rejects corrupted state instead of resetting it', async () => {

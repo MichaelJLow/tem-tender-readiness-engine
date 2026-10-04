@@ -331,9 +331,9 @@ describe('TenderService interpretation boundary', () => {
     );
     const request = { ...cleanTender, textSources: [source] };
 
-    await expect(service.submit(request, 'correlation-write-failure')).rejects.toThrow(
-      'simulated state write failure',
-    );
+    await expect(service.submit(request, 'correlation-write-failure')).rejects.toMatchObject({
+      failure: { code: 'STATE_WRITE_FAILED' },
+    });
     const afterFailure = await repository.findRunByIdempotencyKey(
       cleanTender.tender.idempotencyKey,
     );
@@ -404,6 +404,13 @@ describe('TenderService interpretation boundary', () => {
     expect(saved?.status).toBe('FAILED');
     expect(saved?.route).toBeUndefined();
     expect(saved?.result).toBeUndefined();
+    expect(saved?.failure).toMatchObject({
+      code: 'MODEL_PROVIDER_FAILED',
+      stage: 'INTERPRETATION',
+      retryable: true,
+      attempt: 1,
+    });
+    expect(saved?.failure?.occurredAt).toEqual(expect.any(String));
     expect((await repository.store.read()).handoffs).toHaveLength(0);
   });
 
@@ -476,9 +483,9 @@ describe('TenderService interpretation boundary', () => {
       httpStatus: 502,
     });
     repository.failRecovery = true;
-    await expect(service.submit(cleanTender, 'pricing-recovery-write')).rejects.toThrow(
-      'simulated recovery write failure',
-    );
+    await expect(service.submit(cleanTender, 'pricing-recovery-write')).rejects.toMatchObject({
+      failure: { code: 'STATE_WRITE_FAILED', causeCode: 'PRICING_GATEWAY_FAILED' },
+    });
     const afterFailure = await repository.findRunByIdempotencyKey(
       cleanTender.tender.idempotencyKey,
     );

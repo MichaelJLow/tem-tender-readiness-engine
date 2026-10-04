@@ -1,6 +1,6 @@
 import type { Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   cleanTender,
   conflictingDatesTender,
@@ -74,6 +74,18 @@ class InterruptOnCompletionRepository extends MemoryRepository {
       throw new Error('simulated interruption before completion was persisted');
     }
     await super.saveRun(run);
+  }
+}
+
+class WriteFailureRepository extends MemoryRepository {
+  override async saveRun(): Promise<void> {
+    throw new Error('synthetic secret should never be logged');
+  }
+}
+
+class ReadFailureRepository extends MemoryRepository {
+  override async findRunByIdempotencyKey(): Promise<TenderRun | undefined> {
+    throw new Error('synthetic read details');
   }
 }
 
@@ -158,9 +170,9 @@ describe('POST /tenders', () => {
     const pricingGateway = new CountingPricingGateway(repository);
     const service = new TenderService(repository, pricingGateway);
 
-    await expect(service.submit(cleanTender, 'correlation-first')).rejects.toThrow(
-      'simulated interruption',
-    );
+    await expect(service.submit(cleanTender, 'correlation-first')).rejects.toMatchObject({
+      failure: { code: 'STATE_WRITE_FAILED' },
+    });
     const replay = await service.submit(cleanTender, 'correlation-replay');
 
     expect(replay.replayed).toBe(true);
@@ -196,6 +208,7 @@ describe('POST /tenders', () => {
 
   it('returns 400 for invalid JSON without persisting a run', async () => {
     const repository = new MemoryRepository();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const server = await listen(repository);
     const response = await fetch(`${baseUrl(server)}/tenders`, {
       method: 'POST',
@@ -205,6 +218,73 @@ describe('POST /tenders', () => {
 
     expect(response.status).toBe(400);
     expect((await repository.snapshot()).runs).toHaveLength(0);
+    expect(JSON.parse(String(error.mock.calls.at(-1)?.[0]))).toMatchObject({
+      event: 'tender.operation_failed',
+      failureCode: 'API_TRANSPORT_FAILED',
+      failureStage: 'API_TRANSPORT',
+      retryable: false,
+      attempt: 1,
+    });
+    error.mockRestore();
+  });
+
+  it('serializes safe, correlated state-write failure logs', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const repository = new WriteFailureRepository();
+    const server = await listen(repository);
+    const requestBody = JSON.stringify({
+      ...cleanTender,
+      textSources: [{ sourceId: 'private-note', kind: 'NOTE', text: 'raw source secret' }],
+    });
+    const response = await fetch(`${baseUrl(server)}/tenders`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-correlation-id': 'correlation-state-write',
+        authorization: 'Bearer api-key-secret',
+      },
+      body: requestBody,
+    });
+    const body = (await response.json()) as { failure?: { code: string; stage: string } };
+    const log = JSON.parse(String(error.mock.calls.at(-1)?.[0])) as Record<string, unknown>;
+
+    expect(response.status).toBe(500);
+    expect(body.failure).toMatchObject({ code: 'STATE_WRITE_FAILED', stage: 'STATE_WRITE' });
+    expect(log).toMatchObject({
+      event: 'tender.operation_failed',
+      correlationId: 'correlation-state-write',
+      failureCode: 'STATE_WRITE_FAILED',
+      failureStage: 'STATE_WRITE',
+      retryable: true,
+      attempt: 1,
+    });
+    expect(log.timestamp).toEqual(expect.any(String));
+    const serialized = JSON.stringify(log);
+    expect(serialized).not.toContain('raw source secret');
+    expect(serialized).not.toContain('api-key-secret');
+    expect(serialized).not.toContain('synthetic secret');
+    error.mockRestore();
+  });
+
+  it('distinguishes state-read failures at the API boundary', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const server = await listen(new ReadFailureRepository());
+    const response = await fetch(`${baseUrl(server)}/tenders`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-correlation-id': 'correlation-state-read' },
+      body: JSON.stringify(cleanTender),
+    });
+    const body = (await response.json()) as { failure?: { code: string; stage: string } };
+    const log = JSON.parse(String(error.mock.calls.at(-1)?.[0])) as Record<string, unknown>;
+
+    expect(body.failure).toMatchObject({ code: 'STATE_READ_FAILED', stage: 'STATE_READ' });
+    expect(log).toMatchObject({
+      correlationId: 'correlation-state-read',
+      failureCode: 'STATE_READ_FAILED',
+      failureStage: 'STATE_READ',
+      retryable: true,
+    });
+    error.mockRestore();
   });
 
   it('keeps READY_FOR_PRICING and returns failure status when the gateway fails, including replay', async () => {
