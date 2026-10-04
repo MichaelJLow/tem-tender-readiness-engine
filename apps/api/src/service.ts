@@ -205,9 +205,12 @@ export class TenderService {
     let attempt = priorFailure?.stage === 'INTERPRETATION' ? (priorFailure.attempt ?? 0) + 1 : 1;
     if (!run.result) {
       run.status = 'PROCESSING';
-      delete run.failure;
-      run.updatedAt = this.now().toISOString();
-      await this.writeRun(run, attempt);
+      // Keep the retained failure durable until the resumed provider attempt resolves.
+      if (priorFailure?.stage !== 'INTERPRETATION') {
+        delete run.failure;
+        run.updatedAt = this.now().toISOString();
+        await this.writeRun(run, attempt);
+      }
 
       const duplicateKnown =
         run.input.signals.duplicate.matchesActiveTender ||

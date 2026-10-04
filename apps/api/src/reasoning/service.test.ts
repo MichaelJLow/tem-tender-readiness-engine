@@ -136,8 +136,10 @@ class FakeInterpreter implements TenderInterpreter {
   result: TenderInterpretation = output;
   failure?: InterpretationError;
   failuresBeforeSuccess = Number.POSITIVE_INFINITY;
+  beforeInterpret?: () => Promise<void>;
   async interpret() {
     this.calls += 1;
+    await this.beforeInterpret?.();
     if (this.failure && this.calls <= this.failuresBeforeSuccess) throw this.failure;
     return {
       output: this.result,
@@ -496,6 +498,14 @@ describe('TenderService interpretation boundary', () => {
     ).toMatchObject({ attempt: 1, retryable: true });
 
     const resumedInterpreter = new FakeInterpreter();
+    resumedInterpreter.beforeInterpret = async () => {
+      expect(await repository.findRunByIdempotencyKey(request.tender.idempotencyKey)).toMatchObject(
+        {
+          status: 'FAILED',
+          failure: { stage: 'INTERPRETATION', attempt: 1, retryable: true },
+        },
+      );
+    };
     const resumedGateway = new RecordingGateway(repository);
     const resumedService = new TenderService(
       repository,
