@@ -115,7 +115,10 @@ export class TenderService {
         ) {
           throw error;
         }
-        throw this.stateError('STATE_WRITE_FAILED', event.runId);
+        throw this.stateError(
+          error instanceof StateReadError ? 'STATE_READ_FAILED' : 'STATE_WRITE_FAILED',
+          event.runId,
+        );
       }
     });
     this.queue = operation.then(
@@ -369,13 +372,14 @@ export class TenderService {
   private async writeRun(run: TenderRun, attempt: number, causeCode?: RunFailure['causeCode']) {
     try {
       await this.repository.saveRun(run);
-    } catch {
+    } catch (error) {
+      const reading = error instanceof StateReadError;
       throw new StatePersistenceError(
         {
-          code: 'STATE_WRITE_FAILED',
-          message: 'Tender state could not be written.',
+          code: reading ? 'STATE_READ_FAILED' : 'STATE_WRITE_FAILED',
+          message: reading ? 'Tender state could not be read.' : 'Tender state could not be written.',
           retryable: true,
-          stage: 'STATE_WRITE',
+          stage: reading ? 'STATE_READ' : 'STATE_WRITE',
           occurredAt: this.now().toISOString(),
           attempt,
           ...(causeCode ? { causeCode } : {}),
