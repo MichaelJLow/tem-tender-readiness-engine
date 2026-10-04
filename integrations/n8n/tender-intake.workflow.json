@@ -1,5 +1,5 @@
 {
-  "name": "Tender intake and transport normalization",
+  "name": "Tender intake and outcome handling",
   "nodes": [
     {
       "parameters": {
@@ -39,7 +39,11 @@
               "id": "8ff7380e-2718-46af-9838-710bdd192382",
               "leftValue": "={{ $json.ok }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -59,7 +63,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
             {
               "name": "X-Correlation-ID",
               "value": "={{ $('Normalize Transport').item.json.correlationId }}"
@@ -99,21 +106,35 @@
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ $json.body }}",
-        "options": { "responseCode": "={{ $json.statusCode }}" }
+        "jsCode": "const prepared = $input.first().json;\nconst statusCode = prepared.statusCode;\nconst body = prepared.body && typeof prepared.body === 'object' ? prepared.body : {};\nconst correlationId = body.correlationId ?? $('Normalize Transport').item.json.correlationId;\nconst tenderId = body.tenderId ?? $('Normalize Transport').item.json.tenderId;\nconst runId = body.runId;\nconst base = { correlationId, tenderId, runId: runId ?? null, outboundMessagesSent: 0 };\nlet integrationOutcome;\n\nif (statusCode < 200 || statusCode >= 300 || body.status === 'FAILED' || body.failure) {\n  integrationOutcome = { ...base, type: 'TECHNICAL_ERROR', key: `technical-error:${runId ?? correlationId}`, failure: body.failure ?? body.error ?? 'TENDER_API_REQUEST_FAILED', businessRouteRetained: body.route ?? null };\n} else if (!runId || !tenderId || !correlationId) {\n  integrationOutcome = { ...base, type: 'TECHNICAL_ERROR', key: `technical-error:${runId ?? correlationId}`, failure: 'INVALID_TENDER_RESPONSE', businessRouteRetained: body.route ?? null };\n} else if (body.status === 'PROCESSING' && !body.route) {\n  integrationOutcome = { ...base, type: 'PENDING', key: `pending:${runId}`, reason: 'Tender processing has not produced a business route.' };\n} else if (body.status === 'COMPLETED' && body.route === 'READY_FOR_PRICING') {\n  integrationOutcome = { ...base, type: 'PRICING_HANDOFF_RECORDED', key: `pricing-handoff:${runId}`, pricingOwner: 'TENDER_API', handoffStatus: 'SUCCEEDED', handoffAttemptsInitiatedByWorkflow: 0 };\n} else if (body.status === 'COMPLETED' && body.route === 'NEEDS_INFORMATION') {\n  integrationOutcome = { ...base, type: 'INFORMATION_REQUEST_RECORDED', key: `information-request:${runId}`, synthetic: true, deliveryStatus: 'NOT_SENT', description: 'Synthetic information-request receipt; no email or external message was sent.' };\n} else if (body.status === 'COMPLETED' && body.route === 'HUMAN_REVIEW') {\n  integrationOutcome = { ...base, type: 'HUMAN_REVIEW_AVAILABLE', key: `human-review:${runId}`, consolePath: `/tenders/${runId}`, reviewTaskCreatedByWorkflow: false };\n} else if (body.status === 'COMPLETED' && body.route === 'DUPLICATE') {\n  integrationOutcome = { ...base, type: 'DUPLICATE_RECORDED', key: `duplicate:${runId}`, stopped: true };\n} else {\n  integrationOutcome = { ...base, type: 'TECHNICAL_ERROR', key: `technical-error:${runId ?? correlationId}`, failure: 'UNEXPECTED_TENDER_RESPONSE', businessRouteRetained: body.route ?? null };\n}\n\nconst responseStatusCode = integrationOutcome.type === 'TECHNICAL_ERROR' && statusCode >= 200 && statusCode < 300 ? 502 : statusCode;\nreturn [{ json: { statusCode: responseStatusCode, body: { ...body, integrationOutcome } } }];"
       },
-      "id": "780f4ac1-e1b6-45d9-9dbb-44ef37ab4888",
-      "name": "Return API Response",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.4,
+      "id": "71c2ea6d-3221-4fcc-96f2-60e9a7bacd53",
+      "name": "Record Integration Outcome",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [560, -96]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json.body }}",
-        "options": { "responseCode": "={{ $json.statusCode }}" }
+        "options": {
+          "responseCode": "={{ $json.statusCode }}"
+        }
+      },
+      "id": "780f4ac1-e1b6-45d9-9dbb-44ef37ab4888",
+      "name": "Return API Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [800, -96]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}"
+        }
       },
       "id": "22e4591c-ad29-41ea-96e2-6574d39d99fa",
       "name": "Return Transport Error",
@@ -125,27 +146,86 @@
   "pinData": {},
   "connections": {
     "Tender Intake Webhook": {
-      "main": [[{ "node": "Normalize Transport", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Normalize Transport",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Normalize Transport": {
-      "main": [[{ "node": "Transport Valid?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Transport Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Transport Valid?": {
       "main": [
-        [{ "node": "Submit to Tender API", "type": "main", "index": 0 }],
-        [{ "node": "Return Transport Error", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Submit to Tender API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Transport Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Submit to Tender API": {
-      "main": [[{ "node": "Prepare API Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Prepare API Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Prepare API Response": {
-      "main": [[{ "node": "Return API Response", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Record Integration Outcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Integration Outcome": {
+      "main": [
+        [
+          {
+            "node": "Return API Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
-  "settings": { "executionOrder": "v1" },
+  "settings": {
+    "executionOrder": "v1"
+  },
   "versionId": "fa0ec094-1439-4b24-b474-0e09cf1bd06c",
-  "meta": { "templateCredsSetupCompleted": true },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
   "tags": []
 }

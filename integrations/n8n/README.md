@@ -1,9 +1,10 @@
 # Local n8n tender intake
 
 This directory contains the exported local intake workflow for n8n `1.112.6`. It
-normalizes a small webhook transport envelope and forwards the existing API-owned
-`IntakeRequest` to `POST /tenders`. It does not contain readiness rules, model
-prompts, document parsing, credentials, or downstream pricing logic.
+normalizes a small webhook transport envelope, forwards the existing API-owned
+`IntakeRequest` to `POST /tenders`, and records the integration outcome returned
+by the API. It does not contain readiness rules, model prompts, document parsing,
+credentials, or downstream pricing logic.
 
 ## Contract
 
@@ -36,6 +37,32 @@ intake.
 Transport failures return visible 4xx JSON responses. Tender API responses,
 including validation and processing failures, retain their HTTP status and body.
 Malformed JSON is rejected by n8n before the normalization node runs.
+
+## Outcome contract
+
+Successful API response bodies are returned unchanged except for an added
+`integrationOutcome` object. The object is a synthetic execution receipt in the
+n8n response and execution record; it is not a new domain decision or durable
+delivery service.
+
+| API status and route                                                 | `integrationOutcome.type`      | Integration behaviour                                                                                                                                       |
+| -------------------------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `COMPLETED` + `READY_FOR_PRICING`                                    | `PRICING_HANDOFF_RECORDED`     | Records that the API-owned mock handoff succeeded. `pricingOwner` is `TENDER_API` and `handoffAttemptsInitiatedByWorkflow` is `0`; n8n never calls pricing. |
+| `COMPLETED` + `NEEDS_INFORMATION`                                    | `INFORMATION_REQUEST_RECORDED` | Produces a synthetic receipt with `deliveryStatus: NOT_SENT`. No email, chat message, webhook, or other outbound message is sent.                           |
+| `COMPLETED` + `HUMAN_REVIEW`                                         | `HUMAN_REVIEW_AVAILABLE`       | Returns `consolePath: /tenders/{runId}` for the existing Console case. It does not create a review task or change the route.                                |
+| `COMPLETED` + `DUPLICATE`                                            | `DUPLICATE_RECORDED`           | Stops with an inspectable run/key and no downstream action.                                                                                                 |
+| `PROCESSING` with no route                                           | `PENDING`                      | Retains HTTP `202` and waits for a later replay after document processing.                                                                                  |
+| `FAILED`, a non-2xx API response, or any response carrying `failure` | `TECHNICAL_ERROR`              | Preserves any retained business route and follows the technical error path. No business action is reported as successful.                                   |
+
+Every outcome explicitly reports `outboundMessagesSent: 0`. The stable synthetic
+information-request key is `information-request:{runId}`. API idempotency returns
+the same `runId` on redelivery, so the key is stable for the subsequent
+reliability/idempotency work without pretending that a message has been sent.
+The workflow has only one HTTP Request node, and that node calls `POST /tenders`.
+
+A Console review disposition of `REQUEST_INFORMATION` is a separate audit event.
+It remains attached to the `HUMAN_REVIEW` case and is not transformed into an
+`INFORMATION_REQUEST_RECORDED` receipt or presented as outbound delivery.
 
 ## Run locally with Docker (recommended)
 
@@ -82,10 +109,11 @@ curl --fail-with-body --silent --show-error \
 ```
 
 The response should contain the fixture's `tenderId` and `correlationId`, a UUID
-`runId`, `status: "COMPLETED"`, and `route: "READY_FOR_PRICING"`. Inspect the
-disposable state or query `GET /tenders` to correlate that run. Repeating the
-same request returns the same stored outcome with `replayed: true` and does not
-create a second pricing handoff.
+`runId`, `status: "COMPLETED"`, `route: "READY_FOR_PRICING"`, and a
+`PRICING_HANDOFF_RECORDED` integration outcome. Inspect the disposable state or
+query `GET /tenders` to correlate that run. Repeating the same request returns
+the same stored outcome with `replayed: true`, the same integration key, and does
+not create a second pricing handoff.
 
 The text-bearing fixture includes one `NOTE` and one `DOCUMENT_TEXT` with a valid
 document reference. It requires a configured model provider because semantic
