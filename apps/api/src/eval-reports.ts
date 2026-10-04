@@ -3,7 +3,7 @@ import { basename, resolve, sep } from 'node:path';
 import { z } from 'zod';
 import { EvalReportSchema } from '../../../evals/metrics.js';
 
-const AcceptedBaselineSchema = z.object({
+export const AcceptedBaselineSchema = z.object({
   schemaVersion: z.literal(1),
   report: z.string().regex(/^reports\/[A-Za-z0-9._-]+\.json$/),
   datasetId: z.string().min(1),
@@ -74,7 +74,7 @@ export async function readEvalReport(runId: string, evalsDirectory = resolve('ev
   return undefined;
 }
 
-function validateAcceptedPointer(
+export function validateAcceptedPointer(
   pointer: z.infer<typeof AcceptedBaselineSchema>,
   report: z.infer<typeof EvalReportSchema>,
 ): void {

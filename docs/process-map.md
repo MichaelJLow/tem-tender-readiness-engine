@@ -9,7 +9,7 @@ Make the end-to-end flow and automation boundary explicit: what is deterministic
 ```mermaid
 flowchart TD
     A["Tender submitted<br/>structured fields + notes + documents"] --> B["n8n intake"]
-    B --> C["Persist source documents<br/>S3"]
+    B --> C["Local intake"]
     C --> D["Validate transport + schema<br/>TypeScript / Zod"]
     D --> E["Deterministic readiness checks"]
     E --> F{"Interpretation needed?"}
@@ -20,10 +20,10 @@ flowchart TD
     H --> J["NEEDS_INFORMATION"]
     H --> K["HUMAN_REVIEW"]
     H --> L["DUPLICATE"]
-    I --> M["Mock pricing gateway"]
-    J --> N["Information-request event"]
-    K --> O["Operations review queue"]
-    L --> P["Stop + audit duplicate"]
+    I --> M["API-owned mock pricing gateway<br/>n8n records outcome only"]
+    J --> N["Synthetic information-request receipt<br/>not sent"]
+    K --> O["Link existing Operations Console case"]
+    L --> P["Stop + inspect duplicate receipt"]
 ```
 
 ## Deterministic work
@@ -88,7 +88,8 @@ Tender received
 → NEEDS_INFORMATION
 → no OpenAI call required
 → no pricing handoff
-→ information-request event emitted
+→ stable synthetic information-request receipt recorded
+→ no email or external message sent
 ```
 
 ### Semantic conflict
@@ -115,6 +116,22 @@ READY_FOR_PRICING
 → replay must not create duplicate downstream action
 ```
 
+## n8n outcome handling
+
+The exported n8n workflow treats processing status before business route. Any
+`FAILED` response, non-2xx response, or returned failure takes the technical
+error path even when the API retains `READY_FOR_PRICING` as the business route.
+`PROCESSING` without a route remains pending. Only `COMPLETED` responses are
+mapped to the four route-specific integration receipts.
+
+For `READY_FOR_PRICING`, n8n records the successful handoff already performed by
+the API; it never invokes the pricing gateway. For `NEEDS_INFORMATION`, it records
+a synthetic `information-request:{runId}` receipt with delivery marked `NOT_SENT`.
+For `HUMAN_REVIEW`, it links `/tenders/{runId}` in the existing Console and does
+not create another task, change the route, or bypass review. A reviewer later
+recording `REQUEST_INFORMATION` remains an audit disposition—not evidence that an
+email or external message was sent. `DUPLICATE` stops with an inspectable receipt.
+
 ## Constraints
 
 - `FAILED` is a technical status, not a business route.
@@ -135,3 +152,5 @@ Mock pricing gateway
         ↓
 [real pricing / transaction infrastructure outside prototype scope]
 ```
+
+The current local demo retains state and evidence in the application repository. Milestone 6 archives selected synthetic evidence to private S3 outside this decision path; restoring a snapshot does not reprocess cases or create a handoff.

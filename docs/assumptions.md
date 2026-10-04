@@ -30,16 +30,16 @@ A secondary user is an Engine Lead or operations owner who needs to understand:
 
 ## Known vs assumed
 
-| Area | Status | Working position |
-| --- | --- | --- |
-| Tendering is relevant to the role | Known from public role material | Tendering and Partner Activation are explicitly named operational areas. |
-| TypeScript, AWS, S3, GitHub, GitHub Actions | Known from public role material | These are part of the advertised internal automation stack. |
-| Evals, manual QA, precision/recall, human safety valves | Known from public role material | These are explicitly described expectations. |
-| Exact tender fields | Assumed | V1 uses plausible synthetic fields such as MPAN, annual consumption, and contract end date. |
-| Exact readiness rules | Assumed | Every `TDR-*` rule is a demonstration rule. |
-| Exact handoff to pricing | Unknown | Represented by a mocked internal pricing gateway. |
-| Exact AWS services used internally | Unknown | Service choices in this repo are implementation decisions, not claims about another team's architecture. |
-| Current manual handling time | Unknown | Any hours-reclaimed calculation is labelled illustrative. |
+| Area                                                    | Status                          | Working position                                                                                         |
+| ------------------------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Tendering is relevant to the role                       | Known from public role material | Tendering and Partner Activation are explicitly named operational areas.                                 |
+| TypeScript, AWS, S3, GitHub, GitHub Actions             | Known from public role material | These are part of the advertised internal automation stack.                                              |
+| Evals, manual QA, precision/recall, human safety valves | Known from public role material | These are explicitly described expectations.                                                             |
+| Exact tender fields                                     | Assumed                         | V1 uses plausible synthetic fields such as MPAN, annual consumption, and contract end date.              |
+| Exact readiness rules                                   | Assumed                         | Every `TDR-*` rule is a demonstration rule.                                                              |
+| Exact handoff to pricing                                | Unknown                         | Represented by a mocked internal pricing gateway.                                                        |
+| Exact AWS services used internally                      | Unknown                         | Service choices in this repo are implementation decisions, not claims about another team's architecture. |
+| Current manual handling time                            | Unknown                         | Any hours-reclaimed calculation is labelled illustrative.                                                |
 
 ## Discovery questions for a real implementation
 
@@ -102,7 +102,7 @@ The prototype should demonstrate that it can:
 - evaluate model-dependent behaviour against labelled cases,
 - capture human corrections and turn useful failures into regression cases,
 - expose technical failures clearly,
-- deploy through a TypeScript / AWS / GitHub workflow,
+- run a reproducible TypeScript / GitHub demo with a private AWS evidence archive,
 - report an illustrative hours-reclaimed metric without presenting it as real customer data.
 
 ## Non-goals

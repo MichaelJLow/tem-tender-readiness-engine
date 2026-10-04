@@ -1,6 +1,6 @@
 # Tender Readiness Engine
 
-A production-style tender readiness automation for business energy, combining deterministic rules, bounded AI reasoning, human review, evals, and AWS-native infrastructure.
+A production-style tender readiness automation for business energy, combining deterministic rules, bounded AI reasoning, human review, evals, and a small AWS evidence archive.
 
 > **Project status:** early implementation. This repository is intentionally being built in public as a reviewable engineering project.
 
@@ -45,11 +45,11 @@ flowchart TD
 - **Zod** for boundary validation
 - **Mastra + OpenAI** for bounded reasoning tasks
 - **n8n** for integration orchestration
-- **AWS S3** for source documents
-- **AWS-native persistence/runtime** where practical for V1
-- **GitHub Actions** for tests, eval gates, and deployment workflows
+- **AWS S3** for private synthetic source files and demo evidence snapshots
+- **Local JSON state** for the single-process demo; S3 is an archive, not the live database
+- **GitHub Actions** for tests and eval gates
 
-The final AWS implementation choices are documented as architecture decisions as the build progresses rather than presented as assumptions about another team's internal stack.
+The demo keeps the API and Console local. A hosted runtime can be considered separately if a live URL becomes important; no AWS service choice is a claim about another team's internal stack.
 
 ## Evaluation and safety
 
@@ -96,7 +96,7 @@ The system is being built in vertical slices:
 3. bounded Mastra/OpenAI reasoning
 4. eval harness and safety gates
 5. operations console
-6. AWS persistence/runtime
+6. lightweight S3 demo archive
 7. n8n integration
 8. reliability, observability, and CI/CD
 9. stable public release
@@ -129,3 +129,5 @@ docs/             Architecture, rules, and delivery plan
 Start the local API with `npm run dev:api`. It listens on `PORT` (default `3000`) and writes synthetic processing state to `TENDER_STATE_PATH` (default `./data/tender-state.json`, ignored by Git). Submit a JSON `ReadinessInput` to `POST /tenders`; a clean tender returns `READY_FOR_PRICING` and records one mock handoff. Repeating the same idempotency key and payload returns the stored outcome. The local JSON repository supports a single API process.
 
 Start the operations console in a second terminal with `npm run dev:console`; open `http://localhost:3001`. Queue, tender detail, review history, and eval performance are read through the API. Review dispositions are recorded for synthetic `HUMAN_REVIEW` cases and do not change the automatic route or create a pricing handoff. The console binds to loopback and uses a demo operator identity; it is not production authentication. See the [runbook](docs/runbook.md) for local boundaries.
+
+Prepare a private synthetic evidence snapshot with `npm run demo:archive` and restore it into a fresh directory with `npm run demo:restore`. The archive and restore path has been verified locally and against private S3 using AWS CLI v2. The live API, Console and Studio remain local. See the [archive/restore runbook](docs/runbook.md#milestone-6-archive-and-restore) and [live verification receipt](docs/milestone-6-verification.md); the restored Console walkthrough and AWS credit expiry check remain open.
