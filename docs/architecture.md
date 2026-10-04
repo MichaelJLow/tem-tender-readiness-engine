@@ -16,7 +16,7 @@ The architecture separates four concerns deliberately:
 ```mermaid
 flowchart TD
     A["Tender submission<br/>structured fields + notes + documents"] --> B["n8n intake"]
-    B --> C["Persist source documents<br/>S3"]
+    B --> C["Local intake"]
     C --> D["Validate transport + schema<br/>TypeScript / Zod"]
     D --> E["Deterministic readiness checks"]
     E --> F{"Interpretation needed?"}
@@ -41,7 +41,7 @@ flowchart TD
 | Domain           | Schemas, deterministic rules, routing, state transitions            | TypeScript + Zod                                                                 |
 | Reasoning        | Interpret unstructured or semantically ambiguous information        | Tool-free Mastra agent in the API workspace, using the configured model provider |
 | Human judgment   | Resolve critical conflicts and accountable exceptions               | Ops console                                                                      |
-| Infrastructure   | Files, application state, runtime, logs                             | AWS                                                                              |
+| Infrastructure   | Local state/runtime and private synthetic evidence snapshots        | Local JSON/processes; AWS S3 archive                                             |
 | Pricing boundary | Accept readiness-cleared normalized tenders only                    | Mock gateway                                                                     |
 
 ## Deterministic-first policy
@@ -129,3 +129,7 @@ Mock pricing gateway
 ```
 
 The project does not attempt to recreate Rosso or any private pricing interface.
+
+## Demo persistence and evidence archive
+
+The live API uses one local JSON repository and one API process. The Console reads operational and eval projections through that API. Milestone 6 adds manual private S3 snapshots of the three seeded synthetic cases, their review audit, accepted/latest eval reports and individually selected synthetic source files. S3 is outside the decision path. Restoring copies validated evidence into a fresh local directory without reprocessing tenders or invoking pricing. Studio experiments and traces stay in their separate local store. Hosting, concurrent database state and authentication remain deferred. See [ADR-003](adr/003-private-s3-demo-snapshots.md).

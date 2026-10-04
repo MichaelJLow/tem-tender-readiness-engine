@@ -15,6 +15,7 @@
     "apps/**/*.ts",
     "packages/**/*.ts",
     "tests/**/*.ts",
+    "scripts/**/*.ts",
     "evals/**/*.ts",
     "vitest.config.ts"
   ],
