@@ -12,14 +12,15 @@ for the recorded n8n executions. Milestone 7 is **awaiting PR review and merge**
 - Workflow: `integrations/n8n/tender-intake.workflow.json`
 - Workflow name: `Tender intake and outcome handling`
 - Required n8n version: `1.112.6`
-- Source revision used to prepare this receipt: `edb7162`
+- Verified workflow source revision: `2dc770e`
 - API contract: `POST /tenders`
 - Walkthrough and endpoint configuration: `integrations/n8n/README.md`
 - Synthetic scenario fixtures: `clean.json`, `needs-information.json`,
   `human-review.json`, `pending.json`, and `duplicate.json`
 
-The source revision above is the starting revision. Replace it with the merged
-commit SHA during review so the receipt points to the immutable accepted export.
+The source revision above contains the corrected export used for the recorded
+executions. Add the merge commit during review so the receipt also points to the
+immutable accepted history.
 
 ## Automated evidence recorded on 4 October 2026
 
@@ -83,5 +84,5 @@ The clean-state matrix above is from the corrected, freshly re-imported export.
 - [x] Execution state confirms the API owns the sole `READY_FOR_PRICING` handoff.
 
 The implementation and live-runtime checks are ready for review. Record the PR
-URL, merge it, and replace the starting revision with the merge SHA before marking
+URL, merge it, and record the merge SHA before marking
 Milestone 7 complete.
