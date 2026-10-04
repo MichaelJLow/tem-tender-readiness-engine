@@ -60,17 +60,41 @@ async function prepareApiResponse(
   return result[0]!.json;
 }
 
+async function recordIntegrationOutcome(
+  prepared: JsonRecord,
+  normalized: JsonRecord = {
+    correlationId: 'n8n-outcome-001',
+    tenderId: 'tender-outcome-001',
+  },
+): Promise<JsonRecord> {
+  const code = node('Record Integration Outcome').parameters.jsCode;
+  if (typeof code !== 'string') throw new Error('Integration outcome code is missing.');
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as new (
+    ...args: string[]
+  ) => (...values: unknown[]) => Promise<Array<{ json: JsonRecord }>>;
+  const execute = new AsyncFunction('$input', '$', code);
+  const result = await execute({ first: () => ({ json: prepared }) }, () => ({
+    item: { json: normalized },
+  }));
+  return result[0]!.json;
+}
+
 describe('n8n tender intake export', () => {
   it('is an inactive, credential-free transport workflow with no copied rules or prompts', () => {
-    expect(workflow.name).toBe('Tender intake and transport normalization');
+    expect(workflow.name).toBe('Tender intake and outcome handling');
     expect(workflow.active).toBe(false);
     expect(workflow.nodes.every((candidate) => candidate.credentials === undefined)).toBe(true);
 
     const exportText = JSON.stringify(workflow);
     expect(exportText).not.toContain('TDR-');
-    expect(exportText).not.toContain('READY_FOR_PRICING');
     expect(exportText).not.toContain('systemPrompt');
     expect(exportText).not.toMatch(/api[_-]?key/i);
+    expect(
+      workflow.nodes.filter((candidate) => candidate.type === 'n8n-nodes-base.httpRequest'),
+    ).toHaveLength(1);
+    expect(workflow.nodes.map((candidate) => candidate.type).join(' ')).not.toMatch(
+      /email|smtp|sendgrid|slack/i,
+    );
   });
 
   it('forwards only the existing API request with the correlation header', () => {
@@ -80,6 +104,7 @@ describe('n8n tender intake export', () => {
     expect(submit.parameters.body).toContain('Normalize Transport');
     expect(JSON.stringify(submit.parameters.headerParameters)).toContain('X-Correlation-ID');
     expect(JSON.stringify(submit.parameters.options)).toContain('neverError');
+    expect(JSON.stringify(workflow)).not.toContain('/reviews');
   });
 
   it('keeps the exported webhook inactive until an operator imports and activates it', () => {
@@ -110,6 +135,182 @@ describe('n8n tender intake export', () => {
         error: 'TENDER_API_UNAVAILABLE',
         correlationId: 'n8n-api-down-001',
         detail: 'Connection refused',
+      },
+    });
+  });
+
+  it.each([
+    ['COMPLETED', 'READY_FOR_PRICING', 'PRICING_HANDOFF_RECORDED'],
+    ['COMPLETED', 'NEEDS_INFORMATION', 'INFORMATION_REQUEST_RECORDED'],
+    ['COMPLETED', 'HUMAN_REVIEW', 'HUMAN_REVIEW_AVAILABLE'],
+    ['COMPLETED', 'DUPLICATE', 'DUPLICATE_RECORDED'],
+  ])('records the %s + %s outcome as %s', async (status, route, type) => {
+    const runId = '2d95a5a5-ad08-4117-b953-a1397a75fbb9';
+    const result = await recordIntegrationOutcome({
+      statusCode: 200,
+      body: {
+        tenderId: 'tender-outcome-001',
+        runId,
+        correlationId: 'n8n-outcome-001',
+        status,
+        route,
+        rules: [],
+        replayed: false,
+      },
+    });
+
+    expect(result).toMatchObject({
+      statusCode: 200,
+      body: {
+        integrationOutcome: {
+          type,
+          runId,
+          tenderId: 'tender-outcome-001',
+          outboundMessagesSent: 0,
+        },
+      },
+    });
+  });
+
+  it('observes the API-owned pricing handoff without initiating a second handoff', async () => {
+    const result = await recordIntegrationOutcome({
+      statusCode: 200,
+      body: {
+        tenderId: 'tender-clean-001',
+        runId: '1ad2fa84-b10f-497b-9076-94db56c242eb',
+        status: 'COMPLETED',
+        route: 'READY_FOR_PRICING',
+      },
+    });
+
+    expect(result.body).toMatchObject({
+      integrationOutcome: {
+        pricingOwner: 'TENDER_API',
+        handoffStatus: 'SUCCEEDED',
+        handoffAttemptsInitiatedByWorkflow: 0,
+      },
+    });
+  });
+
+  it('creates a stable synthetic information-request receipt and sends no message', async () => {
+    const prepared = {
+      statusCode: 200,
+      body: {
+        tenderId: 'tender-missing-001',
+        runId: 'd6acbd9c-8617-401e-b867-2462d5a421aa',
+        status: 'COMPLETED',
+        route: 'NEEDS_INFORMATION',
+      },
+    };
+    const first = await recordIntegrationOutcome(prepared);
+    const redelivery = await recordIntegrationOutcome({
+      ...prepared,
+      body: { ...prepared.body, replayed: true },
+    });
+
+    expect(first.body).toMatchObject({
+      integrationOutcome: {
+        key: 'information-request:d6acbd9c-8617-401e-b867-2462d5a421aa',
+        synthetic: true,
+        deliveryStatus: 'NOT_SENT',
+        outboundMessagesSent: 0,
+      },
+    });
+    expect(redelivery.body).toMatchObject({
+      integrationOutcome: {
+        key: 'information-request:d6acbd9c-8617-401e-b867-2462d5a421aa',
+      },
+    });
+  });
+
+  it('links the existing Console case without creating another review task', async () => {
+    const runId = 'b1d46170-b187-4568-bbc8-5ae90954f3b2';
+    const result = await recordIntegrationOutcome({
+      statusCode: 200,
+      body: { tenderId: 'tender-conflict-001', runId, status: 'COMPLETED', route: 'HUMAN_REVIEW' },
+    });
+
+    expect(result.body).toMatchObject({
+      integrationOutcome: {
+        consolePath: `/tenders/${runId}`,
+        reviewTaskCreatedByWorkflow: false,
+      },
+    });
+  });
+
+  it('keeps pending document processing separate from a business route', async () => {
+    const result = await recordIntegrationOutcome({
+      statusCode: 202,
+      body: {
+        tenderId: 'tender-pending-001',
+        runId: '98a164b4-c57e-421f-a3fd-73b300c8bd15',
+        status: 'PROCESSING',
+      },
+    });
+
+    expect(result).toMatchObject({
+      statusCode: 202,
+      body: { integrationOutcome: { type: 'PENDING', outboundMessagesSent: 0 } },
+    });
+  });
+
+  it.each([
+    [502, 'FAILED', 'READY_FOR_PRICING', { code: 'PRICING_GATEWAY_FAILED' }],
+    [502, 'FAILED', undefined, { code: 'MODEL_PROVIDER_FAILED' }],
+    [502, undefined, undefined, undefined],
+    [400, undefined, undefined, undefined],
+  ])(
+    'takes the technical error path for HTTP %i with status %s and route %s',
+    async (statusCode, status, route, failure) => {
+      const result = await recordIntegrationOutcome({
+        statusCode,
+        body: {
+          error:
+            statusCode === 400
+              ? 'INVALID_TENDER'
+              : status === undefined
+                ? 'TENDER_API_UNAVAILABLE'
+                : undefined,
+          tenderId: 'tender-error-001',
+          runId: '264c625d-57bc-4b65-8502-a82dc9dfcb73',
+          status,
+          route,
+          failure,
+        },
+      });
+
+      expect(result).toMatchObject({
+        statusCode,
+        body: {
+          integrationOutcome: {
+            type: 'TECHNICAL_ERROR',
+            businessRouteRetained: route ?? null,
+            outboundMessagesSent: 0,
+          },
+        },
+      });
+    },
+  );
+
+  it('fails an unexpected successful response closed as a technical error', async () => {
+    const result = await recordIntegrationOutcome({
+      statusCode: 200,
+      body: {
+        correlationId: 'n8n-unexpected-001',
+        tenderId: 'tender-unexpected-001',
+        runId: '7707c75f-487d-475a-bb5a-08bfc7560be5',
+        status: 'COMPLETED',
+        route: 'UNKNOWN',
+      },
+    });
+
+    expect(result).toMatchObject({
+      statusCode: 502,
+      body: {
+        integrationOutcome: {
+          type: 'TECHNICAL_ERROR',
+          failure: 'UNEXPECTED_TENDER_RESPONSE',
+        },
       },
     });
   });
