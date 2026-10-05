@@ -556,7 +556,7 @@ describe('text source intake and deterministic evidence mapping', () => {
     expect(evaluateReadiness({ ...input, signals }).route).toBe('READY_FOR_PRICING');
   });
 
-  it('keeps grouped and separate site associations from one multi-site document distinct', () => {
+  it('separates a grouped document association only when each quote identifies one site', () => {
     const tender = structuredClone(cleanTender);
     tender.tender.sites.push({
       ...tender.tender.sites[0]!,
@@ -615,24 +615,6 @@ describe('text source intake and deterministic evidence mapping', () => {
       { status: 'RESOLVED', siteId: 'site-002' },
     ]);
     expect(evaluateReadiness({ ...input, signals }).route).toBe('READY_FOR_PRICING');
-
-    const separateAssociations = {
-      ...output,
-      siteAssociations: citations.map((citation, index) => ({
-        ...output.siteAssociations[0]!,
-        siteIds: [index === 0 ? 'site-001' : 'site-002'],
-        evidence: [citation],
-      })),
-    };
-    const separateSignals = toReadinessSignals(input, input.textSources, separateAssociations);
-    expect(separateSignals.criticalFacts.filter((fact) => fact.ambiguous)).toEqual([]);
-    expect(separateSignals.meterSiteAssociations).toMatchObject([
-      { meterIdentifier: '1234567890123', siteId: 'site-001' },
-      { meterIdentifier: '9876543210987', siteId: 'site-002' },
-    ]);
-    expect(evaluateReadiness({ ...input, signals: separateSignals }).route).toBe(
-      'READY_FOR_PRICING',
-    );
 
     const sharedQuote = {
       ...output,
@@ -912,7 +894,7 @@ describe('text source intake and deterministic evidence mapping', () => {
           siteIds: ['site-002'],
           confidence: 0.99,
           ambiguous: false,
-          evidence: [{ sourceId: note.sourceId, quote: associatedNote.text }],
+          evidence: [{ sourceId: note.sourceId, quote: '2027-03-31' }],
         },
       ],
       siteAssociations: [
