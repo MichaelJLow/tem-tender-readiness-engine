@@ -108,16 +108,16 @@ Any hours-reclaimed calculation remains illustrative and is not presented as rea
 
 ## Verified limitations
 
-| Area | Verified position |
-| --- | --- |
-| Runtime | Local API, Console, and Studio. No hosted application URL. |
-| Persistence | One JSON file, one API process. Not a concurrent database. |
-| Authentication | Loopback review mutations and a demo operator label. |
-| Pricing | Mock gateway only; API-owned; n8n never initiates it. |
-| Documents | Structured records plus already-extracted text on V1. Intake pack PDF registration, selectable-text extraction, review-only draft preparation, Console Drop/upload, and draft review are live; confirmation is not. |
-| Data | Synthetic fixtures and reports only. |
-| Evals | Accepted baseline and latest passing full report are distinct. Latest is not promoted. |
-| AWS | Private S3 archive verified. Promotional credit balance/expiry unverified. OIDC not implemented. |
+| Area           | Verified position                                                                                                                                                                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime        | Local API, Console, and Studio. No hosted application URL.                                                                                                                                                                                         |
+| Persistence    | One JSON file, one API process. Not a concurrent database.                                                                                                                                                                                         |
+| Authentication | Loopback review mutations and a demo operator label.                                                                                                                                                                                               |
+| Pricing        | Mock gateway only; API-owned; n8n never initiates it.                                                                                                                                                                                              |
+| Documents      | Structured records plus already-extracted text on V1. Intake pack PDF registration, selectable-text extraction, review-only draft preparation, Console Drop/upload, draft review, and confirmation handoff are live. Confirm is not a ready route. |
+| Data           | Synthetic fixtures and reports only.                                                                                                                                                                                                               |
+| Evals          | Accepted baseline and latest passing full report are distinct. Latest is not promoted.                                                                                                                                                             |
+| AWS            | Private S3 archive verified. Promotional credit balance/expiry unverified. OIDC not implemented.                                                                                                                                                   |
 
 ## Non-goals
 

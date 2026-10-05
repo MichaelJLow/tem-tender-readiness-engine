@@ -450,9 +450,9 @@ path.
 **ENG-17 (contracts):** Zod contracts, limits, failure taxonomy, API surface
 sketch, and [ADR-005](adr/005-intake-pack-boundary.md).
 
-**ENG-22 (this Console slice):** draft review beside the source viewer after a
-pack is `REVIEWABLE`. Operator edits, conflict presentation, site isolation,
-and version conflicts. No confirm or readiness UI.
+**ENG-23 (confirmation adapter):** immutable confirmation snapshot, version-checked
+confirm, idempotent retry, and handoff into the existing tender/case path.
+Confirm is not a ready route. Console Confirm redirects to case detail.
 
 ### Tasks
 
@@ -468,7 +468,7 @@ and version conflicts. No confirm or readiness UI.
 - [x] ENG-20 evidence-to-draft preparation (no silent field fill).
 - [x] ENG-21 Console upload and processing-status UI.
 - [x] ENG-22 Console draft-review UI.
-- [ ] ENG-23 confirmation adapter and readiness handoff.
+- [x] ENG-23 confirmation adapter and readiness handoff.
 - [ ] ENG-24 safety, eval evidence, and runbook.
 
 ### Acceptance criteria

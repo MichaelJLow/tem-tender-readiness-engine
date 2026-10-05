@@ -8,9 +8,13 @@ import {
   buildIntakeDraftPatch,
   canOpenIntakeDraftReview,
   candidatesForReviewBucket,
+  canConfirmIntakeDraftReview,
+  confirmationRunId,
   competingCandidatesForAssignment,
   conflictGroups,
   emptyReviewFieldEdits,
+  intakeCaseDetailPath,
+  intakeConfirmIdempotencyKey,
   isDraftStaleError,
   isIntakeDraftReadOnly,
   leaveUnassignedCandidate,
@@ -181,6 +185,43 @@ describe('Console Intake pack draft review', () => {
     expect(canOpenIntakeDraftReview({ ...pack, extraction, status: 'CONFIRMED' })).toBe(true);
     expect(isIntakeDraftReadOnly({ ...pack, extraction, status: 'CONFIRMED' })).toBe(true);
     expect(isIntakeDraftReadOnly({ ...pack, extraction, status: 'REVIEWABLE' })).toBe(false);
+    expect(
+      canConfirmIntakeDraftReview({
+        pack: { ...pack, extraction, status: 'REVIEWABLE' },
+        draft: draft(),
+        dirty: false,
+      }),
+    ).toBe(true);
+    expect(
+      canConfirmIntakeDraftReview({
+        pack: { ...pack, extraction, status: 'REVIEWABLE' },
+        draft: draft(),
+        dirty: true,
+      }),
+    ).toBe(false);
+    expect(
+      canConfirmIntakeDraftReview({
+        pack: { ...pack, extraction, status: 'CONFIRMED' },
+        draft: draft(),
+        dirty: false,
+      }),
+    ).toBe(false);
+    expect(intakeConfirmIdempotencyKey('pack-001')).toBe('confirm:pack-001');
+    expect(intakeCaseDetailPath('11111111-1111-4111-8111-111111111111')).toBe(
+      '/tenders/11111111-1111-4111-8111-111111111111',
+    );
+    expect(
+      confirmationRunId({
+        confirmationId: 'confirmation-pack-001',
+        packId: 'pack-001',
+        draftVersion: 2,
+        actor: 'local-demo-operator',
+        confirmedAt: NOW,
+        idempotencyKey: 'confirm:pack-001',
+        tenderId: 'tender-pack-001',
+        runId: '11111111-1111-4111-8111-111111111111',
+      }),
+    ).toBe('11111111-1111-4111-8111-111111111111');
   });
 
   it('does not leak warehouse evidence into the retail draft the operator sees', () => {

@@ -15,6 +15,7 @@ import {
   IntakePackSchema,
   IntakeProvenanceSchema,
   canConfirmIntakePack,
+  canConfirmIntakePackAtVersion,
   draftStructuredFieldsAreEmpty,
   intakeLayerMayInvokePricing,
   mapIntakeDocumentStatusToReadiness,
@@ -329,6 +330,36 @@ describe('Intake pack contracts', () => {
       'NOTE',
     ]);
     expect(evaluateReadiness(confirmation.submission).route).toBe('READY_FOR_PRICING');
+  });
+
+  it('rejects confirmation against a stale draft version without treating confirm as ready', () => {
+    const reviewed = pack({
+      draft: IntakeDraftSchema.parse({
+        packId: 'pack-001',
+        draftVersion: 2,
+        updatedAt: NOW,
+        customer: { legalName: 'Northstar Foods Ltd' },
+        broker: { legalName: 'Harbour Energy Partners' },
+        sites: [],
+        candidates: [],
+      }),
+    });
+    expect(canConfirmIntakePack(reviewed).ok).toBe(true);
+    expect(canConfirmIntakePackAtVersion(reviewed, 1)).toEqual(
+      expect.objectContaining({ ok: false, code: 'DRAFT_STALE' }),
+    );
+    expect(canConfirmIntakePackAtVersion(reviewed, 2).ok).toBe(true);
+    const snapshot = snapshotDraftForConfirmation({
+      confirmationId: 'confirmation-stale-guard',
+      pack: reviewed,
+      actor: 'local-demo-operator',
+      idempotencyKey: 'intake-pack-stale-guard',
+      tenderId: 'tender-from-pack-stale',
+      customerId: 'customer-from-pack-stale',
+      brokerId: 'broker-from-pack-stale',
+      confirmedAt: NOW,
+    });
+    expect(evaluateReadiness(snapshot.submission).route).not.toBe('READY_FOR_PRICING');
   });
 
   it('blocks confirmation while files are in progress and keeps failed files visible', () => {

@@ -18,13 +18,19 @@ export function IntakePackFlow({ pack, current }: Props) {
   const reviewOpen = canOpenIntakeDraftReview(pack);
   const reviewHref =
     reviewOpen && pack ? `/intake-pack/${encodeURIComponent(pack.packId)}/review` : undefined;
+  const confirmed = pack?.status === 'CONFIRMED';
+  const caseHref = pack?.confirmation?.runId
+    ? `/tenders/${encodeURIComponent(pack.confirmation.runId)}`
+    : undefined;
 
   return (
     <ol className="intake-flow" aria-label={`${INTAKE_PACK_ENTRY_NAME} steps`}>
       {INTAKE_PACK_FLOW_STEPS.map((step) => {
         const isCurrent = step.id === current;
         const later =
-          step.id === 'confirm' || step.id === 'assess' || (step.id === 'review' && !reviewOpen);
+          (step.id === 'review' && !reviewOpen) ||
+          (step.id === 'confirm' && !reviewOpen && !confirmed) ||
+          (step.id === 'assess' && !confirmed);
         return (
           <li
             key={step.id}
@@ -41,7 +47,15 @@ export function IntakePackFlow({ pack, current }: Props) {
             {step.id === 'review' && !reviewOpen ? (
               <small>When the pack is reviewable</small>
             ) : null}
-            {step.id === 'confirm' || step.id === 'assess' ? <small>Later ticket</small> : null}
+            {step.id === 'confirm' && reviewOpen && !confirmed ? <small>From review</small> : null}
+            {step.id === 'assess' && caseHref ? (
+              <small>
+                <Link className="text-link" href={caseHref}>
+                  Open case detail
+                </Link>
+              </small>
+            ) : null}
+            {step.id === 'assess' && !confirmed ? <small>After confirm</small> : null}
           </li>
         );
       })}

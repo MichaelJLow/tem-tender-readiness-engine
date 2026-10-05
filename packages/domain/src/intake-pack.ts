@@ -475,6 +475,44 @@ export function canConfirmIntakePack(pack: z.infer<typeof IntakePackSchema>): {
   return { ok: true, reason: 'Pack is eligible for confirmation into POST /tenders.' };
 }
 
+export function canConfirmIntakePackAtVersion(
+  pack: z.infer<typeof IntakePackSchema>,
+  expectedDraftVersion: number,
+): {
+  ok: boolean;
+  code?: z.infer<typeof IntakePackFailureCodeSchema>;
+  reason: string;
+} {
+  const eligibility = canConfirmIntakePack(pack);
+  if (!eligibility.ok || !pack.draft) return eligibility;
+  if (pack.draft.draftVersion !== expectedDraftVersion) {
+    return {
+      ok: false,
+      code: 'DRAFT_STALE',
+      reason: `Draft version ${expectedDraftVersion} is stale; current version is ${pack.draft.draftVersion}.`,
+    };
+  }
+  return eligibility;
+}
+
+export function scopedIntakeId(prefix: string, packId: string): string {
+  return `${prefix}${packId}`.slice(0, TEXT_SOURCE_IDENTIFIER_MAX_CHARS);
+}
+
+export function intakeConfirmationIdentity(packId: string): {
+  confirmationId: string;
+  tenderId: string;
+  customerId: string;
+  brokerId: string;
+} {
+  return {
+    confirmationId: scopedIntakeId('confirmation-', packId),
+    tenderId: scopedIntakeId('tender-', packId),
+    customerId: scopedIntakeId('customer-', packId),
+    brokerId: scopedIntakeId('broker-', packId),
+  };
+}
+
 export function draftStructuredFieldsAreEmpty(draft: z.infer<typeof IntakeDraftSchema>): boolean {
   const customerEmpty = !draft.customer.legalName?.trim() && !draft.customer.customerId;
   const brokerEmpty = !draft.broker.legalName?.trim() && !draft.broker.brokerId;
@@ -503,10 +541,11 @@ function concatDocumentText(
 }
 
 /**
- * Build the immutable confirmation snapshot that later tickets may POST to /tenders.
- * Operator-edited draft fields become structured tender values. Candidate suggestions
- * are ignored here so extraction cannot silently fill readiness fields. Readiness
- * signals stay empty; existing interpretation remains evidence-only after confirm.
+ * Build the immutable confirmation snapshot that the confirmation adapter POSTs to
+ * /tenders. Operator-edited draft fields become structured tender values. Candidate
+ * suggestions are ignored here so extraction cannot silently fill readiness fields.
+ * Readiness signals stay empty; existing interpretation remains evidence-only after
+ * confirm. Confirm is not a route: the existing tender path still evaluates readiness.
  */
 export function snapshotDraftForConfirmation(input: {
   confirmationId: string;

@@ -86,6 +86,32 @@ export function canOpenIntakeDraftReview(pack?: IntakePackView): boolean {
   return pack.status === 'REVIEWABLE' || pack.status === 'CONFIRMED';
 }
 
+export function canConfirmIntakeDraftReview(input: {
+  pack?: IntakePackView;
+  draft?: IntakeDraft | null;
+  dirty: boolean;
+}): boolean {
+  if (!input.pack || !input.draft) return false;
+  if (isIntakeDraftReadOnly(input.pack)) return false;
+  if (!canOpenIntakeDraftReview(input.pack)) return false;
+  if (input.dirty) return false;
+  return input.pack.status === 'REVIEWABLE';
+}
+
+export function intakeConfirmIdempotencyKey(packId: string): string {
+  return `confirm:${packId}`;
+}
+
+export function intakeCaseDetailPath(runId: string): string {
+  return `/tenders/${encodeURIComponent(runId)}`;
+}
+
+export function confirmationRunId(
+  confirmation: IntakePackView['confirmation'] | undefined,
+): string | undefined {
+  return confirmation?.runId;
+}
+
 export function isIntakeDraftReadOnly(pack?: IntakePackView): boolean {
   return pack?.status === 'CONFIRMED';
 }
