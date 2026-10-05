@@ -4,10 +4,9 @@
 company names are demonstration materials. They are not real tenders, customers,
 brokers, or tem data.
 
-This is the ENG-18 fixture set for Console **Intake pack**. It does not upload
-files, extract PDF text, or call readiness. ENG-19 uses the files and manifest
-to test bounded registration and extraction. Later Console tickets can attach
-the same packs in the UI.
+This is the ENG-18 fixture set for Console **Intake pack**. ENG-19 uses the files
+and manifest to test bounded registration and selectable-text extraction. Later
+Console tickets can attach the same packs in the UI.
 
 ## Layout
 
@@ -26,23 +25,23 @@ fixtures/intake-packs/
 
 ## Scenarios
 
-| Pack ID | Ticket scenario | What it is for |
-| --- | --- | --- |
-| `pack-clean-single-site` | clean single-site | One selectable-text PDF + one note. Expected `EXTRACTED`. |
-| `pack-clean-multi-site` | clean multi-site | Two PDFs, one per site, with page→site quotes/locators for ENG-19. |
-| `pack-conflicting-evidence` | conflicting evidence | Same warehouse site, two contract-end dates. |
-| `pack-ambiguous-site-association` | ambiguous site association | “the Harbour site” with no MPAN. |
-| `pack-scanned-ocr-required` | scanned / OCR-required | Image-only PDF. Expected `OCR_REQUIRED`. |
-| `pack-corrupt` | corrupt | Truncated PDF. Expected `CORRUPT`. |
-| `pack-unsupported` | unsupported | `.txt`, `.png`, and a non-PDF `.pdf` name. Expected `UNSUPPORTED`. |
-| `pack-extraction-failed` | oversized / limit-test | Invalid FlateDecode stream. Expected `EXTRACTION_FAILED`. |
-| `pack-oversized-file` | oversized / limit-test | PDF of `maxFileBytes + 1`. Generated, not committed. |
-| `pack-file-count` | oversized / limit-test | 8 PDFs. Expected `PACK_FILE_COUNT`. |
-| `pack-total-size` | oversized / limit-test | Combined size just over `maxPackBytes`. Generated. |
-| `pack-page-limit` | oversized / limit-test | 51 pages across 3 PDFs. Expected `PAGE_LIMIT`. |
-| `pack-document-page-limit` | oversized / limit-test | 26 pages in one PDF. Expected `PAGE_LIMIT`. |
-| `pack-notes-limit` | oversized / limit-test | Two broker notes. Expected `NOTES_LIMIT`. |
-| `pack-extracted-text-limit` | oversized / limit-test | One page with 8001 selectable characters. |
+| Pack ID                           | Ticket scenario            | What it is for                                                     |
+| --------------------------------- | -------------------------- | ------------------------------------------------------------------ |
+| `pack-clean-single-site`          | clean single-site          | One selectable-text PDF + one note. Expected `EXTRACTED`.          |
+| `pack-clean-multi-site`           | clean multi-site           | Two PDFs, one per site, with page→site quotes/locators for ENG-19. |
+| `pack-conflicting-evidence`       | conflicting evidence       | Same warehouse site, two contract-end dates.                       |
+| `pack-ambiguous-site-association` | ambiguous site association | “the Harbour site” with no MPAN.                                   |
+| `pack-scanned-ocr-required`       | scanned / OCR-required     | Image-only PDF. Expected `OCR_REQUIRED`.                           |
+| `pack-corrupt`                    | corrupt                    | Truncated PDF. Expected `CORRUPT`.                                 |
+| `pack-unsupported`                | unsupported                | `.txt`, `.png`, and a non-PDF `.pdf` name. Expected `UNSUPPORTED`. |
+| `pack-extraction-failed`          | oversized / limit-test     | Invalid FlateDecode stream. Expected `EXTRACTION_FAILED`.          |
+| `pack-oversized-file`             | oversized / limit-test     | PDF of `maxFileBytes + 1`. Generated, not committed.               |
+| `pack-file-count`                 | oversized / limit-test     | 8 PDFs. Expected `PACK_FILE_COUNT`.                                |
+| `pack-total-size`                 | oversized / limit-test     | Combined size just over `maxPackBytes`. Generated.                 |
+| `pack-page-limit`                 | oversized / limit-test     | 51 pages across 3 PDFs. Expected `PAGE_LIMIT`.                     |
+| `pack-document-page-limit`        | oversized / limit-test     | 26 pages in one PDF. Expected `PAGE_LIMIT`.                        |
+| `pack-notes-limit`                | oversized / limit-test     | Two broker notes. Expected `NOTES_LIMIT`.                          |
+| `pack-extracted-text-limit`       | oversized / limit-test     | One page with 8001 selectable characters.                          |
 
 Each pack has at most one broker note except `pack-notes-limit`, which exists to
 breach `INTAKE_PACK_LIMITS.maxNotes`.

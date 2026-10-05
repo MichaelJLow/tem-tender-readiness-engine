@@ -14,7 +14,8 @@ import {
 const identifier = z.string().trim().min(1).max(TEXT_SOURCE_IDENTIFIER_MAX_CHARS);
 
 /**
- * HTTP contract sketch for Intake pack. Routes are not wired in ENG-17.
+ * HTTP contract for Intake pack. ENG-19 wires registration and extraction.
+ * Draft, confirm, and pricing remain unwired.
  *
  * POST /intake-packs
  * GET  /intake-packs/:packId
@@ -25,10 +26,10 @@ const identifier = z.string().trim().min(1).max(TEXT_SOURCE_IDENTIFIER_MAX_CHARS
  * GET  /intake-packs/:packId/notes
  * POST /intake-packs/:packId/extractions
  * GET  /intake-packs/:packId/extractions
- * GET  /intake-packs/:packId/draft
- * PATCH /intake-packs/:packId/draft
- * POST /intake-packs/:packId/confirm
- * GET  /intake-packs/:packId/confirmation
+ * GET  /intake-packs/:packId/draft          (ENG-20)
+ * PATCH /intake-packs/:packId/draft         (ENG-20)
+ * POST /intake-packs/:packId/confirm        (ENG-23)
+ * GET  /intake-packs/:packId/confirmation   (ENG-23)
  */
 export const IntakePackApiPathSchema = z.enum([
   '/intake-packs',

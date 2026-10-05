@@ -41,6 +41,7 @@ What becomes easier, harder, or constrained because of this choice?
 - [ADR-003: Archive the local demo as private S3 snapshots](003-private-s3-demo-snapshots.md)
 - [ADR-004: Keep n8n as integration orchestration only](004-n8n-integration-boundary.md)
 - [ADR-005: Keep Intake pack as a three-layer path into POST /tenders](005-intake-pack-boundary.md)
+- [ADR-006: Use PDF.js for selectable-text extraction and local JSON originals](006-intake-pack-pdf-extraction.md)
 
 Related decisions that live in the documents above rather than extra ADRs:
 
@@ -48,6 +49,6 @@ Related decisions that live in the documents above rather than extra ADRs:
 - The configured model provider is OpenAI-compatible (OpenAI or OpenRouter), not a claim that one vendor is required.
 - PR eval subset versus full release suite (`docs/eval-strategy.md`).
 - Hosted runtime, concurrent database, authentication, GitHub-to-AWS OIDC, and real pricing/data remain deferred.
-- PDF Intake pack is a post-V1 Console path. Contracts are ADR-005; upload, OCR, and Console pages are later ENG-16 tickets.
+- PDF Intake pack is a post-V1 Console path. Contracts are ADR-005; selectable-text extraction is ADR-006; upload UI and confirmation remain later ENG-16 tickets.
 
 ADRs should describe **this project's** choices. They should not present implementation assumptions as facts about tem's private architecture.

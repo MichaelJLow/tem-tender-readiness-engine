@@ -4,10 +4,22 @@ import { MockPricingGateway } from './pricing-gateway.js';
 import { createTenderServer } from './server.js';
 import { TenderService } from './service.js';
 import { MastraTenderInterpreter } from './reasoning/interpreter.js';
+import { FileIntakeOriginalsStore } from './intake-pack/originals-store.js';
+import {
+  FileIntakePackStateStore,
+  JsonFileIntakePackRepository,
+} from './intake-pack/repository.js';
+import { IntakePackService } from './intake-pack/service.js';
 
 const port = parsePort(process.env.PORT ?? '3000');
 const host = process.env.HOST ?? '127.0.0.1';
 const statePath = resolve(process.env.TENDER_STATE_PATH ?? './data/tender-state.json');
+const intakePackStatePath = resolve(
+  process.env.INTAKE_PACK_STATE_PATH ?? './data/intake-pack-state.json',
+);
+const intakePackOriginalsPath = resolve(
+  process.env.INTAKE_PACK_ORIGINALS_PATH ?? './data/intake-pack-originals',
+);
 const repository = new JsonFileTenderRepository(new FileStateStore(statePath));
 const service = new TenderService(
   repository,
@@ -15,10 +27,27 @@ const service = new TenderService(
   undefined,
   new MastraTenderInterpreter(),
 );
-const server = createTenderServer(service, ['127.0.0.1', 'localhost', '::1'].includes(host));
+const intakePackService = new IntakePackService(
+  new JsonFileIntakePackRepository(new FileIntakePackStateStore(intakePackStatePath)),
+  new FileIntakeOriginalsStore(intakePackOriginalsPath),
+);
+const server = createTenderServer(
+  service,
+  ['127.0.0.1', 'localhost', '::1'].includes(host),
+  intakePackService,
+);
 
 server.listen(port, host, () => {
-  console.info(JSON.stringify({ event: 'api.listening', host, port, statePath }));
+  console.info(
+    JSON.stringify({
+      event: 'api.listening',
+      host,
+      port,
+      statePath,
+      intakePackStatePath,
+      intakePackOriginalsPath,
+    }),
+  );
 });
 
 function parsePort(value: string): number {

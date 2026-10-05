@@ -460,8 +460,8 @@ parser, or Console page.
       `UNSUPPORTED`, `OVERSIZED`, and `EXTRACTION_FAILED`.
 - [x] Decide the evidence → draft → confirmed boundary and the relationship to
       `POST /tenders`.
-- [ ] ENG-18 synthetic fixture set.
-- [ ] ENG-19 bounded PDF registration and extraction.
+- [x] ENG-18 synthetic fixture set.
+- [x] ENG-19 bounded PDF registration and extraction.
 - [ ] ENG-20 evidence-to-draft preparation (no silent field fill).
 - [ ] ENG-21/22 Console upload and draft-review UI.
 - [ ] ENG-23 confirmation adapter and readiness handoff.

@@ -640,6 +640,7 @@ export type IntakeCandidate = z.infer<typeof IntakeCandidateSchema>;
 export type IntakeNote = z.infer<typeof IntakeNoteSchema>;
 export type IntakeDocument = z.infer<typeof IntakeDocumentSchema>;
 export type IntakeExtractedPage = z.infer<typeof IntakeExtractedPageSchema>;
+export type IntakeExtractionDocument = z.infer<typeof IntakeExtractionDocumentSchema>;
 export type IntakeExtraction = z.infer<typeof IntakeExtractionSchema>;
 export type IntakeDraft = z.infer<typeof IntakeDraftSchema>;
 export type IntakeDraftSite = z.infer<typeof IntakeDraftSiteSchema>;

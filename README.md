@@ -2,7 +2,7 @@
 
 A production-style tender readiness automation for business energy. It combines deterministic TypeScript rules, a bounded evidence-only agent, human review audit, labelled evals, a local operations console, credential-free n8n intake, and a private S3 evidence archive.
 
-> **Project status:** local V1 is tagged `v1.0.0`. Clone the repository, run the demo, and read the retained eval/QA receipts. Hosted runtime, concurrent database, authentication, and real pricing/data remain deferred. Console **Intake pack** (Milestone 10 / [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)) is post-V1: contracts and [ADR-005](docs/adr/005-intake-pack-boundary.md) are in the domain package; upload UI and PDF parsing are not implemented.
+> **Project status:** local V1 is tagged `v1.0.0`. Clone the repository, run the demo, and read the retained eval/QA receipts. Hosted runtime, concurrent database, authentication, and real pricing/data remain deferred. Console **Intake pack** (Milestone 10 / [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)) is post-V1: contracts, synthetic fixtures, and bounded selectable-text extraction are in place ([ADR-005](docs/adr/005-intake-pack-boundary.md), [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md)); upload UI and confirmation are not implemented.
 
 ## What it does
 
@@ -19,14 +19,14 @@ Technical execution is tracked separately through `RECEIVED`, `PROCESSING`, `COM
 
 These are the current system boundaries, not a future design:
 
-| Concern | Owner | What it does not do |
-| --- | --- | --- |
-| Deterministic routes | TypeScript domain + API | The model does not choose the final route or fill missing structured fields. |
-| Bounded interpretation | Tool-free Mastra agent in `apps/api` | Evidence and citations only. No pricing tools. Provider failure cannot assign a route. |
-| Human audit | Loopback review events on the API | A disposition does not change the automatic route or create a pricing handoff. |
-| Mock pricing | API-owned gateway | Only a final `READY_FOR_PRICING` route may call it. n8n records the outcome and never initiates pricing. |
-| Live runtime | Local API, Console, and Mastra Studio | No hosted application, concurrent database, or production authentication. |
-| Evidence archive | Private S3 snapshots | Manual archive/restore outside the decision path. Not the live database. |
+| Concern                | Owner                                 | What it does not do                                                                                      |
+| ---------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Deterministic routes   | TypeScript domain + API               | The model does not choose the final route or fill missing structured fields.                             |
+| Bounded interpretation | Tool-free Mastra agent in `apps/api`  | Evidence and citations only. No pricing tools. Provider failure cannot assign a route.                   |
+| Human audit            | Loopback review events on the API     | A disposition does not change the automatic route or create a pricing handoff.                           |
+| Mock pricing           | API-owned gateway                     | Only a final `READY_FOR_PRICING` route may call it. n8n records the outcome and never initiates pricing. |
+| Live runtime           | Local API, Console, and Mastra Studio | No hosted application, concurrent database, or production authentication.                                |
+| Evidence archive       | Private S3 snapshots                  | Manual archive/restore outside the decision path. Not the live database.                                 |
 
 ```mermaid
 flowchart TD
@@ -69,11 +69,11 @@ The project separates:
 
 **Do not treat the latest passing full report as the accepted baseline.**
 
-| Pointer | Report | What it is |
-| --- | --- | --- |
-| Accepted baseline | [`evals/accepted-baseline.json`](evals/accepted-baseline.json) → [`full-2026-09-26T23-53-52.654Z`](evals/reports/full-2026-09-26T23-53-52.654Z.md) | Reviewed Milestone 4 prototype reference. 63 cases; 7 gates; workflow facts 49/51; agent facts 51/51. |
-| Selected release evidence | [`evals/release-evidence.json`](evals/release-evidence.json) → [`full-2026-10-05T14-22-22.835Z`](evals/reports/full-2026-10-05T14-22-22.835Z.md) | Clean source `9fbf16f`; 63 cases; **passed 9/9 gates**; workflow facts 49/51; agent facts 51/51; 0/44 unsafe-ready. Compared with the accepted baseline; **not promoted**. |
-| Latest committed PR evidence | [`evals/pr-evidence.json`](evals/pr-evidence.json) → [`pr-2026-10-04T23-14-16.314Z`](evals/reports/pr-2026-10-04T23-14-16.314Z.md) | 14-case smoke subset. Not a full-release baseline. |
+| Pointer                      | Report                                                                                                                                             | What it is                                                                                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accepted baseline            | [`evals/accepted-baseline.json`](evals/accepted-baseline.json) → [`full-2026-09-26T23-53-52.654Z`](evals/reports/full-2026-09-26T23-53-52.654Z.md) | Reviewed Milestone 4 prototype reference. 63 cases; 7 gates; workflow facts 49/51; agent facts 51/51.                                                                      |
+| Selected release evidence    | [`evals/release-evidence.json`](evals/release-evidence.json) → [`full-2026-10-05T14-22-22.835Z`](evals/reports/full-2026-10-05T14-22-22.835Z.md)   | Clean source `9fbf16f`; 63 cases; **passed 9/9 gates**; workflow facts 49/51; agent facts 51/51; 0/44 unsafe-ready. Compared with the accepted baseline; **not promoted**. |
+| Latest committed PR evidence | [`evals/pr-evidence.json`](evals/pr-evidence.json) → [`pr-2026-10-04T23-14-16.314Z`](evals/reports/pr-2026-10-04T23-14-16.314Z.md)                 | 14-case smoke subset. Not a full-release baseline.                                                                                                                         |
 
 Thresholds in [`evals/thresholds.json`](evals/thresholds.json) are unchanged: 0 unsafe-ready cases, ≥95% `HUMAN_REVIEW` recall, ≥95% critical-fact precision/recall, and no more than a 1 percentage-point safety drop against a comparable accepted baseline. Empty denominators fail the corresponding gate. See [eval strategy](docs/eval-strategy.md) and [eval findings](docs/eval-findings.md).
 
@@ -98,7 +98,7 @@ These are current, inspected limits — not a backlog slogan:
 - Promotional AWS credit balance/expiry is an account-administration follow-up, not an archive-correctness gate.
 - A documented cross-site association-check product fix was investigated during ENG-14 and is **not landed**; landing it would invalidate eval SHA `9fbf16f`.
 - Live n8n and live private S3 were not re-run on that eval SHA. [ENG-7](docs/milestone-7-verification.md) and [ENG-4](docs/milestone-6-verification.md) remain those receipts.
-- The `v1.0.0` git tag exists. Console Intake pack stays Milestone 10 ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)): contracts in [ADR-005](docs/adr/005-intake-pack-boundary.md); PDF upload and parsing are not live.
+- The `v1.0.0` git tag exists. Console Intake pack stays Milestone 10 ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)): contracts in [ADR-005](docs/adr/005-intake-pack-boundary.md); selectable-text extraction in [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md); upload UI and confirmation are not live.
 
 ## Reviewer walkthrough
 
@@ -174,7 +174,9 @@ evals/            Labelled cases, thresholds, reports, and evidence pointers
 .github/workflows/CI and release-evidence workflow
 ```
 
-Start the local API with `npm run dev:api`. It listens on `PORT` (default `3000`, host `127.0.0.1`) and writes synthetic processing state to `TENDER_STATE_PATH` (default `./data/tender-state.json`, ignored by Git). Submit a JSON `ReadinessInput` to `POST /tenders`. A clean structured tender returns `READY_FOR_PRICING` and records one mock handoff. Repeating the same idempotency key and payload returns the stored outcome. The local JSON repository supports a single API process.
+Start the local API with `npm run dev:api`. It listens on `PORT` (default `3000`, host `127.0.0.1`) and writes synthetic processing state to `TENDER_STATE_PATH` (default `./data/tender-state.json`, ignored by Git). Intake pack metadata is a separate local JSON file (`INTAKE_PACK_STATE_PATH`, default `./data/intake-pack-state.json`); original PDFs are write-once under `INTAKE_PACK_ORIGINALS_PATH`. Submit a JSON `ReadinessInput` to `POST /tenders`. A clean structured tender returns `READY_FOR_PRICING` and records one mock handoff. Repeating the same idempotency key and payload returns the stored outcome. The local JSON repository supports a single API process.
+
+Intake pack registration is a separate surface: `POST /intake-packs`, `POST /intake-packs/:packId/documents` (raw PDF body, `X-File-Name` header), `PUT /intake-packs/:packId/notes`, and `POST /intake-packs/:packId/extractions`. Extraction uses PDF.js operator-list text, never fills a review draft, and never calls pricing. Failed files stay on the pack.
 
 Start the operations console in a second terminal with `npm run dev:console`; open `http://localhost:3001`. Queue, tender detail, review history, and eval performance are read through the API. Review dispositions are recorded for synthetic `HUMAN_REVIEW` cases and do not change the automatic route or create a pricing handoff. The console binds to loopback and uses a demo operator identity; it is not production authentication.
 
@@ -200,3 +202,4 @@ Structured-only requests do not call a model. Requests with `textSources` need a
 - [ENG-15 secrets and security check](docs/releases/security-check-2026-10-05.md)
 - [ENG-14 release QA receipt](docs/release-qa/README.md)
 - [Intake pack boundary](docs/adr/005-intake-pack-boundary.md)
+- [Intake pack PDF extraction](docs/adr/006-intake-pack-pdf-extraction.md)
