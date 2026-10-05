@@ -222,7 +222,7 @@ describe('Console Intake pack presentation', () => {
     ).toBe(false);
   });
 
-  it('keeps Drop as the current step until extraction starts, then stops before review UI', () => {
+  it('treats extraction as the review-ready step without exposing confirm or assess', () => {
     expect(currentIntakePackFlowStep(undefined)).toBe('drop');
     expect(currentIntakePackFlowStep(pack({ status: 'RECEIVING' }))).toBe('drop');
     expect(currentIntakePackFlowStep(pack({ status: 'EXTRACTING' }))).toBe('extract');

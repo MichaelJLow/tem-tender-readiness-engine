@@ -49,6 +49,6 @@ Related decisions that live in the documents above rather than extra ADRs:
 - The configured model provider is OpenAI-compatible (OpenAI or OpenRouter), not a claim that one vendor is required.
 - PR eval subset versus full release suite (`docs/eval-strategy.md`).
 - Hosted runtime, concurrent database, authentication, GitHub-to-AWS OIDC, and real pricing/data remain deferred.
-- PDF Intake pack is a post-V1 Console path. Contracts are ADR-005; selectable-text extraction is ADR-006; evidence-to-draft preparation is deterministic and review-only; Console Drop/upload is ENG-21; Console draft review and confirmation remain later ENG-16 tickets.
+- PDF Intake pack is a post-V1 Console path. Contracts are ADR-005; selectable-text extraction is ADR-006; evidence-to-draft preparation is deterministic and review-only; Console Drop/upload is ENG-21; Console draft review is ENG-22; confirmation remains a later ENG-16 ticket.
 
 ADRs should describe **this project's** choices. They should not present implementation assumptions as facts about tem's private architecture.
