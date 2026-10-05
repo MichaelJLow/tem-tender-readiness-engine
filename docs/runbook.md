@@ -2,7 +2,7 @@
 
 ## Status
 
-This is a **living operational document**. It describes the local API, including bounded interpretation of notes and extracted document text. Cloud operations and operator-controlled replay will be added when those capabilities exist.
+This document describes the implemented local API, Console, Studio, n8n intake, private S3 archive, and operator recovery. Hosted runtime, concurrent database, and authentication remain deferred. Replay uses the original idempotency key; see [Failure scenarios rehearsed](#failure-scenarios-rehearsed).
 
 ## Local API
 
@@ -27,10 +27,10 @@ synthetic integration outcomes. The API continues to own validation,
 idempotency, readiness rules, interpretation, and the pricing guard.
 
 The [Milestone 7 verification receipt](milestone-7-verification.md) records the
-source revision, exact checks, and live-runtime evidence gate. Do not mark the
-milestone complete from unit tests alone: import the tracked JSON into a fresh
-pinned n8n runtime, execute every scenario, and attach the resulting execution
-evidence and merged PR before closing the milestone.
+source revision, export checks, live n8n `1.112.6` execution matrix, and merge
+commit `12f4c6c`. To reproduce locally, import the tracked JSON into a fresh
+pinned n8n runtime and execute every scenario; unit tests are supporting
+contract evidence, not a substitute for that import.
 
 Keep n8n's editor bound to loopback. Do not expose it, the operations Console,
 or review endpoints publicly. Containerized n8n reaches the host API through the
@@ -101,10 +101,12 @@ route, or invoke pricing. Refresh to inspect Review history. Open the clean and
 missing-information cases to confirm they offer no review action. In
 Performance, compare the accepted baseline with the latest completed report;
 the Studio links are optional drill-down. The latest full report passed 9/9
-gates on 63 synthetic workflow cases, with 0 unsafe-ready outcomes, 0 non-ready
-pricing calls, 51/51 agent facts, and 51/51 workflow critical facts. The
-accepted baseline passed 7/7 gates on 63 cases, with 51/51 agent facts and
-49/51 workflow critical facts. The latest run is not the accepted baseline.
+gates on 63 synthetic workflow cases, with 0/44 golden-safety unsafe-ready
+outcomes, 0 non-ready pricing calls, 51/51 agent facts, and 51/51 workflow
+critical facts. The accepted baseline passed 7/7 gates on 63 cases, with 51/51
+agent facts and 49/51 workflow critical facts. The Performance card also shows
+the all-cases unsafe-ready count as 0/63; that is not a new threshold and is
+not a promotion of the later report. The latest run is not the accepted baseline.
 
 ## Milestone 3 live model smoke check
 
@@ -298,19 +300,49 @@ passed on 4 October 2026; see the
 [Milestone 6 acceptance receipt](milestone-6-verification.md). Checking the
 promotional AWS credit balance/expiry remains a non-blocking account follow-up.
 
-Use a separate demo state path and `npm run demo:seed`, then record a
-`REQUEST_INFORMATION` disposition for the conflicting-date case with a reason
-and citations to `site-001`, `contract-a` and `contract-b`. Stop the API using
-that file before preparing a snapshot. Other local processes using different
-state files can remain running. Inspect reviewer notes and any optional source
-files to confirm they are synthetic and contain no credentials.
+A fresh clone does not contain a committed state file (`data/` is gitignored).
+Create one, seed it, record the required review disposition, then archive.
+
+```sh
+mkdir -p data
+TENDER_STATE_PATH="$PWD/data/demo-state.json" PORT=3000 npm run dev:api
+```
+
+In another terminal:
+
+```sh
+TENDER_API_URL=http://127.0.0.1:3000 npm run demo:seed
+human_run_id=$(curl --fail-with-body --silent --show-error http://127.0.0.1:3000/tenders \
+  | node -e 'const d=JSON.parse(require("fs").readFileSync(0,"utf8")); const item=d.items.find(i=>i.route==="HUMAN_REVIEW"); if(!item) throw new Error("missing HUMAN_REVIEW"); process.stdout.write(item.runId)')
+curl --fail-with-body --silent --show-error \
+  -H 'Content-Type: application/json' \
+  --data '{"requestId":"archive-review-001","action":"REQUEST_INFORMATION","reason":"Conflicting contract dates; request the original contracts.","sourceIds":["site-001","contract-a","contract-b"],"expectedVersion":0}' \
+  "http://127.0.0.1:3000/tenders/${human_run_id}/reviews"
+```
+
+Stop the API using that state file before preparing a snapshot. Other local
+processes using different state files can remain running. Inspect reviewer notes
+and any optional source files to confirm they are synthetic and contain no
+credentials.
 
 From the repository root, prepare and restore locally without AWS credentials:
 
-```powershell
-npm run demo:archive -- --state data/screenshot-state-2026-09-29.json --output data/archive-local --api-stopped --synthetic
+```sh
+npm run demo:archive -- --state data/demo-state.json --output data/archive-local --api-stopped --synthetic
 npm run demo:restore -- --from data/archive-local --output data/restored-local
 ```
+
+PowerShell equivalent after the same seed-and-review steps:
+
+```powershell
+npm run demo:archive -- --state data/demo-state.json --output data/archive-local --api-stopped --synthetic
+npm run demo:restore -- --from data/archive-local --output data/restored-local
+```
+
+The original Milestone 6 receipt used a disposable copy of
+`data/screenshot-state-2026-09-29.json`. That file is local verification
+evidence, not a tracked fixture. Recreate the walkthrough with `demo:seed` as
+above.
 
 The parent `data` directory must exist, and each output directory must be new.
 The archive takes `--state` / `--evals`, or `TENDER_STATE_PATH` / `EVALS_DIR`,
@@ -346,10 +378,14 @@ Console sign-in does not by itself authenticate the local CLI. Upload the
 already prepared snapshot with your actual bucket, region, account ID and
 profile (omit `--profile` to use the default credential chain):
 
-```powershell
+```sh
 npm run demo:archive -- --output data/archive-local --upload-existing --synthetic --bucket YOUR_PRIVATE_BUCKET --region YOUR_REGION --owner YOUR_12_DIGIT_ACCOUNT_ID --profile YOUR_PROFILE
 npm run demo:restore -- --bucket YOUR_PRIVATE_BUCKET --region YOUR_REGION --owner YOUR_12_DIGIT_ACCOUNT_ID --profile YOUR_PROFILE --snapshot SNAPSHOT_ID_FROM_ARCHIVE_OUTPUT --output data/restored-s3
 ```
+
+The same flags work in PowerShell. Substitute your actual bucket, region,
+12-digit account ID, and profile. Omit `--profile` to use the default
+credential chain.
 
 Objects live under `snapshots/<snapshot-id>/`. Upload verifies the local package
 and writes its manifest last, with conditional writes that refuse existing
@@ -366,6 +402,18 @@ for diagnosis and use a different fresh destination after resolving the error.
 
 To inspect a restored demo, start a separate API against its files on a free
 loopback port, then point the Console at that API:
+
+```sh
+# API terminal
+TENDER_STATE_PATH="$(pwd)/data/restored-local/state/tender-state.json" \
+EVALS_DIR="$(pwd)/data/restored-local/evals" \
+PORT=3002 npm run dev:api
+
+# Console terminal: stop this checkout's existing Console before restarting it.
+TENDER_API_URL=http://127.0.0.1:3002 npm run dev:console
+```
+
+PowerShell:
 
 ```powershell
 # API terminal

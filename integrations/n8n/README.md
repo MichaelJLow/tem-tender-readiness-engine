@@ -1,6 +1,9 @@
 # Local n8n tender intake
 
-This directory contains the exported local intake workflow for n8n `1.112.6`. It
+This directory contains the exported local intake workflow for n8n `1.112.6`.
+The [Milestone 7 receipt](../../docs/milestone-7-verification.md) records a
+fresh import, the six-scenario execution matrix, and merge commit `12f4c6c`.
+Document registration/upload remains deferred. The workflow
 normalizes a small webhook transport envelope, forwards the existing API-owned
 `IntakeRequest` to `POST /tenders`, and records the integration outcome returned
 by the API. It does not contain readiness rules, model prompts, document parsing,

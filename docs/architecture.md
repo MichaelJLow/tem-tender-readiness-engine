@@ -35,9 +35,9 @@ flowchart TD
 
 ## Responsibility boundaries
 
-| Layer            | Responsibility                                                      | Intended technology                                                              |
+| Layer            | Responsibility                                                      | Implemented technology                                                           |
 | ---------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Integration      | Receive events, move files, call APIs, trigger downstream workflows | n8n                                                                              |
+| Integration      | Receive webhook events, normalize transport, record API outcomes    | n8n `1.112.6` export; one HTTP call to `POST /tenders`                           |
 | Domain           | Schemas, deterministic rules, routing, state transitions            | TypeScript + Zod                                                                 |
 | Reasoning        | Interpret unstructured or semantically ambiguous information        | Tool-free Mastra agent in the API workspace, using the configured model provider |
 | Human judgment   | Resolve critical conflicts and accountable exceptions               | Ops console                                                                      |
@@ -109,7 +109,7 @@ A tender can therefore be `COMPLETED` with route `HUMAN_REVIEW`, or remain `READ
 
 - A non-ready route must never invoke the pricing gateway.
 - Model failure or malformed model output must never become implicit readiness.
-- n8n orchestrates integrations but does not become a second business-rule engine.
+- n8n orchestrates integrations but does not become a second business-rule engine. See [ADR-004](adr/004-n8n-integration-boundary.md).
 - Every final route must be reconstructable from stored evidence.
 - Replays must not create duplicate downstream actions.
 - Human corrections become audit events and candidate regression cases.
@@ -130,6 +130,22 @@ Mock pricing gateway
 
 The project does not attempt to recreate Rosso or any private pricing interface.
 
+## Current runtime
+
+The implemented demo is local:
+
+- one Tender API process owns validation, deterministic rules, bounded interpretation, idempotency, review audit, and the mocked pricing guard
+- one Operations Console reads API projections and records loopback review events
+- Mastra Studio on port `4113` inspects the registered agent and eval experiments; it does not receive API runs automatically
+- n8n `1.112.6` normalizes a webhook envelope and records synthetic integration receipts; it does not own routing or pricing
+- GitHub Actions runs format, lint, typecheck, tests, API/Console builds, and committed reasoning-evidence checks
+
+Hosting, concurrent database state, production authentication, GitHub-to-AWS OIDC, real pricing/data, and PDF intake remain deferred.
+
 ## Demo persistence and evidence archive
 
-The live API uses one local JSON repository and one API process. The Console reads operational and eval projections through that API. Milestone 6 adds manual private S3 snapshots of the three seeded synthetic cases, their review audit, accepted/latest eval reports and individually selected synthetic source files. S3 is outside the decision path. Restoring copies validated evidence into a fresh local directory without reprocessing tenders or invoking pricing. Studio experiments and traces stay in their separate local store. Hosting, concurrent database state and authentication remain deferred. See [ADR-003](adr/003-private-s3-demo-snapshots.md).
+The live API uses one local JSON repository and one API process. The Console reads operational and eval projections through that API. Milestone 6 archives manual private S3 snapshots of the three seeded synthetic cases, their review audit, accepted/latest eval reports, and individually selected synthetic source files. S3 is outside the decision path. Restoring copies validated evidence into a fresh local directory without reprocessing tenders or invoking pricing. Studio experiments and traces stay in their separate local store. See [ADR-003](adr/003-private-s3-demo-snapshots.md) and the [Milestone 6 receipt](milestone-6-verification.md).
+
+## Reliability
+
+Visible failures keep their technical classification. A retained `READY_FOR_PRICING` route after a gateway `500` is the business decision only; it is not a successful handoff. Bounded automatic retry covers transient model-provider and mocked-pricing failures. Operator replay uses the original idempotency key. The rehearsal is in [reliability-rehearsal.md](reliability-rehearsal.md).

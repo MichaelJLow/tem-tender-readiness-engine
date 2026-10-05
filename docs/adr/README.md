@@ -34,22 +34,18 @@ Why is this the best fit for this project?
 What becomes easier, harder, or constrained because of this choice?
 ```
 
-## Expected early ADRs
-
-Likely decisions include:
-
-- deterministic business rules outside prompts
-- Mastra as the bounded reasoning layer
-- OpenAI as the model provider for V1
-- n8n limited to integration orchestration
-- AWS persistence/runtime choice
-- human-review policy for critical ambiguity
-- PR eval subset versus full release eval suite
-
-Current decisions:
+## Current decisions
 
 - [ADR-001: Keep the bounded Mastra agent in the API workspace](001-bounded-mastra-agent.md)
 - [ADR-002: Separate review history from automatic decisions](002-local-review-state-and-console-boundary.md)
 - [ADR-003: Archive the local demo as private S3 snapshots](003-private-s3-demo-snapshots.md)
+- [ADR-004: Keep n8n as integration orchestration only](004-n8n-integration-boundary.md)
+
+Related decisions that live in the documents above rather than extra ADRs:
+
+- Deterministic business rules stay outside prompts (`docs/business-rules.md`).
+- The configured model provider is OpenAI-compatible (OpenAI or OpenRouter), not a claim that one vendor is required.
+- PR eval subset versus full release suite (`docs/eval-strategy.md`).
+- Hosted runtime, concurrent database, authentication, GitHub-to-AWS OIDC, real pricing/data, and PDF intake remain deferred.
 
 ADRs should describe **this project's** choices. They should not present implementation assumptions as facts about tem's private architecture.

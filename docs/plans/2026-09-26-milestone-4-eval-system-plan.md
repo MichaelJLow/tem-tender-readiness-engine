@@ -1,5 +1,7 @@
 # Milestone 4: Eval system plan
 
+> Historical planning record. Current eval behaviour is in `docs/eval-strategy.md`, `docs/eval-findings.md`, and `evals/accepted-baseline.json`. Do not read this file as the accepted-baseline policy.
+
 ## Outcome
 
 Deliver a reproducible, synthetic evaluation system for the Tender Interpretation Agent and the complete tender decision path. Mastra Studio should support inspecting datasets, experiments, scores, and traces. A versioned report should retain the evidence needed to review a release and later populate the Milestone 5 operations console after transient Studio traces expire. A safety regression must produce an explicit failing verdict.

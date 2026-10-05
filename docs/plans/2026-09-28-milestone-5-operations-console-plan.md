@@ -1,5 +1,7 @@
 # Milestone 5 — Operations console plan
 
+> Historical planning record. Current Console behaviour is in the runbook, ADR-002, and `docs/screenshots/operations-console/README.md`.
+
 ## Outcome
 
 Build a local, portfolio-ready internal console where an operator can find a synthetic tender, understand its route from rules and cited evidence, record and close a human review with an audit trail, and inspect the retained Milestone 4 eval verdict. The console should be useful when Mastra Studio is stopped or its recent traces have expired. It must not create an unguarded route to pricing.

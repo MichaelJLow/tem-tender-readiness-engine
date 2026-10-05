@@ -154,4 +154,4 @@ Mock pricing gateway
 [real pricing / transaction infrastructure outside prototype scope]
 ```
 
-The current local demo retains state and evidence in the application repository. Milestone 6 archives selected synthetic evidence to private S3 outside this decision path; restoring a snapshot does not reprocess cases or create a handoff.
+The live demo retains state and evidence in the local application repository. Milestone 6 archives selected synthetic evidence to private S3 outside this decision path; restoring a snapshot does not reprocess cases or create a handoff. Visible technical failures and safe replay are recorded in [reliability-rehearsal.md](reliability-rehearsal.md). Document registration, PDF parsing, hosted runtime, and real outbound messages remain deferred.

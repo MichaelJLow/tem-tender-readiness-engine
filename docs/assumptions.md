@@ -92,18 +92,32 @@ Success means reducing avoidable manual work without increasing unsafe downstrea
 
 ## Prototype success criteria
 
-The prototype should demonstrate that it can:
+The implemented prototype demonstrates that it can:
 
-- receive a synthetic tender through a realistic integration boundary,
+- receive a synthetic tender through the local API or the exported n8n webhook,
 - separate deterministic validation from model reasoning,
-- route clean, incomplete, duplicate, and ambiguous cases correctly,
-- show the evidence behind every routing decision,
-- block unsafe automated progression,
-- evaluate model-dependent behaviour against labelled cases,
-- capture human corrections and turn useful failures into regression cases,
-- expose technical failures clearly,
-- run a reproducible TypeScript / GitHub demo with a private AWS evidence archive,
-- report an illustrative hours-reclaimed metric without presenting it as real customer data.
+- route clean, incomplete, duplicate, and ambiguous cases correctly on the labelled set,
+- show the evidence behind every routing decision in the Console and retained reports,
+- block unsafe automated progression with an API-owned pricing guard,
+- evaluate model-dependent behaviour against 63 labelled synthetic cases,
+- capture human corrections as audit events without changing the automatic route,
+- expose technical failures and recover without duplicate side effects,
+- archive and restore synthetic evidence through a private S3 snapshot.
+
+Any hours-reclaimed calculation remains illustrative and is not presented as real customer data. Final interview-release evals, manual QA sign-off, and a git tag remain open follow-on work.
+
+## Verified limitations
+
+| Area | Verified position |
+| --- | --- |
+| Runtime | Local API, Console, and Studio. No hosted application URL. |
+| Persistence | One JSON file, one API process. Not a concurrent database. |
+| Authentication | Loopback review mutations and a demo operator label. |
+| Pricing | Mock gateway only; API-owned; n8n never initiates it. |
+| Documents | Structured records plus already-extracted text. No PDF intake. |
+| Data | Synthetic fixtures and reports only. |
+| Evals | Accepted baseline and latest passing full report are distinct. Latest is not promoted. |
+| AWS | Private S3 archive verified. Promotional credit balance/expiry unverified. OIDC not implemented. |
 
 ## Non-goals
 
