@@ -1,0 +1,7 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-clean-single-site
+
+Customer Northstar Foods Ltd. Broker Harbour Energy Partners.
+Please price the single London warehouse site at 10 Example Street, London.
+MPAN 1234567890123, 24000 kWh, contract end 2027-03-31.

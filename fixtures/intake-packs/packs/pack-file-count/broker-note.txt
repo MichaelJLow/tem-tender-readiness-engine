@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-file-count
+
+This pack contains 8 PDFs to exceed maxDocuments.
+Expected pack failure: PACK_FILE_COUNT.

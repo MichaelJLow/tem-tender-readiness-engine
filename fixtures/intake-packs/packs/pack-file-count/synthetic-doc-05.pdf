@@ -1,0 +1,50 @@
+%PDF-1.4
+%€€€€
+% SYNTHETIC / DEMONSTRATION
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 196 >>
+stream
+BT
+/F1 11 Tf
+50 760 Td
+13 TL
+(SYNTHETIC / DEMONSTRATION) Tj
+T*
+(Not a real tender. Not tem customer, broker, or meter data.) Tj
+T*
+(Fixture pack: pack-file-count) Tj
+T*
+(Document 05 of 8) Tj
+T*
+ET
+endstream
+endobj
+6 0 obj
+<< /Title (SYNTHETIC / DEMONSTRATION - file-count document 05) /Producer (tem-tender-readiness-engine ENG-18 SYNTHETIC / DEMONSTRATION) /Subject (Synthetic demonstration fixture. Not a real tender.) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000043 00000 n 
+0000000092 00000 n 
+0000000149 00000 n 
+0000000219 00000 n 
+0000000345 00000 n 
+0000000592 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+809
+%%EOF

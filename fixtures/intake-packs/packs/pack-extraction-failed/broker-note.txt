@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-extraction-failed
+
+The attached PDF looks like a PDF but the page stream is not valid FlateDecode.
+Expected document status: EXTRACTION_FAILED, not silent empty text.

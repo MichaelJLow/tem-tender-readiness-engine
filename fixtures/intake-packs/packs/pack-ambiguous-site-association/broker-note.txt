@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-ambiguous-site-association
+
+Customer has both 10 Example Street, London and 22 Harbour Lane, Manchester.
+The attached letter only says the Harbour site. Do not guess the site.
