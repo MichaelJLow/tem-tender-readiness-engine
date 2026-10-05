@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "sourceSha": "2e725d91c8aad75319a15630779c3420810e689c",
-  "completedAt": "2026-10-05T03:10:00.000Z",
+  "sourceSha": "9fbf16f71cb5afef7b91ccabf74920a1feb116d3",
+  "completedAt": "2026-10-05T03:10:00Z",
   "reviewer": "MichaelJLow",
-  "ciUrl": "https://github.com/MichaelJLow/tem-tender-readiness-engine/actions/runs/37256061900",
+  "ciUrl": "https://github.com/MichaelJLow/tem-tender-readiness-engine/actions/runs/37320974029",
   "pullRequestUrl": "https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/23",
   "checklist": {
     "cleanHappyPath": true,
@@ -17,5 +17,6 @@
     "technicalRetryReplay": true,
     "pricingGuard": true
   },
-  "notes": "Stratified synthetic Console/API/archive walkthrough on source 2e725d91c8aad75319a15630779c3420810e689c. Live npm run eval:full is not_run (unconfigured provider; report evals/reports/full-2026-10-05T02-17-47.688Z). No evals/release-evidence.json pointer was created. Accepted baseline and thresholds were not changed. ciUrl is the green Actions run on 3c3f7cb that verified the QA packet before this record was added. Live n8n 1.112.6 and live private S3 restore were not repeated; ENG-7 and ENG-4 remain those receipts."
+  "notes": "The stratified synthetic Console/API/archive walkthrough was originally completed on source 2e725d91c8aad75319a15630779c3420810e689c. For this release candidate, the deterministic evidence-association fix was revalidated with npm run check (243 tests), API and Console builds, and the provider-backed full eval on clean source 9fbf16f71cb5afef7b91ccabf74920a1feb116d3. The exact ready-two-site-meters-document case passed READY_FOR_PRICING with one mock handoff; all nine full-eval gates passed. The existing Console/API/archive observations remain the manual walkthrough evidence; the Console review flow, live n8n runtime, and live private S3 restore were not repeated on this revision. ENG-7 and ENG-4 remain the live runtime receipts. No thresholds or accepted baseline were changed."
 }
+
