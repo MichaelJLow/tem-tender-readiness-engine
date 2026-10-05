@@ -4,6 +4,7 @@ import {
   IntakeRequestSchema,
   TenderRunSchema,
   fingerprintRequest,
+  informationRequestReceiptKey,
   type ReviewEvent,
   type IntakeRequest,
   type ReadinessResult,
@@ -252,9 +253,49 @@ export class TenderService {
       const pricingAttempt =
         priorFailure?.stage === 'PRICING' ? (priorFailure.attempt ?? 0) + 1 : 1;
       await this.submitPricingWithRetry(run, replayed, correlationId, pricingAttempt);
+    } else if (run.result?.route === 'NEEDS_INFORMATION') {
+      await this.recordInformationRequestReceipt(run, attempt);
     }
 
     return responseFromRun(run, replayed, correlationId);
+  }
+
+  private async recordInformationRequestReceipt(run: TenderRun, attempt: number): Promise<void> {
+    const key = informationRequestReceiptKey(run.runId);
+    const existing = await this.readState(
+      () => this.repository.findInformationRequestReceipt(key),
+      run.tenderId,
+    );
+    if (existing) return;
+
+    try {
+      await this.repository.saveInformationRequestReceipt({
+        receiptId: randomUUID(),
+        key,
+        runId: run.runId,
+        tenderId: run.tenderId,
+        route: 'NEEDS_INFORMATION',
+        synthetic: true,
+        deliveryStatus: 'NOT_SENT',
+        createdAt: this.now().toISOString(),
+      });
+    } catch (error) {
+      const reading = error instanceof StateReadError;
+      throw new StatePersistenceError(
+        {
+          code: reading ? 'STATE_READ_FAILED' : 'STATE_WRITE_FAILED',
+          message: reading
+            ? 'Tender state could not be read.'
+            : 'Tender state could not be written.',
+          retryable: true,
+          stage: reading ? 'STATE_READ' : 'STATE_WRITE',
+          occurredAt: this.now().toISOString(),
+          attempt,
+        },
+        run.tenderId,
+        run.runId,
+      );
+    }
   }
 
   private async submitPricingWithRetry(

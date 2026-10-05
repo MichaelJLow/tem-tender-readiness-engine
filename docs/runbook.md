@@ -8,7 +8,7 @@ This is a **living operational document**. It describes the local API, including
 
 - Start with `npm run dev:api` after `npm ci`.
 - Start the operations console in a second terminal with `npm run dev:console`; open `http://localhost:3001`. It reads the API at `TENDER_API_URL` (default `http://127.0.0.1:3000`) and the retained report files in `EVALS_DIR` (default `./evals`). Mastra Studio remains on `4113`. Use only synthetic tender data. The review mutation API is enabled only when `HOST` is loopback; the console's demo operator label is not production authentication.
-- To populate the local console with three repeatable synthetic examples, start the API and run `npm run demo:seed`. The clean example records one mocked handoff; the missing-information and conflicting-date examples do not. Re-running uses the fixture idempotency keys and returns the stored results.
+- To populate the local console with three repeatable synthetic examples, start the API and run `npm run demo:seed`. The clean example records one mocked handoff; the missing-information example records one synthetic `information-request:{runId}` receipt marked `NOT_SENT`; the conflicting-date example records neither. Re-running uses the fixture idempotency keys and returns the stored results.
 - Configure `PORT`, `HOST`, and `TENDER_STATE_PATH` with environment variables. Defaults are port `3000`, host `127.0.0.1` (loopback only), and `./data/tender-state.json`. Set `HOST` explicitly only when the API must accept connections from another interface.
 - Structured-only requests do not call a model and do not need a model-provider key. Requests with `textSources` invoke the Mastra Tender Interpretation Agent. Set `OPENROUTER_API_KEY` to use OpenRouter (default model `openai/gpt-6-luna`), or set `OPENAI_API_KEY` to use OpenAI (default model `gpt-6-luna`). `OPENROUTER_MODEL` and `OPENAI_MODEL` override provider defaults. For another OpenAI-compatible provider, set `MODEL_API_KEY`, `MODEL_API_BASE_URL`, and `MODEL_ID`; these generic settings take precedence. Keep keys in an untracked `.env` file or deployment secrets.
 - Model responses default to a 8,192-token output cap to avoid providers reserving unnecessary spend for unusually long responses. Set `MODEL_MAX_OUTPUT_TOKENS` to a positive integer to override it for a provider/model that needs more room.
@@ -228,12 +228,13 @@ handoff.
 4. Compare state before and after. The original `runId` must remain; handoffs
    with key `<tenderId>:<idempotencyKey>`, information-request receipts with key
    `information-request:<runId>`, and review events must not increase beyond the
-   intended single effect.
+   intended single effect. The API persists the information-request receipt;
+   n8n only reports that stable key and does not send a message.
 
 The deterministic recovery tests use the synthetic clean fixture and its exact
 identity: submit `integrations/n8n/fixtures/clean.json`, whose envelope contains
 `correlationId: n8n-clean-001`, `tenderId: tender-n8n-clean-001`, and
-`idempotencyKey: n8n-clean-key-001`. Replay the same file unchanged:
+`idempotencyKey: intake-n8n-clean-001`. Replay the same file unchanged:
 
 ```sh
 curl --fail-with-body --silent --show-error \

@@ -149,6 +149,21 @@ export function validateDemoState(value: unknown): LocalState {
   ) {
     throw new Error('Snapshot must retain exactly one ready-only mocked pricing handoff.');
   }
+  const missing = state.runs.find((run) => run.route === 'NEEDS_INFORMATION')!;
+  const receipts = state.informationRequestReceipts;
+  if (
+    receipts.length > 1 ||
+    receipts.some(
+      (receipt) =>
+        receipt.runId !== missing.runId ||
+        receipt.key !== `information-request:${missing.runId}` ||
+        receipt.deliveryStatus !== 'NOT_SENT',
+    )
+  ) {
+    throw new Error(
+      'Snapshot may retain at most one synthetic information-request receipt for the missing-information case.',
+    );
+  }
   const review = state.runs.find((run) => run.route === 'HUMAN_REVIEW')!;
   const allowedSources = new Set(['site-001', 'contract-a', 'contract-b']);
   const requestIds = new Set<string>();

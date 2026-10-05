@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import type { LocalState, PricingHandoff, TenderRun } from '../contracts.js';
+import type {
+  InformationRequestReceipt,
+  LocalState,
+  PricingHandoff,
+  TenderRun,
+} from '../contracts.js';
 import type { PricingGateway } from '../pricing-gateway.js';
 import type { LocalStateStore, TenderRepository } from '../repository.js';
 import { TenderProcessingError, TenderService } from '../service.js';
@@ -41,7 +46,13 @@ const output: TenderInterpretation = {
 };
 
 class MemoryStore implements LocalStateStore {
-  state: LocalState = { version: 1, runs: [], handoffs: [], reviewEvents: [] };
+  state: LocalState = {
+    version: 1,
+    runs: [],
+    handoffs: [],
+    reviewEvents: [],
+    informationRequestReceipts: [],
+  };
   async read() {
     return structuredClone(this.state);
   }
@@ -72,6 +83,18 @@ class MemoryRepository implements TenderRepository {
     const state = await this.store.read();
     if (!state.handoffs.some((item) => item.handoffKey === handoff.handoffKey)) {
       state.handoffs.push(structuredClone(handoff));
+      await this.store.write(state);
+    }
+  }
+  async findInformationRequestReceipt(key: string) {
+    return (await this.store.read()).informationRequestReceipts.find(
+      (receipt) => receipt.key === key,
+    );
+  }
+  async saveInformationRequestReceipt(receipt: InformationRequestReceipt) {
+    const state = await this.store.read();
+    if (!state.informationRequestReceipts.some((item) => item.key === receipt.key)) {
+      state.informationRequestReceipts.push(structuredClone(receipt));
       await this.store.write(state);
     }
   }

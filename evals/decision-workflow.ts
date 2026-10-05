@@ -3,6 +3,7 @@ import { createStep, createWorkflow } from '@mastra/core/workflows';
 import {
   fingerprintRequest,
   TenderRunSchema,
+  type InformationRequestReceipt,
   type IntakeRequest,
   type PricingHandoff,
   type TenderRun,
@@ -22,6 +23,7 @@ import { toAgentFacts } from './interpretation.js';
 class IsolatedTenderRepository implements TenderRepository {
   private readonly runs = new Map<string, TenderRun>();
   private readonly handoffs = new Map<string, PricingHandoff>();
+  private readonly informationRequestReceipts = new Map<string, InformationRequestReceipt>();
 
   async findRunByIdempotencyKey(key: string): Promise<TenderRun | undefined> {
     return [...this.runs.values()].find((run) => run.idempotencyKey === key);
@@ -41,6 +43,14 @@ class IsolatedTenderRepository implements TenderRepository {
 
   async saveHandoff(handoff: PricingHandoff): Promise<void> {
     this.handoffs.set(handoff.handoffKey, handoff);
+  }
+
+  async findInformationRequestReceipt(key: string): Promise<InformationRequestReceipt | undefined> {
+    return this.informationRequestReceipts.get(key);
+  }
+
+  async saveInformationRequestReceipt(receipt: InformationRequestReceipt): Promise<void> {
+    this.informationRequestReceipts.set(receipt.key, receipt);
   }
 
   seedExistingTender(tenderId: string, input: IntakeRequest): void {

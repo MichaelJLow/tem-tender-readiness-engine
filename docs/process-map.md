@@ -125,12 +125,13 @@ error path even when the API retains `READY_FOR_PRICING` as the business route.
 mapped to the four route-specific integration receipts.
 
 For `READY_FOR_PRICING`, n8n records the successful handoff already performed by
-the API; it never invokes the pricing gateway. For `NEEDS_INFORMATION`, it records
-a synthetic `information-request:{runId}` receipt with delivery marked `NOT_SENT`.
-For `HUMAN_REVIEW`, it links `/tenders/{runId}` in the existing Console and does
-not create another task, change the route, or bypass review. A reviewer later
-recording `REQUEST_INFORMATION` remains an audit disposition—not evidence that an
-email or external message was sent. `DUPLICATE` stops with an inspectable receipt.
+the API; it never invokes the pricing gateway. For `NEEDS_INFORMATION`, the API
+persists one synthetic `information-request:{runId}` receipt with delivery marked
+`NOT_SENT`, and n8n reports that same key. For `HUMAN_REVIEW`, it links
+`/tenders/{runId}` in the existing Console and does not create another task,
+change the route, or bypass review. A reviewer later recording
+`REQUEST_INFORMATION` remains an audit disposition—not evidence that an email or
+external message was sent. `DUPLICATE` stops with an inspectable receipt.
 
 ## Constraints
 
