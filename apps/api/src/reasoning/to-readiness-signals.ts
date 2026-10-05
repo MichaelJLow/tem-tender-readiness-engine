@@ -276,7 +276,13 @@ export function toReadinessSignals(
     const contradictoryAssociations = siteId
       ? interpretation.siteAssociations.filter(
           (association) =>
-            observation.evidence.some((citation) => citation.sourceId === association.sourceId) &&
+            observation.evidence.some(
+              (citation) =>
+                citation.sourceId === association.sourceId &&
+                association.evidence.some((associationCitation) =>
+                  quotesReferToSameClaim(citation.quote, associationCitation.quote),
+                ),
+            ) &&
             association.siteIds.length === 1 &&
             !association.ambiguous &&
             association.confidence >= MIN_CONFIDENCE_FOR_CREDIBLE_EVIDENCE &&
@@ -430,6 +436,12 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function quotesReferToSameClaim(left: string, right: string): boolean {
+  const normalizedLeft = left.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en');
+  const normalizedRight = right.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en');
+  return normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft);
+}
+
 function unknownSiteLabels(quote: string, knownSiteIds: ReadonlySet<string>): string[] {
   const labels = quote.matchAll(/(?<![\p{L}\p{N}_-])site[-\s:#]+([\p{L}\p{N}_-]+)/giu);
   return [...labels].flatMap((match) => {
@@ -517,3 +529,4 @@ function supportsObservedValue(
   if (!candidate || !/\bkwh\b/i.test(quote)) return false;
   return new RegExp(`(?<![\\d,.])${escapeRegExp(candidate[1]!)}(?![\\d,.])`, 'u').test(quote);
 }
+
