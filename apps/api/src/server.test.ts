@@ -68,15 +68,16 @@ class MemoryRepository implements TenderRepository {
   }
 
   async findInformationRequestReceipt(key: string): Promise<InformationRequestReceipt | undefined> {
-    return (await this.store.read()).informationRequestReceipts.find(
+    return (await this.store.read()).informationRequestReceipts?.find(
       (receipt) => receipt.key === key,
     );
   }
 
   async saveInformationRequestReceipt(receipt: InformationRequestReceipt): Promise<void> {
     const state = await this.store.read();
-    if (!state.informationRequestReceipts.some((item) => item.key === receipt.key)) {
-      state.informationRequestReceipts.push(structuredClone(receipt));
+    const receipts = state.informationRequestReceipts ?? [];
+    if (!receipts.some((item) => item.key === receipt.key)) {
+      state.informationRequestReceipts = [...receipts, structuredClone(receipt)];
       await this.store.write(state);
     }
   }

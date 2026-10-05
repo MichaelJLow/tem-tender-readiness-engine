@@ -261,9 +261,16 @@ export class TenderService {
   }
 
   private async recordInformationRequestReceipt(run: TenderRun, attempt: number): Promise<void> {
+    if (
+      !this.repository.findInformationRequestReceipt ||
+      !this.repository.saveInformationRequestReceipt
+    ) {
+      return;
+    }
+
     const key = informationRequestReceiptKey(run.runId);
     const existing = await this.readState(
-      () => this.repository.findInformationRequestReceipt(key),
+      () => this.repository.findInformationRequestReceipt!(key),
       run.tenderId,
     );
     if (existing) return;

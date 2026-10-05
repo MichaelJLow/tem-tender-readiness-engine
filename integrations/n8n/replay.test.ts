@@ -444,7 +444,7 @@ function effectCounts(state: LocalState) {
   return {
     runs: state.runs.length,
     handoffs: state.handoffs.length,
-    informationRequestReceipts: state.informationRequestReceipts.length,
+    informationRequestReceipts: state.informationRequestReceipts?.length ?? 0,
     reviewEvents: state.reviewEvents.length,
   };
 }
@@ -521,7 +521,7 @@ class InterruptOnReceiptStore implements LocalStateStore {
   }
 
   async write(state: LocalState): Promise<void> {
-    if (!this.interrupted && state.informationRequestReceipts.length > 0) {
+    if (!this.interrupted && (state.informationRequestReceipts?.length ?? 0) > 0) {
       this.interrupted = true;
       throw new StateWriteError('simulated interruption before the receipt was persisted');
     }

@@ -16,8 +16,8 @@ export interface TenderRepository {
   appendReviewEvent?(event: ReviewEvent, expectedVersion: number): Promise<ReviewEvent>;
   findHandoff(handoffKey: string): Promise<PricingHandoff | undefined>;
   saveHandoff(handoff: PricingHandoff): Promise<void>;
-  findInformationRequestReceipt(key: string): Promise<InformationRequestReceipt | undefined>;
-  saveInformationRequestReceipt(receipt: InformationRequestReceipt): Promise<void>;
+  findInformationRequestReceipt?(key: string): Promise<InformationRequestReceipt | undefined>;
+  saveInformationRequestReceipt?(receipt: InformationRequestReceipt): Promise<void>;
 }
 
 export interface LocalStateStore {

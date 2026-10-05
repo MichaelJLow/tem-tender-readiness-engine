@@ -219,7 +219,9 @@ export const LocalStateSchema = z.object({
   reviewEvents: z.array(ReviewEventSchema).default([]),
   informationRequestReceipts: z.array(InformationRequestReceiptSchema).default([]),
 });
-export type LocalState = z.infer<typeof LocalStateSchema>;
+export type LocalState = Omit<z.output<typeof LocalStateSchema>, 'informationRequestReceipts'> & {
+  informationRequestReceipts?: InformationRequestReceipt[];
+};
 
 export const TenderResponseSchema = z.object({
   tenderId: z.string(),

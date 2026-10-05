@@ -150,7 +150,7 @@ export function validateDemoState(value: unknown): LocalState {
     throw new Error('Snapshot must retain exactly one ready-only mocked pricing handoff.');
   }
   const missing = state.runs.find((run) => run.route === 'NEEDS_INFORMATION')!;
-  const receipts = state.informationRequestReceipts;
+  const receipts = state.informationRequestReceipts ?? [];
   if (
     receipts.length > 1 ||
     receipts.some(
