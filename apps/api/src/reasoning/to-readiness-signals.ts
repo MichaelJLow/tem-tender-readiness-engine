@@ -529,4 +529,3 @@ function supportsObservedValue(
   if (!candidate || !/\bkwh\b/i.test(quote)) return false;
   return new RegExp(`(?<![\\d,.])${escapeRegExp(candidate[1]!)}(?![\\d,.])`, 'u').test(quote);
 }
-
