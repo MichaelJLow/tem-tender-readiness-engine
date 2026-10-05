@@ -35,14 +35,14 @@ flowchart TD
 
 ## Responsibility boundaries
 
-| Layer            | Responsibility                                                      | Implemented technology                                                           |
-| ---------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Integration      | Receive webhook events, normalize transport, record API outcomes    | n8n `1.112.6` export; one HTTP call to `POST /tenders`                           |
-| Domain           | Schemas, deterministic rules, routing, state transitions            | TypeScript + Zod                                                                 |
-| Reasoning        | Interpret unstructured or semantically ambiguous information        | Tool-free Mastra agent in the API workspace, using the configured model provider |
-| Human judgment   | Resolve critical conflicts and accountable exceptions               | Ops console                                                                      |
-| Infrastructure   | Local state/runtime and private synthetic evidence snapshots        | Local JSON/processes; AWS S3 archive                                             |
-| Pricing boundary | Accept readiness-cleared normalized tenders only                    | Mock gateway                                                                     |
+| Layer            | Responsibility                                                   | Implemented technology                                                           |
+| ---------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Integration      | Receive webhook events, normalize transport, record API outcomes | n8n `1.112.6` export; one HTTP call to `POST /tenders`                           |
+| Domain           | Schemas, deterministic rules, routing, state transitions         | TypeScript + Zod                                                                 |
+| Reasoning        | Interpret unstructured or semantically ambiguous information     | Tool-free Mastra agent in the API workspace, using the configured model provider |
+| Human judgment   | Resolve critical conflicts and accountable exceptions            | Ops console                                                                      |
+| Infrastructure   | Local state/runtime and private synthetic evidence snapshots     | Local JSON/processes; AWS S3 archive                                             |
+| Pricing boundary | Accept readiness-cleared normalized tenders only                 | Mock gateway                                                                     |
 
 ## Deterministic-first policy
 
@@ -144,7 +144,7 @@ Hosting, concurrent database state, production authentication, GitHub-to-AWS OID
 
 ## Intake pack (Milestone 10)
 
-V1 intake remains `POST /tenders` with structured fields and already-extracted text. Milestone 10 adds a Console **Intake pack** path for synthetic PDFs and pasted notes. Contracts live in `packages/domain` (`INTAKE_PACK_LIMITS` and related Zod schemas). The three layers are immutable extracted evidence, a mutable review draft, and a confirmed submission. Only confirmation may map onto the existing `IntakeRequest` and enter the tender service. Extraction and drafts cannot fill structured readiness fields or invoke pricing. See [ADR-005](adr/005-intake-pack-boundary.md). Upload UI, PDF parsing, and confirmation wiring are later tickets.
+V1 intake remains `POST /tenders` with structured fields and already-extracted text. Milestone 10 adds a Console **Intake pack** path for synthetic PDFs and pasted notes. Contracts live in `packages/domain` (`INTAKE_PACK_LIMITS` and related Zod schemas). The three layers are immutable extracted evidence, a mutable review draft, and a confirmed submission. Only confirmation may map onto the existing `IntakeRequest` and enter the tender service. Extraction and drafts cannot fill structured readiness fields or invoke pricing. See [ADR-005](adr/005-intake-pack-boundary.md) and [ADR-006](adr/006-intake-pack-pdf-extraction.md). ENG-19 wires pack create, document add, notes, and selectable-text extraction. Upload UI and confirmation remain later tickets.
 
 ## Demo persistence and evidence archive
 

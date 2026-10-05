@@ -88,17 +88,17 @@ PDFs. Intake pack is a Console path into the same tender contract.
 Limits live in `INTAKE_PACK_LIMITS` and match the existing text-source
 contract so a valid pack can confirm without raising POST /tenders bounds:
 
-| Bound | Value | Why |
-| --- | --- | --- |
-| PDF files per pack | 7 | Leaves one slot for a note inside the existing 8 `textSources` |
-| Notes per pack | 1 | One pasted broker-notes field |
-| Per-file size | 8 MiB | Selectable-text synthetic PDFs; keeps local storage bounded |
-| Total pack size | 24 MiB | Three times the per-file cap |
-| Pages per document | 25 | Demo-scale contracts |
-| Pages per pack | 50 | Combined cap across files |
-| Extracted text per page | 8,000 characters | Page segmentation bound |
-| Extracted text per document / note | 40,000 characters | Existing `TextSource` max |
-| Extracted text per pack | 120,000 characters | Existing combined `textSources` max |
+| Bound                              | Value              | Why                                                            |
+| ---------------------------------- | ------------------ | -------------------------------------------------------------- |
+| PDF files per pack                 | 7                  | Leaves one slot for a note inside the existing 8 `textSources` |
+| Notes per pack                     | 1                  | One pasted broker-notes field                                  |
+| Per-file size                      | 8 MiB              | Selectable-text synthetic PDFs; keeps local storage bounded    |
+| Total pack size                    | 24 MiB             | Three times the per-file cap                                   |
+| Pages per document                 | 25                 | Demo-scale contracts                                           |
+| Pages per pack                     | 50                 | Combined cap across files                                      |
+| Extracted text per page            | 8,000 characters   | Page segmentation bound                                        |
+| Extracted text per document / note | 40,000 characters  | Existing `TextSource` max                                      |
+| Extracted text per pack            | 120,000 characters | Existing combined `textSources` max                            |
 
 Allowed upload media is `application/pdf` with a `.pdf` filename. JSON
 `POST /tenders` remains the 1 MiB body used today; PDF bytes are not that
@@ -134,6 +134,9 @@ synthetic PDFs and notes.
   inventing a second type system.
 - Local JSON state will need an additive Intake pack collection in a later
   ticket. That is a persistence change under this ADR, not a new store.
+  ENG-19 stores pack metadata in `data/intake-pack-state.json` and original
+  PDF bytes write-once under `data/intake-pack-originals`. Parser choice is
+  [ADR-006](006-intake-pack-pdf-extraction.md).
 - Operators will see failed files and empty structured fields until they
   accept or type values. Unnecessary `NEEDS_INFORMATION` / `HUMAN_REVIEW`
   after confirm is accepted; an unsafe ready route is not.

@@ -11,7 +11,8 @@
     "@mastra/core": "^1.71.0",
     "@mastra/duckdb": "^1.11.1",
     "@mastra/libsql": "^1.23.3",
-    "@mastra/observability": "^1.18.1"
+    "@mastra/observability": "^1.18.1",
+    "pdfjs-dist": "^6.4.299"
   },
   "devDependencies": {
     "mastra": "^1.31.3"

@@ -18,6 +18,8 @@ import {
   TenderService,
 } from './service.js';
 import type { RunFailure } from './contracts.js';
+import { tryHandleIntakePackRequest } from './intake-pack/http.js';
+import type { IntakePackService } from './intake-pack/service.js';
 
 const CorrelationIdSchema = z.string().regex(/^[\x21-\x7e]{1,128}$/);
 const MAX_BODY_BYTES = 1_048_576;
@@ -29,9 +31,13 @@ const ReviewCommandSchema = z.object({
   expectedVersion: z.number().int().nonnegative(),
 });
 
-export function createTenderServer(service: TenderService, allowReviewMutations = false): Server {
+export function createTenderServer(
+  service: TenderService,
+  allowReviewMutations = false,
+  intakePackService?: IntakePackService,
+): Server {
   return createServer((request, response) => {
-    void handleRequest(request, response, service, allowReviewMutations);
+    void handleRequest(request, response, service, allowReviewMutations, intakePackService);
   });
 }
 
@@ -40,10 +46,22 @@ async function handleRequest(
   response: ServerResponse,
   service: TenderService,
   allowReviewMutations: boolean,
+  intakePackService?: IntakePackService,
 ): Promise<void> {
   const correlationIdResult = parseCorrelationId(request.headers['x-correlation-id']);
   const correlationId = correlationIdResult.success ? correlationIdResult.data : randomUUID();
   response.setHeader('X-Correlation-ID', correlationId);
+
+  if (
+    await tryHandleIntakePackRequest({
+      request,
+      response,
+      service: intakePackService,
+      correlationId,
+    })
+  ) {
+    return;
+  }
 
   if (request.method === 'GET' && request.url === '/tenders') {
     try {
