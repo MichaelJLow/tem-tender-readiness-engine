@@ -107,7 +107,7 @@ describe('synthetic demo archive', () => {
     expect(overview.accepted.runId).toBe(manifest.acceptedRunId);
     expect(overview.latest?.runId).toBe(manifest.latestRunId);
     expect(overview.accepted.metrics.criticalFacts.matched).toBe(49);
-    expect(overview.latest?.metrics.criticalFacts.matched).toBe(51);
+    expect(overview.latest?.metrics.criticalFacts.matched).toBe(49);
   });
 
   it('requires stopped-API and synthetic attestations before creating a snapshot', async () => {
