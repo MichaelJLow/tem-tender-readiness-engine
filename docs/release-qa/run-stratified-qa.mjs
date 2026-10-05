@@ -16,7 +16,7 @@ const evidence = {
 };
 
 async function postTender(api, body, label) {
-  const response = await fetch(`${api}/tenders`, {
+  const response = await globalThis.fetch(`${api}/tenders`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-correlation-id': `eng14-${label}` },
     body: JSON.stringify(body),
@@ -25,7 +25,7 @@ async function postTender(api, body, label) {
 }
 
 async function getJson(url) {
-  const response = await fetch(url);
+  const response = await globalThis.fetch(url);
   return { status: response.status, payload: await response.json() };
 }
 
@@ -63,7 +63,7 @@ evidence.conflictDetail = {
   reviewEventsBefore: conflictDetail.payload.reviewEvents.length,
 };
 
-const review = await fetch(`${consoleApi}/tenders/${conflict.runId}/reviews`, {
+const review = await globalThis.fetch(`${consoleApi}/tenders/${conflict.runId}/reviews`, {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
   body: JSON.stringify({
@@ -130,7 +130,7 @@ const multiSite = {
     ],
     documents: [],
   },
-  signals: structuredClone(cleanTender.signals),
+  signals: globalThis.structuredClone(cleanTender.signals),
 };
 
 const siteAmbiguity = {
@@ -139,7 +139,7 @@ const siteAmbiguity = {
     idempotencyKey: 'intake-eng14-site-ambiguity',
     customer: { customerId: 'customer-001', legalName: 'Northstar Foods Ltd' },
     broker: { brokerId: 'broker-001', legalName: 'Harbour Energy Partners' },
-    sites: structuredClone(multiSite.tender.sites),
+    sites: globalThis.structuredClone(multiSite.tender.sites),
     documents: [
       {
         documentId: 'note-ambiguous',
@@ -151,7 +151,7 @@ const siteAmbiguity = {
     ],
   },
   signals: {
-    ...structuredClone(cleanTender.signals),
+    ...globalThis.structuredClone(cleanTender.signals),
     documentSiteAssociations: [
       {
         documentId: 'note-ambiguous',
@@ -169,11 +169,11 @@ const modelUncertainty = {
     idempotencyKey: 'intake-eng14-model-uncertainty',
     customer: { customerId: 'customer-001', legalName: 'Northstar Foods Ltd' },
     broker: { brokerId: 'broker-001', legalName: 'Harbour Energy Partners' },
-    sites: [structuredClone(cleanTender.tender.sites[0])],
+    sites: [globalThis.structuredClone(cleanTender.tender.sites[0])],
     documents: [],
   },
   signals: {
-    ...structuredClone(cleanTender.signals),
+    ...globalThis.structuredClone(cleanTender.signals),
     criticalFacts: [
       {
         factId: 'uncertain-meter-001',
@@ -273,4 +273,4 @@ await writeFile(
   '/workspace/docs/release-qa/stratified-http-evidence.json',
   `${JSON.stringify(evidence, null, 2)}\n`,
 );
-console.log(JSON.stringify(evidence, null, 2));
+globalThis.console.log(JSON.stringify(evidence, null, 2));
