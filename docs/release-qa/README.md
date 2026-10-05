@@ -30,7 +30,7 @@ PR: [tem-tender-readiness-engine#32](https://github.com/MichaelJLow/tem-tender-r
 
 ### ENG-24 screenshots
 
-Real Console captures at 1500 × 1000 against a disposable loopback API. All packs are synthetic.
+Real Console captures at a 1500px-wide, full-page viewport against a disposable loopback API. All packs are synthetic.
 
 - [Drop](screenshots/eng-24-01-intake-drop.png) — Intake pack with no tender form; synthetic-data notice; PDF limits.
 - [Extract](screenshots/eng-24-02-single-site-extracted.png) — `pack-clean-single-site` stored as immutable evidence; Open review.

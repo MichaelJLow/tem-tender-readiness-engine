@@ -46,7 +46,9 @@ describe('Intake pack safety invariants', () => {
     for (const relative of files) {
       const source = await readFile(new URL(`../${relative}`, import.meta.url), 'utf8');
       expect(source, relative).not.toMatch(/\bevaluateReadiness\b/);
-      expect(source, relative).not.toMatch(/MockPricingGateway|pricingGateway/);
+      expect(source, relative).not.toMatch(
+        /MockPricingGateway|PricingGateway|pricingGateway|pricing-gateway/,
+      );
     }
     expect(intakeLayerMayInvokePricing('extraction')).toBe(false);
     expect(intakeLayerMayInvokePricing('draft')).toBe(false);

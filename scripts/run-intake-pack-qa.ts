@@ -70,6 +70,22 @@ async function registerFixture(packId: string, fixturePackId: string): Promise<v
   }
 }
 
+async function confirmRunFields(runId: unknown): Promise<{
+  runStatus?: unknown;
+  runRoute?: unknown;
+  failureCode?: unknown;
+}> {
+  if (typeof runId !== 'string' || runId.length === 0) return {};
+  const detail = await json(await fetch(`${api}/tenders/${runId}`));
+  const run = (detail.payload.run as JsonPayload | undefined) ?? detail.payload;
+  const failure = run.failure as { code?: string } | null | undefined;
+  return {
+    runStatus: run.status,
+    runRoute: run.route ?? null,
+    failureCode: failure?.code,
+  };
+}
+
 async function snapshot(): Promise<JsonPayload> {
   const tenders = await json(await fetch(`${api}/tenders`));
   const items = Array.isArray(tenders.payload.items)
@@ -120,6 +136,7 @@ evidence.cases.push({
   confirmStatus: emptyConfirm.status,
   runId: emptyConfirm.payload.runId,
   confirmedLegalName: emptyCustomer?.legalName,
+  ...(await confirmRunFields(emptyConfirm.payload.runId)),
 });
 
 const multi = await createPack();
@@ -188,6 +205,7 @@ evidence.cases.push({
   confirmedRetailMeter: sites.find((site) => site.siteId === 'site-retail')?.meterIdentifier,
   confirmStatus: multiConfirm.status,
   runId: multiConfirm.payload.runId,
+  ...(await confirmRunFields(multiConfirm.payload.runId)),
 });
 
 const ocr = await createPack();
@@ -238,6 +256,7 @@ evidence.cases.push({
   documentStatuses: ocrDocuments.map((document) => document.status),
   confirmStatus: ocrConfirm.status,
   runId: ocrConfirm.payload.runId,
+  ...(await confirmRunFields(ocrConfirm.payload.runId)),
 });
 
 const stale = await createPack();

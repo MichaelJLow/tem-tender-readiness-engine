@@ -2,6 +2,12 @@
   "startedAt": "2026-10-05T21:38:36.098Z",
   "synthetic": true,
   "api": "http://127.0.0.1:3000",
+  "runFieldsProvenance": {
+    "fields": ["runStatus", "runRoute", "failureCode"],
+    "joinedFrom": "GET /tenders list items (status, route, failure.code)",
+    "joinedAt": "2026-10-05T21:38:40.254Z",
+    "note": "empty-draft-confirm, multi-site-no-leakage, and ocr-required-visible include runStatus, runRoute, and failureCode joined from the live API after the recorder finished. The committed recorder at capture time did not emit those keys. scripts/run-intake-pack-qa.ts now looks up GET /tenders/{runId}. This file was not regenerated so pack and run IDs stay aligned with the Console screenshots."
+  },
   "cases": [
     {
       "id": "empty-draft-confirm",
