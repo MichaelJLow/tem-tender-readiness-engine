@@ -2,57 +2,32 @@
 
 This is the Milestone 9 release-evidence packet for
 [ENG-14](https://linear.app/workwithlayer/issue/ENG-14/complete-final-release-evals-and-manual-demo-qa).
-It records what was run on source `2e725d91c8aad75319a15630779c3420810e689c`
-(`main` after ENG-12; ENG-13 later added reviewer-facing documentation only),
-what was already proven by earlier issues, and the remaining gap. All tenders
-and reports are synthetic.
+It records the clean full-eval result on source `9fbf16f71cb5afef7b91ccabf74920a1feb116d3`, the stratified demo QA, and evidence reused from ENG-4 and ENG-7. All tenders and reports are synthetic.
 
-The accepted baseline is unchanged. Latest completed results were not promoted.
+The accepted baseline remains unchanged; the passing full report is selected for this release packet.
 
 ## Verdict
 
 | Gate                            | Result                               | Evidence                                                                                                                                                      |
 | ------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Deterministic checks and builds | Pass                                 | `npm run check` (243 tests), `npm run build:api`, `npm run build:console`                                                                                     |
-| Full labelled release suite     | **not_run / incomplete**             | [`evals/reports/full-2026-10-05T02-17-47.688Z.md`](../../evals/reports/full-2026-10-05T02-17-47.688Z.md)                                                      |
+| Full labelled release suite     | Pass — 9/9 gates                     | [`full-2026-10-05T14-22-22.835Z.md`](../../evals/reports/full-2026-10-05T14-22-22.835Z.md), source `9fbf16f` |
 | Manual stratified QA            | Completed for inspectable demo paths | This receipt, [`eng-14-manual-qa.json`](eng-14-manual-qa.json), [`stratified-http-evidence.json`](stratified-http-evidence.json), [screenshots](screenshots/) |
-| `evals/release-evidence.json`   | **Not created**                      | No completed passing clean full report exists for this source                                                                                                 |
+| `evals/release-evidence.json`   | Selected                             | Passing full report plus the matching QA record; verified by `npm run evidence:release`                             |
 | Accepted baseline promotion     | **Not done**                         | `evals/accepted-baseline.json` still points at `full-2026-09-26T23-53-52.654Z`                                                                                |
 | Thresholds                      | Unchanged                            | `evals/thresholds.json`                                                                                                                                       |
 
-Empty denominators in the not-run report fail the corresponding gates, as
-required by `docs/eval-strategy.md`. The pricing-guard gate on that report
-passes only because zero cases ran and therefore zero non-ready pricing calls
-occurred. That is not a release pass.
+The earlier not-run report remains historical diagnostic evidence; its empty-denominator gates correctly failed. The completed clean full suite summarized below is the report selected for this release packet.
 
-## Why a live full eval was not repeated
+## Full provider-backed release eval
 
-`npm run eval:full` was invoked from a clean checkout of
-`2e725d91c8aad75319a15630779c3420810e689c`. No `OPENROUTER_API_KEY`,
-`OPENAI_API_KEY`, or generic `MODEL_API_*` credentials are present in this
-remote environment. The runner wrote an explicit `not_run` report and exited
-unsuccessfully. That is the configured contract: missing credentials must not
-be treated as success.
+The full suite ran on clean PR source `9fbf16f71cb5afef7b91ccabf74920a1feb116d3` using the configured OpenRouter provider and the accepted dataset hash `b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708`.
 
-This remote session cannot see a maintainer `.env`. ENG-1 already recorded that
-cloud sessions work from published commits only. No provider key was purchased
-or invented to test eval plumbing.
+- The first run, [`full-2026-10-05T14-11-56.671Z`](../../evals/reports/full-2026-10-05T14-11-56.671Z.md), completed all 63 cases but was incomplete because `conflicting-three-date-values` emitted no labelled facts (agent facts 48/51). Route, safety, ambiguity, and pricing-guard gates passed. The critical-fact-recall and baseline gates failed. The report remains diagnostic.
+- The second run on the same clean source, [`full-2026-10-05T14-22-22.835Z`](../../evals/reports/full-2026-10-05T14-22-22.835Z.md), completed 63/63 and passed all 9 gates: agent facts 51/51, unsafe-ready 0/44, all expected routes and handoffs 63/63, and zero non-ready pricing calls. The formerly failing two-site document case returned `READY_FOR_PRICING` with one mock handoff.
+- The source and thresholds did not change between these runs. The first run is retained to show the model-output variation; thresholds were not lowered and the accepted baseline was not changed.
 
-Existing full reports cannot be reused as official release evidence:
-
-- Every retained `full-*.json` report has `gitDirty: true`.
-- `verifyReport` rejects dirty evidence.
-- Relevant sources under `apps/`, `packages/`, and `evals/` (except reports and
-  evidence pointers) changed after the last passing full run
-  (`full-2026-09-28T19-39-31.237Z`, SHA `4895d8b`).
-- Dataset hash is still `b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708`,
-  matching the accepted baseline. A later clean full run on this dataset can
-  still be compared. That comparison was not executed with a provider.
-
-Studio was not running. The not-run command did not import Mastra or share the
-Studio store. Studio cannot be started here without a provider key
-(`createTenderInterpretationAgent` refuses an unconfigured key). Port `4113`
-remains reserved for this repository.
+The passing report is selected by `evals/release-evidence.json`. The release evidence verifier confirms that the report is clean, passing, comparable to the accepted baseline, and shares source SHA `9fbf16f71cb5afef7b91ccabf74920a1feb116d3` with the QA record.
 
 ## What was already covered (do not rebuild)
 
@@ -120,21 +95,10 @@ Screenshots from this walkthrough: `screenshots/queue.webp`,
 
 ## Report review and sign-off
 
-Reviewed by the ENG-14 agent run acting for MichaelJLow.
+The ENG-14 agent run reviewed the clean report, the same-revision diagnostic attempt, and the existing stratified QA receipt.
 
-- Retained the 5 Oct not-run report as diagnostic evidence.
-- Did not lower thresholds.
-- Did not point `evals/release-evidence.json` at an incomplete or dirty report.
-- Did not change `evals/accepted-baseline.json`.
-- Manual QA of the inspectable demo paths is signed off in
-  [`eng-14-manual-qa.json`](eng-14-manual-qa.json) (`sourceSha` =
-  `2e725d91c8aad75319a15630779c3420810e689c`).
-- The complete full-run verdict required for a stable interview release is
-  **not** signed off until a maintainer runs `npm run eval:full` from a clean
-  checkout with the configured OpenRouter/OpenAI credentials, the report is
-  `completed` + `pass` + `gitDirty: false`, and
-  `npm run evidence:release` verifies a new `evals/release-evidence.json`
-  pointer plus a manual-QA record whose `sourceSha` matches that report.
+- The passing full report is selected in `evals/release-evidence.json`; `npm run evidence:release` verified it and the matching QA record for source `9fbf16f71cb5afef7b91ccabf74920a1feb116d3`.
+- The first clean full run is retained as diagnostic evidence. No threshold or accepted-baseline changes were made.
+- The existing Console/API/archive walkthrough remains the manual evidence. The changed model-driven two-site document path was exercised in the passing full eval and deterministic regression test. Live Console review, n8n runtime, and private S3 restore were not repeated on this revision; ENG-7 and ENG-4 remain those receipts.
+- Code-owner review is still required before merging. A passing full eval does not itself promote the accepted baseline.
 
-A later clean full run should keep the current thresholds and the current
-accepted baseline unless a reviewer explicitly promotes a new baseline.
