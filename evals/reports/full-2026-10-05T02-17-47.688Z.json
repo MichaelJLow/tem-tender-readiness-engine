@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "runId": "full-2026-10-05T02-17-47.688Z",
+  "runType": "release",
+  "startedAt": "2026-10-05T02:17:47.688Z",
+  "completedAt": "2026-10-05T02:17:47.706Z",
+  "gitSha": "2e725d91c8aad75319a15630779c3420810e689c",
+  "gitDirty": false,
+  "datasetId": "tender-readiness-golden-v1",
+  "datasetHash": "b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708",
+  "promptVersion": "tender-interpretation-v5",
+  "runnerVersion": "0.1.0",
+  "provider": "unconfigured",
+  "model": "gpt-6-luna",
+  "thresholds": {
+    "goldenSafetyUnsafeReady": 0,
+    "minimumHumanReviewRecall": 0.95,
+    "minimumCriticalFactPrecision": 0.95,
+    "minimumCriticalFactRecall": 0.95,
+    "minimumAmbiguityRecall": 0.95,
+    "maximumBaselineSafetyDrop": 0.01
+  },
+  "suiteStatus": "not_run",
+  "studioExperiments": [],
+  "caseCount": 63,
+  "outcomes": [],
+  "metrics": {
+    "decision": {
+      "caseCount": 0,
+      "route": {
+        "READY_FOR_PRICING": {
+          "support": 0,
+          "predicted": 0,
+          "truePositive": 0,
+          "precision": null,
+          "recall": null,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "NEEDS_INFORMATION": {
+          "support": 0,
+          "predicted": 0,
+          "truePositive": 0,
+          "precision": null,
+          "recall": null,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "HUMAN_REVIEW": {
+          "support": 0,
+          "predicted": 0,
+          "truePositive": 0,
+          "precision": null,
+          "recall": null,
+          "falsePositive": 0,
+          "falseNegative": 0
+        },
+        "DUPLICATE": {
+          "support": 0,
+          "predicted": 0,
+          "truePositive": 0,
+          "precision": null,
+          "recall": null,
+          "falsePositive": 0,
+          "falseNegative": 0
+        }
+      },
+      "unsafeReady": {
+        "count": 0,
+        "denominator": 0,
+        "rate": null,
+        "goldenSafetyCount": 0,
+        "goldenSafetyDenominator": 0
+      },
+      "humanReviewRecall": {
+        "correctlyEscalated": 0,
+        "denominator": 0,
+        "value": null
+      },
+      "criticalFacts": {
+        "expected": 0,
+        "predicted": 0,
+        "matched": 0,
+        "precision": null,
+        "recall": null,
+        "falsePositive": 0,
+        "falseNegative": 0
+      },
+      "ruleFlags": {
+        "expected": 0,
+        "predicted": 0,
+        "matched": 0,
+        "precision": null,
+        "recall": null
+      },
+      "processingStatus": {
+        "matched": 0,
+        "denominator": 0,
+        "accuracy": null
+      },
+      "decisionOutcomes": {
+        "matched": 0,
+        "denominator": 0
+      },
+      "ambiguity": {
+        "correctlyFlagged": 0,
+        "denominator": 0,
+        "recall": null
+      },
+      "pricingGuard": {
+        "nonReadyWithHandoff": 0,
+        "denominator": 0,
+        "passed": true
+      },
+      "byCategory": {}
+    },
+    "agent": {
+      "caseCount": 0,
+      "meanFactF1": null,
+      "meanAmbiguityScore": null
+    },
+    "studioDatasetIds": {},
+    "workflowUnexpectedResults": 0
+  },
+  "gates": [
+    {
+      "id": "golden-safety-unsafe-ready",
+      "passed": false,
+      "detail": "0 unsafe ready outcomes across 0 golden safety cases; required 0."
+    },
+    {
+      "id": "processing-status",
+      "passed": false,
+      "detail": "0/0 technical processing statuses match labels."
+    },
+    {
+      "id": "route-and-pricing-outcomes",
+      "passed": false,
+      "detail": "0/0 expected business routes and pricing handoff counts match labels."
+    },
+    {
+      "id": "human-review-recall",
+      "passed": false,
+      "detail": "0/0 expected human-review cases correctly escalated."
+    },
+    {
+      "id": "critical-fact-precision",
+      "passed": false,
+      "detail": "Workflow 0/0; agent 0/0 emitted facts match labels."
+    },
+    {
+      "id": "critical-fact-recall",
+      "passed": false,
+      "detail": "Workflow 0/0; agent 0/0 labelled facts extracted."
+    },
+    {
+      "id": "ambiguity-recall",
+      "passed": false,
+      "detail": "0/0 ambiguous cases were flagged."
+    },
+    {
+      "id": "pricing-guard",
+      "passed": true,
+      "detail": "0 non-ready cases invoked pricing."
+    },
+    {
+      "id": "safety-baseline",
+      "passed": false,
+      "detail": "Compared with full-2026-09-26T23-53-52.654Z: unsafe-ready 0 → 0; human-review recall 100.0% → n/a; ambiguity recall 100.0% → n/a; workflow fact recall 96.1% → n/a; agent fact precision/recall 100.0%/100.0% → n/a/n/a. Maximum allowed drop: 1.0 percentage points."
+    }
+  ],
+  "verdict": "incomplete",
+  "baselineComparison": {
+    "status": "compared",
+    "baselineRunId": "full-2026-09-26T23-53-52.654Z",
+    "baselineDatasetHash": "b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708",
+    "detail": "Safety metrics compared against the accepted run on the same dataset."
+  }
+}

@@ -1,0 +1,289 @@
+{
+  "startedAt": "2026-10-05T02:19:58.004Z",
+  "sourceSha": "2e725d91c8aad75319a15630779c3420810e689c",
+  "synthetic": true,
+  "cases": [
+    {
+      "label": "happy-structured",
+      "tenderId": "tender-clean-001",
+      "httpStatus": 200,
+      "route": "READY_FOR_PRICING",
+      "status": "COMPLETED",
+      "failure": null,
+      "error": null
+    },
+    {
+      "label": "multi-site",
+      "tenderId": "tender-eng14-multi-site",
+      "httpStatus": 200,
+      "route": "READY_FOR_PRICING",
+      "status": "COMPLETED",
+      "failure": null,
+      "error": null
+    },
+    {
+      "label": "missing",
+      "tenderId": "tender-missing-consumption",
+      "httpStatus": 200,
+      "route": "NEEDS_INFORMATION",
+      "status": "COMPLETED",
+      "failure": null,
+      "error": null
+    },
+    {
+      "label": "date-conflict",
+      "tenderId": "tender-conflicting-dates",
+      "httpStatus": 200,
+      "route": "HUMAN_REVIEW",
+      "status": "COMPLETED",
+      "failure": null,
+      "error": null
+    },
+    {
+      "label": "duplicate-signal",
+      "tenderId": "tender-duplicate",
+      "httpStatus": 200,
+      "route": "READY_FOR_PRICING",
+      "status": "COMPLETED",
+      "failure": null,
+      "error": null
+    },
+    {
+      "label": "site-ambiguity",
+      "tenderId": "tender-eng14-site-ambiguity",
+      "httpStatus": 200,
+      "route": "HUMAN_REVIEW",
+      "status": "COMPLETED",
+      "failure": null,
+      "error": null
+    },
+    {
+      "label": "model-uncertainty",
+      "tenderId": "tender-eng14-model-uncertainty",
+      "httpStatus": 200,
+      "route": "HUMAN_REVIEW",
+      "status": "COMPLETED",
+      "failure": null,
+      "error": null
+    },
+    {
+      "label": "previous-regression-duplicate",
+      "tenderId": "tender-duplicate-prior-regression",
+      "httpStatus": 200,
+      "route": "READY_FOR_PRICING",
+      "status": "COMPLETED",
+      "failure": null,
+      "error": null
+    },
+    {
+      "label": "n8n-clean-first",
+      "tenderId": "tender-n8n-clean-001",
+      "httpStatus": 200,
+      "route": "READY_FOR_PRICING",
+      "status": "COMPLETED",
+      "replayed": false
+    },
+    {
+      "label": "n8n-duplicate-after-clean",
+      "tenderId": "tender-n8n-clean-001",
+      "httpStatus": 200,
+      "route": "DUPLICATE",
+      "status": "COMPLETED"
+    },
+    {
+      "label": "n8n-pending",
+      "tenderId": "tender-n8n-pending-001",
+      "httpStatus": 202,
+      "route": null,
+      "status": "PROCESSING"
+    }
+  ],
+  "consoleQueue": [
+    {
+      "tenderId": "tender-conflicting-dates",
+      "route": "HUMAN_REVIEW",
+      "status": "COMPLETED",
+      "reviewState": "OPEN"
+    },
+    {
+      "tenderId": "tender-missing-consumption",
+      "route": "NEEDS_INFORMATION",
+      "status": "COMPLETED",
+      "reviewState": "OPEN"
+    },
+    {
+      "tenderId": "tender-clean-001",
+      "route": "READY_FOR_PRICING",
+      "status": "COMPLETED",
+      "reviewState": "OPEN"
+    }
+  ],
+  "evalOverview": {
+    "acceptedRunId": "full-2026-09-26T23-53-52.654Z",
+    "latestRunId": "full-2026-09-28T19-39-31.237Z",
+    "latestSuiteStatus": "completed",
+    "latestVerdict": "pass",
+    "acceptedUnsafeReady": {
+      "count": 0,
+      "denominator": 63
+    },
+    "latestUnsafeReady": {
+      "count": 0,
+      "denominator": 63
+    },
+    "latestPricingGuard": {
+      "nonReadyWithHandoff": 0,
+      "denominator": 63
+    }
+  },
+  "conflictDetail": {
+    "route": "HUMAN_REVIEW",
+    "status": "COMPLETED",
+    "dateFacts": [
+      {
+        "siteId": "site-001",
+        "value": "2027-03-31",
+        "sourceIds": ["contract-a"]
+      },
+      {
+        "siteId": "site-001",
+        "value": "30/09/2026",
+        "sourceIds": ["contract-b"]
+      }
+    ],
+    "flaggedRules": ["TDR-006", "TDR-012"],
+    "reviewEventsBefore": 0
+  },
+  "reviewHistory": {
+    "httpStatus": 200,
+    "action": "REQUEST_INFORMATION",
+    "sourceIds": ["site-001", "contract-a", "contract-b"],
+    "reviewState": "RESOLVED",
+    "routeUnchanged": true,
+    "reviewEventCount": 1
+  },
+  "readyOnlyHandoff": {
+    "replayStatus": 200,
+    "replayed": true,
+    "route": "READY_FOR_PRICING",
+    "runCount": 3,
+    "handoffCount": 1,
+    "handoffTenderIds": ["tender-clean-001"],
+    "informationRequestReceipts": [
+      {
+        "key": "information-request:ee049fe8-ad85-40ba-900a-fc4bb7b0b439",
+        "deliveryStatus": "NOT_SENT"
+      }
+    ]
+  },
+  "extraState": {
+    "runCount": 11,
+    "handoffCount": 5,
+    "handoffTenderIds": [
+      "tender-clean-001",
+      "tender-eng14-multi-site",
+      "tender-duplicate",
+      "tender-duplicate-prior-regression",
+      "tender-n8n-clean-001"
+    ],
+    "routes": [
+      {
+        "tenderId": "tender-clean-001",
+        "route": "READY_FOR_PRICING",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-eng14-multi-site",
+        "route": "READY_FOR_PRICING",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-missing-consumption",
+        "route": "NEEDS_INFORMATION",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-conflicting-dates",
+        "route": "HUMAN_REVIEW",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-duplicate",
+        "route": "READY_FOR_PRICING",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-eng14-site-ambiguity",
+        "route": "HUMAN_REVIEW",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-eng14-model-uncertainty",
+        "route": "HUMAN_REVIEW",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-duplicate-prior-regression",
+        "route": "READY_FOR_PRICING",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-n8n-clean-001",
+        "route": "READY_FOR_PRICING",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-n8n-clean-001",
+        "route": "DUPLICATE",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-n8n-pending-001",
+        "route": null,
+        "status": "PROCESSING"
+      }
+    ],
+    "nonReadyWithHandoff": false
+  },
+  "duplicateSignalNote": "Client-supplied signals.duplicate is overwritten by the API from stored tender identity. The fixture flag matchesActiveTender=true without an existing same-tenderId run is not a live duplicate. API-owned duplicate is the n8n same-tenderId, new-key case.",
+  "archiveRestore": {
+    "snapshotId": "snapshot-2026-10-05T02-31-45-772Z-d5c67fc7-3fec-472f-ba40-c66925f43c7c",
+    "acceptedRunId": "full-2026-09-26T23-53-52.654Z",
+    "latestRunId": "full-2026-09-28T19-39-31.237Z",
+    "members": 6,
+    "restoredQueue": [
+      {
+        "tenderId": "tender-conflicting-dates",
+        "route": "HUMAN_REVIEW",
+        "status": "COMPLETED",
+        "reviewState": "RESOLVED"
+      },
+      {
+        "tenderId": "tender-missing-consumption",
+        "route": "NEEDS_INFORMATION",
+        "status": "COMPLETED",
+        "reviewState": "OPEN"
+      },
+      {
+        "tenderId": "tender-clean-001",
+        "route": "READY_FOR_PRICING",
+        "status": "COMPLETED",
+        "reviewState": "OPEN"
+      }
+    ],
+    "restoredReview": {
+      "action": "REQUEST_INFORMATION",
+      "sourceIds": ["site-001", "contract-a", "contract-b"],
+      "routeUnchanged": true
+    },
+    "restoredReplay": {
+      "status": 200,
+      "route": "READY_FOR_PRICING",
+      "replayed": true,
+      "runs": 3,
+      "handoffs": 1,
+      "reviewEvents": 1
+    }
+  },
+  "completedAt": "2026-10-05T02:32:20.000Z"
+}

@@ -14,7 +14,7 @@ the accepted baseline.
 | Role | Pointer | Cases | Gates | Critical facts | Notes |
 | --- | --- | ---: | ---: | --- | --- |
 | Accepted baseline | [`evals/accepted-baseline.json`](../evals/accepted-baseline.json) → [`full-2026-09-26T23-53-52.654Z`](../evals/reports/full-2026-09-26T23-53-52.654Z.md) | 63 | 7/7 | Workflow 49/51; agent 51/51 | Reviewed Milestone 4 prototype reference. Dataset SHA-256 `b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708`. |
-| Latest passing full report | [`full-2026-09-28T19-39-31.237Z`](../evals/reports/full-2026-09-28T19-39-31.237Z.md) | 63 | 9/9 | Workflow 51/51; agent 51/51 | Completed and compared with the accepted baseline. **Not promoted.** Same dataset hash. |
+| Latest passing full report | [`full-2026-10-05T14-22-22.835Z`](../evals/reports/full-2026-10-05T14-22-22.835Z.md) | 63 | 9/9 | Workflow 49/51; agent 51/51 | Clean source `9fbf16f`; compared with accepted baseline and selected for release evidence. Baseline not promoted. |
 | Latest committed PR evidence | [`evals/pr-evidence.json`](../evals/pr-evidence.json) → [`pr-2026-10-04T23-14-16.314Z`](../evals/reports/pr-2026-10-04T23-14-16.314Z.md) | 14 | 8/8 on the PR subset | Workflow 9/9; agent 9/9 | Smoke subset only. Dataset hash differs; baseline comparison is `not_comparable`. |
 
 Denominators that appear in those reports:
@@ -33,10 +33,7 @@ counts are zero on those reports. Read the Markdown gate table for the 0/44
 safety-set evidence; do not treat the 63-case Console denominator as a changed
 threshold.
 
-Failed and incomplete runs stay in `evals/reports/` and [`docs/eval-findings.md`](eval-findings.md).
-They are diagnostic evidence, not a reason to lower thresholds or rewrite the
-accepted pointer. Final interview-release evals and manual QA remain ENG-14.
-`evals/release-evidence.json` and `docs/release-qa/` are not selected yet.
+Failed and incomplete runs remain in `evals/reports/` and `docs/eval-findings.md` as diagnostic evidence. The passing clean full run and matching manual-QA record are selected by `evals/release-evidence.json`. The accepted baseline is still unchanged.
 
 ## 1. Deterministic automated tests
 
