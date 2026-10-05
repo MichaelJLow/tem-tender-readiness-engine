@@ -56,7 +56,7 @@ terminal path is unchanged.
 
 | Field                    | Recorded result                                                                                                                                                    |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Setup                    | Same text-bearing clean fixture. Inject schema-invalid interpreter output (`summary` empty).                                                                       |
+| Setup                    | Same text-bearing clean fixture with idempotency key `rehearsal-invalid-output`. Inject schema-invalid interpreter output (`summary` empty).                       |
 | Observable signal        | HTTP `500`, `MODEL_OUTPUT_INVALID`, no business route, failed trace retained.                                                                                      |
 | Retryability             | `false` for the same model output. Automatic retry does not run.                                                                                                   |
 | Operator / replay action | Inspect the retained trace/schema diagnostics. Fix prompt/schema/eval fixtures, then use a separately approved replay. Same-key replay returns the stored failure. |

@@ -163,9 +163,13 @@ describe('ENG-12 visible failure and safe recovery rehearsal', () => {
       interpreter,
       { maxAttempts: 3, backoffMs: [], sleep: async () => undefined },
     );
-    const request = { ...cleanTender, textSources: [note] };
+    const request = {
+      ...cleanTender,
+      tender: { ...cleanTender.tender, idempotencyKey: 'rehearsal-invalid-output' },
+      textSources: [note],
+    };
 
-    await expect(service.submit(request, 'rehearsal-invalid-output')).rejects.toMatchObject({
+    await expect(service.submit(request, 'correlation-invalid-output')).rejects.toMatchObject({
       httpStatus: 500,
       response: {
         status: 'FAILED',
@@ -173,7 +177,9 @@ describe('ENG-12 visible failure and safe recovery rehearsal', () => {
       },
     });
     const afterFailure = await readState();
-    expect(afterFailure.runs[0]?.route).toBeUndefined();
+    const failedRun = afterFailure.runs[0];
+    expect(failedRun?.idempotencyKey).toBe(request.tender.idempotencyKey);
+    expect(failedRun?.route).toBeUndefined();
     expect(effectCounts(afterFailure)).toEqual({
       runs: 1,
       handoffs: 0,
@@ -181,14 +187,16 @@ describe('ENG-12 visible failure and safe recovery rehearsal', () => {
       reviewEvents: 0,
     });
 
-    const replay = await service.submit(request, 'rehearsal-invalid-output-replay');
+    const replay = await service.submit(request, 'correlation-invalid-output-replay');
     expect(replay).toMatchObject({
       status: 'FAILED',
       replayed: true,
-      failure: { code: 'MODEL_OUTPUT_INVALID', retryable: false },
+      runId: failedRun?.runId,
+      failure: failedRun?.failure,
     });
     expect(replay.route).toBeUndefined();
     expect(effectCounts(await readState())).toEqual(effectCounts(afterFailure));
+    expect((await readState()).runs[0]?.idempotencyKey).toBe('rehearsal-invalid-output');
     expect(interpreter.calls).toBe(1);
   });
 
