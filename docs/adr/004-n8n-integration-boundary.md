@@ -44,6 +44,6 @@ into a pinned n8n `1.112.6` runtime without credentials.
 
 - Reviewers reproduce intake with Docker or a host-installed n8n, not by
   reading unit tests alone.
-- Document registration/upload remains a later, optional intake step.
+- Document registration/upload is specified as Console Intake pack in ADR-005 and is not implemented in this n8n workflow.
 - n8n retry loops are forbidden; the API owns transient model and gateway
   retries.

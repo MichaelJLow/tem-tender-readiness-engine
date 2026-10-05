@@ -8,4 +8,5 @@ External workflow exports and integration contracts live here.
   pricing nor real outbound information requests. The
   [Milestone 7 verification receipt](../docs/milestone-7-verification.md) records
   the export checks, the fresh n8n `1.112.6` execution matrix, and the merge
-  commit on `main`. Document registration/upload and PDF intake remain deferred.
+  commit on `main`. Document registration/upload is Console Intake pack (ADR-005)
+  and is not part of this n8n workflow.

@@ -52,6 +52,80 @@ export const DocumentSchema = z.object({
   processingStatus: DocumentProcessingStatusSchema.default('PENDING'),
 });
 
+/** Shared with POST /tenders `textSources` and Intake pack confirmation. */
+export const TEXT_SOURCE_MAX_COUNT = 8;
+export const TEXT_SOURCE_MAX_CHARS = 40_000;
+export const TEXT_SOURCE_COMBINED_MAX_CHARS = 120_000;
+export const TEXT_SOURCE_IDENTIFIER_MAX_CHARS = 128;
+
+export const TextSourceKindSchema = z.enum(['NOTE', 'DOCUMENT_TEXT']);
+
+export const TextSourceSchema = z
+  .object({
+    sourceId: z.string().trim().min(1).max(TEXT_SOURCE_IDENTIFIER_MAX_CHARS),
+    kind: TextSourceKindSchema,
+    text: z.string().trim().min(1).max(TEXT_SOURCE_MAX_CHARS),
+    documentId: z.string().trim().min(1).max(TEXT_SOURCE_IDENTIFIER_MAX_CHARS).optional(),
+  })
+  .superRefine((source, context) => {
+    if (source.kind === 'DOCUMENT_TEXT' && !source.documentId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['documentId'],
+        message: 'Extracted document text must identify its tender document.',
+      });
+    }
+    if (source.kind === 'NOTE' && source.documentId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['documentId'],
+        message: 'A note cannot claim a document ID.',
+      });
+    }
+  });
+
+export function collectTextSourceCollectionIssues(
+  textSources: readonly z.infer<typeof TextSourceSchema>[],
+  documentIds: ReadonlySet<string>,
+): Array<{ path: Array<string | number>; message: string }> {
+  const issues: Array<{ path: Array<string | number>; message: string }> = [];
+  const sourceIds = new Set<string>();
+  let totalCharacters = 0;
+
+  textSources.forEach((source, index) => {
+    if (sourceIds.has(source.sourceId)) {
+      issues.push({
+        path: [index, 'sourceId'],
+        message: `Duplicate text source ID: ${source.sourceId}`,
+      });
+    }
+    sourceIds.add(source.sourceId);
+    totalCharacters += source.text.length;
+    if (source.documentId && !documentIds.has(source.documentId)) {
+      issues.push({
+        path: [index, 'documentId'],
+        message: `Unknown tender document ID: ${source.documentId}`,
+      });
+    }
+  });
+
+  if (textSources.length > TEXT_SOURCE_MAX_COUNT) {
+    issues.push({
+      path: [],
+      message: `Combined text sources cannot exceed ${TEXT_SOURCE_MAX_COUNT}.`,
+    });
+  }
+
+  if (totalCharacters > TEXT_SOURCE_COMBINED_MAX_CHARS) {
+    issues.push({
+      path: [],
+      message: 'Combined text source content cannot exceed 120,000 characters.',
+    });
+  }
+
+  return issues;
+}
+
 export const TenderSchema = z
   .object({
     tenderId: identifier,

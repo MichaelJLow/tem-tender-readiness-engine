@@ -4,47 +4,34 @@ import {
   ReadinessInputSchema,
   ReadinessResultSchema,
   RuleResultSchema,
+  TEXT_SOURCE_COMBINED_MAX_CHARS,
+  TEXT_SOURCE_IDENTIFIER_MAX_CHARS,
+  TEXT_SOURCE_MAX_CHARS,
+  TEXT_SOURCE_MAX_COUNT,
   TenderRouteSchema,
+  TextSourceSchema,
+  collectTextSourceCollectionIssues,
   type ReadinessInput,
   type ReadinessResult,
+  type TextSource,
 } from '../../../packages/domain/src/index.js';
 import { TenderInterpretationSchema } from './reasoning/contracts.js';
 
-const identifier = z.string().trim().min(1).max(128);
-
-export const TextSourceSchema = z
-  .object({
-    sourceId: identifier,
-    kind: z.enum(['NOTE', 'DOCUMENT_TEXT']),
-    text: z.string().trim().min(1).max(40_000),
-    documentId: identifier.optional(),
-  })
-  .superRefine((source, context) => {
-    if (source.kind === 'DOCUMENT_TEXT' && !source.documentId) {
-      context.addIssue({
-        code: 'custom',
-        path: ['documentId'],
-        message: 'Extracted document text must identify its tender document.',
-      });
-    }
-    if (source.kind === 'NOTE' && source.documentId) {
-      context.addIssue({
-        code: 'custom',
-        path: ['documentId'],
-        message: 'A note cannot claim a document ID.',
-      });
-    }
-  });
-export type TextSource = z.infer<typeof TextSourceSchema>;
+export {
+  TEXT_SOURCE_COMBINED_MAX_CHARS,
+  TEXT_SOURCE_IDENTIFIER_MAX_CHARS,
+  TEXT_SOURCE_MAX_CHARS,
+  TEXT_SOURCE_MAX_COUNT,
+  TextSourceSchema,
+  type TextSource,
+};
 
 const baseReadiness = ReadinessInputSchema;
 export const IntakeRequestSchema = baseReadiness
   .extend({
-    textSources: z.array(TextSourceSchema).max(8).default([]),
+    textSources: z.array(TextSourceSchema).max(TEXT_SOURCE_MAX_COUNT).default([]),
   })
   .superRefine((request, context) => {
-    const sourceIds = new Set<string>();
-    let totalCharacters = 0;
     const documentIds = new Set(request.tender.documents.map((document) => document.documentId));
 
     if (request.textSources.length > 0) {
@@ -56,7 +43,7 @@ export const IntakeRequestSchema = baseReadiness
         });
       }
       request.tender.sites.forEach((site, index) => {
-        if (site.siteId.length > 128) {
+        if (site.siteId.length > TEXT_SOURCE_IDENTIFIER_MAX_CHARS) {
           context.addIssue({
             code: 'custom',
             path: ['tender', 'sites', index, 'siteId'],
@@ -65,7 +52,7 @@ export const IntakeRequestSchema = baseReadiness
         }
       });
       request.tender.documents.forEach((document, index) => {
-        if (document.documentId.length > 128) {
+        if (document.documentId.length > TEXT_SOURCE_IDENTIFIER_MAX_CHARS) {
           context.addIssue({
             code: 'custom',
             path: ['tender', 'documents', index, 'documentId'],
@@ -75,30 +62,11 @@ export const IntakeRequestSchema = baseReadiness
       });
     }
 
-    request.textSources.forEach((source, index) => {
-      if (sourceIds.has(source.sourceId)) {
-        context.addIssue({
-          code: 'custom',
-          path: ['textSources', index, 'sourceId'],
-          message: `Duplicate text source ID: ${source.sourceId}`,
-        });
-      }
-      sourceIds.add(source.sourceId);
-      totalCharacters += source.text.length;
-      if (source.documentId && !documentIds.has(source.documentId)) {
-        context.addIssue({
-          code: 'custom',
-          path: ['textSources', index, 'documentId'],
-          message: `Unknown tender document ID: ${source.documentId}`,
-        });
-      }
-    });
-
-    if (totalCharacters > 120_000) {
+    for (const issue of collectTextSourceCollectionIssues(request.textSources, documentIds)) {
       context.addIssue({
         code: 'custom',
-        path: ['textSources'],
-        message: 'Combined text source content cannot exceed 120,000 characters.',
+        path: ['textSources', ...issue.path],
+        message: issue.message,
       });
     }
   });

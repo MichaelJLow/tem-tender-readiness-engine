@@ -4,6 +4,7 @@ export { normalizeMeterIdentifier, normalizeTenderDate } from './date.js';
 export { evaluateReadiness } from './evaluate.js';
 export { conservativeRoutingPolicy, ROUTE_PRECEDENCE } from './routing-policy.js';
 export type { RoutingPolicy } from './routing-policy.js';
+export * from './intake-pack.js';
 export * from './schemas.js';
 export type {
   Broker,
@@ -25,4 +26,5 @@ export type {
   Tender,
   TenderDocument,
   TenderRoute,
+  TextSource,
 } from './types.js';

@@ -2,7 +2,7 @@
 
 A production-style tender readiness automation for business energy. It combines deterministic TypeScript rules, a bounded evidence-only agent, human review audit, labelled evals, a local operations console, credential-free n8n intake, and a private S3 evidence archive.
 
-> **Project status:** local V1 is implemented and packaged for a public interview snapshot. Clone the repository, run the demo, and read the retained eval/QA receipts. Proposed tag `v1.0.0` is documented in [the release notes](docs/releases/v1.0.0.md); it is created only after that packaging lands and the target SHA is confirmed. Hosted runtime, concurrent database, authentication, real pricing/data, and optional PDF intake ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/optional-add-realistic-synthetic-tender-packs-and-bounded-pdf-to-text)) remain deferred.
+> **Project status:** local V1 is tagged `v1.0.0`. Clone the repository, run the demo, and read the retained eval/QA receipts. Hosted runtime, concurrent database, authentication, and real pricing/data remain deferred. Console **Intake pack** (Milestone 10 / [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)) is post-V1: contracts and [ADR-005](docs/adr/005-intake-pack-boundary.md) are in the domain package; upload UI and PDF parsing are not implemented.
 
 ## What it does
 
@@ -98,7 +98,7 @@ These are current, inspected limits — not a backlog slogan:
 - Promotional AWS credit balance/expiry is an account-administration follow-up, not an archive-correctness gate.
 - A documented cross-site association-check product fix was investigated during ENG-14 and is **not landed**; landing it would invalidate eval SHA `9fbf16f`.
 - Live n8n and live private S3 were not re-run on that eval SHA. [ENG-7](docs/milestone-7-verification.md) and [ENG-4](docs/milestone-6-verification.md) remain those receipts.
-- The `v1.0.0` git tag is prepared in [the release notes](docs/releases/v1.0.0.md) and is not created until the packaging PR merges and the target SHA is confirmed. Optional PDF intake stays [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/optional-add-realistic-synthetic-tender-packs-and-bounded-pdf-to-text).
+- The `v1.0.0` git tag exists. Console Intake pack stays Milestone 10 ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)): contracts in [ADR-005](docs/adr/005-intake-pack-boundary.md); PDF upload and parsing are not live.
 
 ## Reviewer walkthrough
 
@@ -198,3 +198,4 @@ Structured-only requests do not call a model. Requests with `textSources` need a
 - [v1.0.0 release notes](docs/releases/v1.0.0.md)
 - [ENG-15 secrets and security check](docs/releases/security-check-2026-10-05.md)
 - [ENG-14 release QA receipt](docs/release-qa/README.md)
+- [Intake pack boundary](docs/adr/005-intake-pack-boundary.md)
