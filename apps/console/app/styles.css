@@ -211,7 +211,8 @@ select {
   color: #91a6c2;
 }
 .nav-item:hover,
-.nav-item:focus-visible {
+.nav-item:focus-visible,
+.nav-item.active {
   background: #172e4d;
   color: white;
 }
@@ -322,6 +323,10 @@ select {
 .pill-neutral {
   background: #edf1f6;
   color: #596b83;
+}
+.pill-danger {
+  background: var(--red-bg);
+  color: var(--red);
 }
 .stat-grid {
   display: grid;
@@ -846,4 +851,109 @@ td strong {
   .route-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .intake-flow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.intake-flow {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 0;
+}
+.intake-flow-step {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.intake-flow-step strong {
+  display: block;
+  font-size: 12px;
+}
+.intake-flow-step small {
+  display: block;
+  margin-top: 4px;
+  color: #8996a8;
+  font-size: 10px;
+}
+.intake-flow-step.current {
+  border-color: #b5c5ff;
+  background: #f2f5ff;
+}
+.intake-flow-step.later {
+  opacity: 0.72;
+}
+.intake-status-value {
+  font: inherit !important;
+  margin: 10px 0 6px !important;
+}
+.drop-zone {
+  margin: 0 21px 16px;
+  border: 1px dashed #c5d0de;
+  border-radius: 10px;
+  padding: 28px 20px;
+  text-align: center;
+  background: #f8fafc;
+}
+.drop-zone.active {
+  border-color: var(--blue);
+  background: #f2f5ff;
+}
+.drop-zone strong {
+  display: block;
+  font-size: 14px;
+}
+.drop-zone p {
+  margin: 8px auto 14px;
+  max-width: 520px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.intake-detail-cell {
+  white-space: normal;
+  min-width: 220px;
+}
+.intake-detail-cell strong {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.intake-detail-cell span {
+  color: #63758d;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.file-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  align-items: center;
+}
+.file-actions .secondary-button {
+  padding: 6px 9px;
+}
+.intake-keep-note {
+  margin: 0 21px 16px;
+}
+.intake-lower {
+  margin-top: 16px;
+}
+.intake-panel .table-wrap table {
+  min-width: 720px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

@@ -2,7 +2,7 @@
 
 A production-style tender readiness automation for business energy. It combines deterministic TypeScript rules, a bounded evidence-only agent, human review audit, labelled evals, a local operations console, credential-free n8n intake, and a private S3 evidence archive.
 
-> **Project status:** local V1 is tagged `v1.0.0`. Clone the repository, run the demo, and read the retained eval/QA receipts. Hosted runtime, concurrent database, authentication, and real pricing/data remain deferred. Console **Intake pack** (Milestone 10 / [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)) is post-V1: contracts, synthetic fixtures, bounded selectable-text extraction, and review-only evidence-to-draft preparation are in place ([ADR-005](docs/adr/005-intake-pack-boundary.md), [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md)); upload UI and confirmation are not implemented.
+> **Project status:** local V1 is tagged `v1.0.0`. Clone the repository, run the demo, and read the retained eval/QA receipts. Hosted runtime, concurrent database, authentication, and real pricing/data remain deferred. Console **Intake pack** (Milestone 10 / [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)) is post-V1: contracts, synthetic fixtures, bounded selectable-text extraction, review-only evidence-to-draft preparation, and the Console Drop/upload processing UI are in place ([ADR-005](docs/adr/005-intake-pack-boundary.md), [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md)); Console draft review and confirmation are not implemented.
 
 ## What it does
 
@@ -49,7 +49,7 @@ flowchart TD
 
 - **TypeScript + Zod** for the domain layer, API contracts, and safety invariants
 - **Mastra + an OpenAI-compatible provider** for bounded interpretation of notes and already-extracted document text
-- **Next.js console** for queue, case detail, review history, and eval performance
+- **Next.js console** for queue, Intake pack drop/extract status, case detail, review history, and eval performance
 - **n8n 1.112.6** for webhook intake and synthetic outcome receipts
 - **Local JSON state** for the single-process demo
 - **AWS S3** for private synthetic snapshots, not live state
@@ -98,7 +98,7 @@ These are current, inspected limits — not a backlog slogan:
 - Promotional AWS credit balance/expiry is an account-administration follow-up, not an archive-correctness gate.
 - A documented cross-site association-check product fix was investigated during ENG-14 and is **not landed**; landing it would invalidate eval SHA `9fbf16f`.
 - Live n8n and live private S3 were not re-run on that eval SHA. [ENG-7](docs/milestone-7-verification.md) and [ENG-4](docs/milestone-6-verification.md) remain those receipts.
-- The `v1.0.0` git tag exists. Console Intake pack stays Milestone 10 ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)): contracts in [ADR-005](docs/adr/005-intake-pack-boundary.md); selectable-text extraction in [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md); review-only draft GET/PATCH is wired; upload UI and confirmation are not live.
+- The `v1.0.0` git tag exists. Console Intake pack stays Milestone 10 ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)): contracts in [ADR-005](docs/adr/005-intake-pack-boundary.md); selectable-text extraction in [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md); review-only draft GET/PATCH is wired; Console Drop/upload and processing status are live; Console draft review and confirmation are not.
 
 ## Reviewer walkthrough
 
@@ -178,7 +178,7 @@ Start the local API with `npm run dev:api`. It listens on `PORT` (default `3000`
 
 Intake pack registration is a separate surface: `POST /intake-packs`, `POST /intake-packs/:packId/documents` (raw PDF body, `X-File-Name` header), `PUT /intake-packs/:packId/notes`, `POST /intake-packs/:packId/extractions`, and `GET`/`PATCH /intake-packs/:packId/draft`. Extraction uses PDF.js operator-list text. Draft preparation builds review-only candidates with provenance and does not fill structured tender fields or call pricing. Confirm remains unwired. Failed files stay on the pack.
 
-Start the operations console in a second terminal with `npm run dev:console`; open `http://localhost:3001`. Queue, tender detail, review history, and eval performance are read through the API. Review dispositions are recorded for synthetic `HUMAN_REVIEW` cases and do not change the automatic route or create a pricing handoff. The console binds to loopback and uses a demo operator identity; it is not production authentication.
+Start the operations console in a second terminal with `npm run dev:console`; open `http://localhost:3001`. Queue, **Intake pack**, tender detail, review history, and eval performance are read through the API. Intake pack is PDFs plus pasted notes only — there is no tender form first. Failed files stay visible on the pack. Review dispositions are recorded for synthetic `HUMAN_REVIEW` cases and do not change the automatic route or create a pricing handoff. The console binds to loopback and uses a demo operator identity; it is not production authentication.
 
 Structured-only requests do not call a model. Requests with `textSources` need a configured provider key in `.env`. See the [runbook](docs/runbook.md) for Studio on port `4113`, n8n, archive/restore, and recovery.
 
