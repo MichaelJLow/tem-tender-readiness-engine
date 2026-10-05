@@ -1,0 +1,5 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-notes-limit
+
+Second synthetic broker note. This exceeds maxNotes.

@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-corrupt
+
+The attached PDF is deliberately truncated demonstration garbage.
+Expected document status: CORRUPT.

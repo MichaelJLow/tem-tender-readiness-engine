@@ -20,6 +20,7 @@
     "build:api": "tsc --project tsconfig.api.json",
     "build:console": "npm run build --workspace @tem-tender-readiness/console",
     "dev:console": "npm run dev --workspace @tem-tender-readiness/console",
+    "fixtures:intake-packs": "tsx scripts/generate-intake-pack-fixtures.ts",
     "demo:seed": "tsx scripts/seed-console-demo.ts",
     "demo:archive": "tsx scripts/archive-demo.ts",
     "demo:restore": "tsx scripts/restore-demo.ts",

@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-scanned-ocr-required
+
+The attached invoice is a scanned demonstration image with no selectable text.
+Expected document status: OCR_REQUIRED.

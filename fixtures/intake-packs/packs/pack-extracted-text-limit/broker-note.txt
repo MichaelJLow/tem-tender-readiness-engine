@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-extracted-text-limit
+
+Page 1 is a single selectable-text string of 8001 characters.
+Expected pack failure once extracted: EXTRACTED_TEXT_LIMIT.

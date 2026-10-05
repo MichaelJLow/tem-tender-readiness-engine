@@ -6,3 +6,4 @@
 *.yaml text eol=lf
 *.md text eol=lf
 .env.example text eol=lf
+*.pdf binary

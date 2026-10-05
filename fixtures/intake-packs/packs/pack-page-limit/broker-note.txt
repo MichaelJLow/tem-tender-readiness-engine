@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-page-limit
+
+Three 17-page PDFs provide 51 pages.
+Expected pack failure: PAGE_LIMIT.

@@ -166,6 +166,7 @@ Workspace layout:
 apps/api/         Local Tender API, bounded Mastra agent, and Studio registration
 apps/console/     Local operations console
 packages/domain/  Deterministic domain core
+fixtures/         Synthetic Intake pack PDFs, notes, and manifest
 integrations/     Credential-free n8n workflow and fixtures
 infra/            Private S3 archive notes
 docs/             Architecture, rules, runbook, receipts, and ADRs

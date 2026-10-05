@@ -1,0 +1,8 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-clean-multi-site
+
+Customer Northstar Foods Ltd. Broker Harbour Energy Partners.
+Please price both the London warehouse and the Manchester retail sites together.
+Warehouse: 10 Example Street, London, MPAN 1234567890123.
+Retail: 22 Harbour Lane, Manchester, MPAN 2345678901234.

@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-oversized-file
+
+This pack includes one PDF of 8388609 bytes.
+Expected document status: OVERSIZED.

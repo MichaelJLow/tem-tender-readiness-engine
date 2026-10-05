@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-unsupported
+
+These attachments are intentionally not PDFs.
+Expected document status: UNSUPPORTED.

@@ -1,0 +1,6 @@
+SYNTHETIC / DEMONSTRATION
+Not a real tender. Not tem customer, broker, or meter data.
+Fixture pack: pack-total-size
+
+Four PDFs of 6291457 bytes each exceed maxPackBytes 25165824.
+Expected pack failure: PACK_TOTAL_SIZE.

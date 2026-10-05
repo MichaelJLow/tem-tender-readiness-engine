@@ -1,0 +1,1199 @@
+{
+  "schemaVersion": 1,
+  "synthetic": true,
+  "disclaimer": "SYNTHETIC / DEMONSTRATION. All packs, PDFs, notes, meters, sites, and companies in this directory are demonstration materials. They are not real tenders, customers, brokers, or tem data.",
+  "generatedBy": "scripts/generate-intake-pack-fixtures.ts",
+  "limits": {
+    "maxDocuments": 7,
+    "maxNotes": 1,
+    "maxFileBytes": 8388608,
+    "maxPackBytes": 25165824,
+    "maxPagesPerDocument": 25,
+    "maxPagesPerPack": 50,
+    "maxExtractedCharsPerPage": 8000,
+    "maxExtractedCharsPerDocument": 40000,
+    "maxExtractedCharsPerPack": 120000,
+    "maxNoteChars": 40000,
+    "allowedContentTypes": ["application/pdf"],
+    "allowedFilenameExtensions": [".pdf"]
+  },
+  "packs": [
+    {
+      "packId": "pack-clean-single-site",
+      "ticketScenario": "clean-single-site",
+      "title": "Clean single-site synthetic pack",
+      "description": "One selectable-text PDF and one broker note for a single warehouse site. Expected EXTRACTED.",
+      "synthetic": true,
+      "directory": "pack-clean-single-site",
+      "expectedNoteCount": 1,
+      "files": [
+        {
+          "path": "northstar-electricity-contract.pdf",
+          "fileName": "northstar-electricity-contract.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-clean-single-site-contract",
+          "expectedByteSize": 1874,
+          "sha256": "b6858e1e0ba2810bc6d6ce617ba00830e6d6a86b76fcad85d8e7b34e0d8b5ae1",
+          "expectedPageCount": 2,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-clean-single-site",
+          "expectedByteSize": 318,
+          "sha256": "1a17e52c4b1d4304f1d962e07dbc8ea5c4c53734ede4ad6b25eda6794c48857a"
+        }
+      ],
+      "expectedSites": [
+        {
+          "siteId": "site-warehouse",
+          "label": "Northstar warehouse (synthetic)",
+          "address": "10 Example Street, London",
+          "meterIdentifier": "1234567890123",
+          "annualConsumptionKwh": 24000,
+          "contractEndDate": "2027-03-31"
+        }
+      ],
+      "expectedFacts": [
+        {
+          "field": "customerLegalName",
+          "value": "Northstar Foods Ltd",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-clean-single-site-contract",
+              "documentId": "doc-clean-single-site-contract",
+              "pageNumber": 1,
+              "quote": "Customer: Northstar Foods Ltd",
+              "locator": "page=1"
+            },
+            {
+              "sourceKind": "NOTE",
+              "sourceId": "note-clean-single-site",
+              "quote": "Customer Northstar Foods Ltd",
+              "locator": "note"
+            }
+          ]
+        },
+        {
+          "field": "brokerLegalName",
+          "value": "Harbour Energy Partners",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-clean-single-site-contract",
+              "documentId": "doc-clean-single-site-contract",
+              "pageNumber": 1,
+              "quote": "Broker: Harbour Energy Partners",
+              "locator": "page=1"
+            }
+          ]
+        },
+        {
+          "field": "siteAddress",
+          "value": "10 Example Street, London",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-clean-single-site-contract",
+              "documentId": "doc-clean-single-site-contract",
+              "pageNumber": 2,
+              "quote": "Warehouse site address: 10 Example Street, London",
+              "locator": "page=2"
+            }
+          ]
+        },
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-clean-single-site-contract",
+              "documentId": "doc-clean-single-site-contract",
+              "pageNumber": 2,
+              "quote": "Warehouse MPAN 1234567890123",
+              "locator": "page=2"
+            }
+          ]
+        },
+        {
+          "field": "annualConsumptionKwh",
+          "value": "24000",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-clean-single-site-contract",
+              "documentId": "doc-clean-single-site-contract",
+              "pageNumber": 2,
+              "quote": "Warehouse annual consumption 24000 kWh",
+              "locator": "page=2"
+            }
+          ]
+        },
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-clean-single-site-contract",
+              "documentId": "doc-clean-single-site-contract",
+              "pageNumber": 2,
+              "quote": "Warehouse contract end date 2027-03-31",
+              "locator": "page=2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "packId": "pack-clean-multi-site",
+      "ticketScenario": "clean-multi-site",
+      "title": "Clean multi-site synthetic pack",
+      "description": "Two selectable-text PDFs, one per site, plus a broker note. Core provenance fixture for ENG-19 page-to-site assertions.",
+      "synthetic": true,
+      "directory": "pack-clean-multi-site",
+      "expectedNoteCount": 1,
+      "files": [
+        {
+          "path": "northstar-warehouse-contract.pdf",
+          "fileName": "northstar-warehouse-contract.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-warehouse-contract",
+          "expectedByteSize": 1882,
+          "sha256": "e581aed7a77a3bef91340880a759b0f28f34d8158218e45fe0d34c77cd8bd4e3",
+          "expectedPageCount": 2,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "northstar-retail-contract.pdf",
+          "fileName": "northstar-retail-contract.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-retail-contract",
+          "expectedByteSize": 1860,
+          "sha256": "508eb336988b87cea96df05e07b6d32e4a6f7f22e445ff710c3e13d5d53e791b",
+          "expectedPageCount": 2,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-clean-multi-site",
+          "expectedByteSize": 381,
+          "sha256": "6727c2e820781daa94b5384a5b23ef8aa8364b2ecb3e7e52db4b180164261b33"
+        }
+      ],
+      "expectedSites": [
+        {
+          "siteId": "site-warehouse",
+          "label": "Northstar warehouse (synthetic)",
+          "address": "10 Example Street, London",
+          "meterIdentifier": "1234567890123",
+          "annualConsumptionKwh": 24000,
+          "contractEndDate": "2027-03-31"
+        },
+        {
+          "siteId": "site-retail",
+          "label": "Northstar retail (synthetic)",
+          "address": "22 Harbour Lane, Manchester",
+          "meterIdentifier": "2345678901234",
+          "annualConsumptionKwh": 18500,
+          "contractEndDate": "2027-09-30"
+        }
+      ],
+      "expectedFacts": [
+        {
+          "field": "customerLegalName",
+          "value": "Northstar Foods Ltd",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-warehouse-contract",
+              "documentId": "doc-warehouse-contract",
+              "pageNumber": 1,
+              "quote": "Customer: Northstar Foods Ltd",
+              "locator": "page=1"
+            },
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-retail-contract",
+              "documentId": "doc-retail-contract",
+              "pageNumber": 1,
+              "quote": "Customer: Northstar Foods Ltd",
+              "locator": "page=1"
+            }
+          ]
+        },
+        {
+          "field": "brokerLegalName",
+          "value": "Harbour Energy Partners",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-warehouse-contract",
+              "documentId": "doc-warehouse-contract",
+              "pageNumber": 1,
+              "quote": "Broker: Harbour Energy Partners",
+              "locator": "page=1"
+            }
+          ]
+        },
+        {
+          "field": "siteAddress",
+          "value": "10 Example Street, London",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-warehouse-contract",
+              "documentId": "doc-warehouse-contract",
+              "pageNumber": 2,
+              "quote": "Warehouse site address: 10 Example Street, London",
+              "locator": "page=2"
+            },
+            {
+              "sourceKind": "NOTE",
+              "sourceId": "note-clean-multi-site",
+              "quote": "London warehouse",
+              "locator": "note"
+            }
+          ]
+        },
+        {
+          "field": "meterIdentifier",
+          "value": "1234567890123",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-warehouse-contract",
+              "documentId": "doc-warehouse-contract",
+              "pageNumber": 2,
+              "quote": "Warehouse MPAN 1234567890123",
+              "locator": "page=2"
+            }
+          ]
+        },
+        {
+          "field": "annualConsumptionKwh",
+          "value": "24000",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-warehouse-contract",
+              "documentId": "doc-warehouse-contract",
+              "pageNumber": 2,
+              "quote": "Warehouse annual consumption 24000 kWh",
+              "locator": "page=2"
+            }
+          ]
+        },
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-warehouse-contract",
+              "documentId": "doc-warehouse-contract",
+              "pageNumber": 2,
+              "quote": "Warehouse contract end date 2027-03-31",
+              "locator": "page=2"
+            }
+          ]
+        },
+        {
+          "field": "siteAddress",
+          "value": "22 Harbour Lane, Manchester",
+          "siteId": "site-retail",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-retail-contract",
+              "documentId": "doc-retail-contract",
+              "pageNumber": 2,
+              "quote": "Retail site address: 22 Harbour Lane, Manchester",
+              "locator": "page=2"
+            },
+            {
+              "sourceKind": "NOTE",
+              "sourceId": "note-clean-multi-site",
+              "quote": "Manchester retail",
+              "locator": "note"
+            }
+          ]
+        },
+        {
+          "field": "meterIdentifier",
+          "value": "2345678901234",
+          "siteId": "site-retail",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-retail-contract",
+              "documentId": "doc-retail-contract",
+              "pageNumber": 2,
+              "quote": "Retail MPAN 2345678901234",
+              "locator": "page=2"
+            }
+          ]
+        },
+        {
+          "field": "annualConsumptionKwh",
+          "value": "18500",
+          "siteId": "site-retail",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-retail-contract",
+              "documentId": "doc-retail-contract",
+              "pageNumber": 2,
+              "quote": "Retail annual consumption 18500 kWh",
+              "locator": "page=2"
+            }
+          ]
+        },
+        {
+          "field": "contractEndDate",
+          "value": "2027-09-30",
+          "siteId": "site-retail",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-retail-contract",
+              "documentId": "doc-retail-contract",
+              "pageNumber": 2,
+              "quote": "Retail contract end date 2027-09-30",
+              "locator": "page=2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "packId": "pack-conflicting-evidence",
+      "ticketScenario": "conflicting-evidence",
+      "title": "Conflicting contract-end evidence",
+      "description": "Two selectable-text PDFs for the same warehouse site with different contract end dates. Extraction should succeed; routing later escalates.",
+      "synthetic": true,
+      "directory": "pack-conflicting-evidence",
+      "expectedNoteCount": 1,
+      "files": [
+        {
+          "path": "contract-schedule-a.pdf",
+          "fileName": "contract-schedule-a.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-conflict-schedule-a",
+          "expectedByteSize": 1261,
+          "sha256": "68eeb29456bdc2dc05a4899c1370001e6b8a4af5e165423d8e0e5ec7dcc95ec9",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "contract-schedule-b.pdf",
+          "fileName": "contract-schedule-b.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-conflict-schedule-b",
+          "expectedByteSize": 1261,
+          "sha256": "0d2fe864c6afb4a966bbae5600b6c2184e9dc797ea7414f114f4f87fc2c43342",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-conflicting-evidence",
+          "expectedByteSize": 265,
+          "sha256": "8e80441ecc8d31148893ef399ce55232776629d2adf3d8e446180d1060d025dd"
+        }
+      ],
+      "expectedSites": [
+        {
+          "siteId": "site-warehouse",
+          "label": "Northstar warehouse (synthetic)",
+          "address": "10 Example Street, London",
+          "meterIdentifier": "1234567890123",
+          "annualConsumptionKwh": 24000,
+          "contractEndDate": "2027-03-31"
+        }
+      ],
+      "expectedFacts": [
+        {
+          "field": "contractEndDate",
+          "value": "2027-03-31",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-conflict-schedule-a",
+              "documentId": "doc-conflict-schedule-a",
+              "pageNumber": 1,
+              "quote": "Schedule A contract end date 2027-03-31",
+              "locator": "page=1"
+            }
+          ]
+        },
+        {
+          "field": "contractEndDate",
+          "value": "30/09/2026",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-conflict-schedule-b",
+              "documentId": "doc-conflict-schedule-b",
+              "pageNumber": 1,
+              "quote": "Schedule B contract end date 30/09/2026",
+              "locator": "page=1"
+            }
+          ]
+        },
+        {
+          "field": "siteAddress",
+          "value": "10 Example Street, London",
+          "siteId": "site-warehouse",
+          "associationStatus": "RESOLVED",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-conflict-schedule-a",
+              "documentId": "doc-conflict-schedule-a",
+              "pageNumber": 1,
+              "quote": "Warehouse site address: 10 Example Street, London",
+              "locator": "page=1"
+            },
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-conflict-schedule-b",
+              "documentId": "doc-conflict-schedule-b",
+              "pageNumber": 1,
+              "quote": "Warehouse site address: 10 Example Street, London",
+              "locator": "page=1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "packId": "pack-ambiguous-site-association",
+      "ticketScenario": "ambiguous-site-association",
+      "title": "Ambiguous Harbour site association",
+      "description": "One letter refers to the Harbour site without a meter or full address, so it can attach to warehouse or retail.",
+      "synthetic": true,
+      "directory": "pack-ambiguous-site-association",
+      "expectedNoteCount": 1,
+      "files": [
+        {
+          "path": "portfolio-letter.pdf",
+          "fileName": "portfolio-letter.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-ambiguous-portfolio-letter",
+          "expectedByteSize": 1279,
+          "sha256": "8d7d00c2edae715c337e7ae1e1c7e410419069bf122cbd3e6957f9cb9d6c8eca",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-ambiguous-site-association",
+          "expectedByteSize": 281,
+          "sha256": "d18b1680e6394aefd742265aca8aae9c008e615a071d5ed153abf36584372e96"
+        }
+      ],
+      "expectedSites": [
+        {
+          "siteId": "site-warehouse",
+          "label": "Northstar warehouse (synthetic)",
+          "address": "10 Example Street, London",
+          "meterIdentifier": "1234567890123",
+          "annualConsumptionKwh": 24000,
+          "contractEndDate": "2027-03-31"
+        },
+        {
+          "siteId": "site-retail",
+          "label": "Northstar retail (synthetic)",
+          "address": "22 Harbour Lane, Manchester",
+          "meterIdentifier": "2345678901234",
+          "annualConsumptionKwh": 18500,
+          "contractEndDate": "2027-09-30"
+        }
+      ],
+      "expectedFacts": [
+        {
+          "field": "siteAddress",
+          "value": "the Harbour site",
+          "siteId": null,
+          "associationStatus": "AMBIGUOUS",
+          "provenance": [
+            {
+              "sourceKind": "DOCUMENT_PAGE",
+              "sourceId": "doc-ambiguous-portfolio-letter",
+              "documentId": "doc-ambiguous-portfolio-letter",
+              "pageNumber": 1,
+              "quote": "Please price the Harbour site",
+              "locator": "page=1"
+            },
+            {
+              "sourceKind": "NOTE",
+              "sourceId": "note-ambiguous-site-association",
+              "quote": "the Harbour site",
+              "locator": "note"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "packId": "pack-scanned-ocr-required",
+      "ticketScenario": "scanned-ocr-required",
+      "title": "Scanned image-only PDF",
+      "description": "Image-only PDF with no selectable text. ENG-19 should mark OCR_REQUIRED. OCR is out of scope.",
+      "synthetic": true,
+      "directory": "pack-scanned-ocr-required",
+      "expectedNoteCount": 1,
+      "files": [
+        {
+          "path": "scanned-invoice.pdf",
+          "fileName": "scanned-invoice.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-scanned-invoice",
+          "expectedByteSize": 894,
+          "sha256": "067f0c9b7dbf6ffa6aaee100d9ee96e08a580a354680542f53694f3ab482cfba",
+          "expectedPageCount": 1,
+          "expectedSelectableText": false,
+          "expectedStatus": "OCR_REQUIRED",
+          "expectedFailureCode": "OCR_REQUIRED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-scanned-ocr-required",
+          "expectedByteSize": 246,
+          "sha256": "961c57842f00c6b0022f3d7b228153977726aa99eb107ddcba060cf712ae8a0d"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-corrupt",
+      "ticketScenario": "corrupt",
+      "title": "Truncated corrupt PDF",
+      "description": "PDF header is present but the file is truncated before xref. Expected CORRUPT.",
+      "synthetic": true,
+      "directory": "pack-corrupt",
+      "expectedNoteCount": 1,
+      "files": [
+        {
+          "path": "truncated-contract.pdf",
+          "fileName": "truncated-contract.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-corrupt-contract",
+          "expectedByteSize": 117,
+          "sha256": "14d879fed3a6322fec81882f52426e6870619b0065c3933fab7d65d9d67eee04",
+          "expectedPageCount": 0,
+          "expectedSelectableText": false,
+          "expectedStatus": "CORRUPT",
+          "expectedFailureCode": "CORRUPT"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-corrupt",
+          "expectedByteSize": 215,
+          "sha256": "eba4806c1faca6211b4e17367ee63fcfa94bff28814e74c23c7e9958929a748e"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-unsupported",
+      "ticketScenario": "unsupported",
+      "title": "Unsupported non-PDF files",
+      "description": "A text file, a PNG, and a .pdf filename that is not PDF bytes. Expected UNSUPPORTED.",
+      "synthetic": true,
+      "directory": "pack-unsupported",
+      "expectedNoteCount": 1,
+      "expectedPackFailureCode": "UNSUPPORTED",
+      "files": [
+        {
+          "path": "cover-letter.txt",
+          "fileName": "cover-letter.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "UNSUPPORTED",
+          "materialization": "committed",
+          "documentId": "doc-unsupported-text",
+          "expectedByteSize": 182,
+          "sha256": "0f959a2aed92cc724895ca6159ee5f400104e2c568021d10a9762dd05d8ceb60",
+          "expectedSelectableText": false,
+          "expectedStatus": "UNSUPPORTED",
+          "expectedFailureCode": "UNSUPPORTED"
+        },
+        {
+          "path": "logo.png",
+          "fileName": "logo.png",
+          "contentType": "image/png",
+          "kind": "UNSUPPORTED",
+          "materialization": "committed",
+          "documentId": "doc-unsupported-png",
+          "expectedByteSize": 69,
+          "sha256": "a12c015c837c6cde5f5dfaa055d587a038483e389c4bdda022dc23302ca40a76",
+          "expectedSelectableText": false,
+          "expectedStatus": "UNSUPPORTED",
+          "expectedFailureCode": "UNSUPPORTED"
+        },
+        {
+          "path": "not-a-pdf.pdf",
+          "fileName": "not-a-pdf.pdf",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "UNSUPPORTED",
+          "materialization": "committed",
+          "documentId": "doc-unsupported-pdf-name",
+          "expectedByteSize": 84,
+          "sha256": "ed67b56a81ef9bce73e5650a7fe64d8369b697d87b625834e01d86c0e1b2c087",
+          "expectedSelectableText": false,
+          "expectedStatus": "UNSUPPORTED",
+          "expectedFailureCode": "UNSUPPORTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-unsupported",
+          "expectedByteSize": 203,
+          "sha256": "458014f230890e226bc66cc948bf486e36dc3a33ac76c92299e53d97cdad430a"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-extraction-failed",
+      "ticketScenario": "oversized-limit-test",
+      "title": "Invalid FlateDecode PDF",
+      "description": "Structurally wrapped PDF whose content stream is not valid FlateDecode. Expected EXTRACTION_FAILED.",
+      "synthetic": true,
+      "directory": "pack-extraction-failed",
+      "expectedNoteCount": 1,
+      "files": [
+        {
+          "path": "deflate-broken.pdf",
+          "fileName": "deflate-broken.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-extraction-failed",
+          "expectedByteSize": 861,
+          "sha256": "ad692a86e837fe214582bac635a5c9405f887d0847f30b82f6867c064ed3529c",
+          "expectedPageCount": 1,
+          "expectedSelectableText": false,
+          "expectedStatus": "EXTRACTION_FAILED",
+          "expectedFailureCode": "EXTRACTION_FAILED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-extraction-failed",
+          "expectedByteSize": 272,
+          "sha256": "95124a59bcc336d92a4ef506bd7cfae8effb0676c7b2eb3c31886764f43575d3"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-oversized-file",
+      "ticketScenario": "oversized-limit-test",
+      "title": "Single file just over 8 MiB",
+      "description": "One PDF padded to maxFileBytes + 1. Generated at runtime so Git does not store an 8 MiB blob.",
+      "synthetic": true,
+      "directory": "pack-oversized-file",
+      "expectedNoteCount": 1,
+      "expectedPackFailureCode": "OVERSIZED",
+      "files": [
+        {
+          "path": "oversized-contract.pdf",
+          "fileName": "oversized-contract.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "generated",
+          "documentId": "doc-oversized-file",
+          "expectedByteSize": 8388609,
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "OVERSIZED",
+          "expectedFailureCode": "OVERSIZED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-oversized-file",
+          "expectedByteSize": 203,
+          "sha256": "b7186bf91ab1257b0e415c32a644865838fa93c2da3e7bcedbb6235c209c422a"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-file-count",
+      "ticketScenario": "oversized-limit-test",
+      "title": "Eight PDFs exceed maxDocuments",
+      "description": "Eight tiny PDFs. INTAKE_PACK_LIMITS.maxDocuments is 7. Expected PACK_FILE_COUNT.",
+      "synthetic": true,
+      "directory": "pack-file-count",
+      "expectedNoteCount": 1,
+      "expectedPackFailureCode": "PACK_FILE_COUNT",
+      "files": [
+        {
+          "path": "synthetic-doc-01.pdf",
+          "fileName": "synthetic-doc-01.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-file-count-01",
+          "expectedByteSize": 1024,
+          "sha256": "8d3840f212a8c809ccac37f4a62bdfe5278bb79e657057c753b8cfef54eeb09b",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "synthetic-doc-02.pdf",
+          "fileName": "synthetic-doc-02.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-file-count-02",
+          "expectedByteSize": 1024,
+          "sha256": "413b4f46911b518722e6710edd05fd742648ac3abf9ffaffe2f91ff5a156ec5e",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "synthetic-doc-03.pdf",
+          "fileName": "synthetic-doc-03.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-file-count-03",
+          "expectedByteSize": 1024,
+          "sha256": "7aa4acf685b21ad2cc1796bedbb8e309d4a1969d12b35d11799aa6e7351dd063",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "synthetic-doc-04.pdf",
+          "fileName": "synthetic-doc-04.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-file-count-04",
+          "expectedByteSize": 1024,
+          "sha256": "b6747e403ef658b254b0e3e92d12af05c7d58ae03ea2e9b6706a41eea71d3a19",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "synthetic-doc-05.pdf",
+          "fileName": "synthetic-doc-05.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-file-count-05",
+          "expectedByteSize": 1024,
+          "sha256": "a001de2bb58ef6be31cbf82cda346b9b95ee871903e81ef6ec3b2b95037c8e0b",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "synthetic-doc-06.pdf",
+          "fileName": "synthetic-doc-06.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-file-count-06",
+          "expectedByteSize": 1024,
+          "sha256": "fb38abe7d02fe2b7b76c6e5ede4f3650e88407aaf2b60ac685f1a9fc2350ffb1",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "synthetic-doc-07.pdf",
+          "fileName": "synthetic-doc-07.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-file-count-07",
+          "expectedByteSize": 1024,
+          "sha256": "811facebe77ae21fa5716ceb7b828104511ec36a0eb16df29af38e14bdf83779",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "synthetic-doc-08.pdf",
+          "fileName": "synthetic-doc-08.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-file-count-08",
+          "expectedByteSize": 1024,
+          "sha256": "3153683653eb7a0a9b1b39b79e70db504479962b1f1a0f193eebc1176fb7ab51",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-file-count",
+          "expectedByteSize": 207,
+          "sha256": "e901fc7cccb9f358b4f32a275e1e4c2789a8412577997bc4a5349261274b7e62"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-total-size",
+      "ticketScenario": "oversized-limit-test",
+      "title": "Four PDFs just over 24 MiB combined",
+      "description": "Four PDFs each just over one quarter of maxPackBytes. Generated at runtime; not committed.",
+      "synthetic": true,
+      "directory": "pack-total-size",
+      "expectedNoteCount": 1,
+      "expectedPackFailureCode": "PACK_TOTAL_SIZE",
+      "files": [
+        {
+          "path": "padded-contract-01.pdf",
+          "fileName": "padded-contract-01.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "generated",
+          "documentId": "doc-pack-total-size-01",
+          "expectedByteSize": 6291457,
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "padded-contract-02.pdf",
+          "fileName": "padded-contract-02.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "generated",
+          "documentId": "doc-pack-total-size-02",
+          "expectedByteSize": 6291457,
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "padded-contract-03.pdf",
+          "fileName": "padded-contract-03.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "generated",
+          "documentId": "doc-pack-total-size-03",
+          "expectedByteSize": 6291457,
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "padded-contract-04.pdf",
+          "fileName": "padded-contract-04.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "generated",
+          "documentId": "doc-pack-total-size-04",
+          "expectedByteSize": 6291457,
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-pack-total-size",
+          "expectedByteSize": 219,
+          "sha256": "c6b54a4ce79a0b50ea2e09a0bb1d2bffa2d11b5baf7e632f444efba9e0324061"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-page-limit",
+      "ticketScenario": "oversized-limit-test",
+      "title": "Fifty-one pages across three PDFs",
+      "description": "Three 17-page PDFs = 51 pages, over maxPagesPerPack 50, each under maxPagesPerDocument 25.",
+      "synthetic": true,
+      "directory": "pack-page-limit",
+      "expectedNoteCount": 1,
+      "expectedPackFailureCode": "PAGE_LIMIT",
+      "files": [
+        {
+          "path": "multi-page-a.pdf",
+          "fileName": "multi-page-a.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-page-limit-a",
+          "expectedByteSize": 7921,
+          "sha256": "f34d2e7c52f593e7a9d99b3b1bb5658af79e225998739c9f76dca15005cd7fb2",
+          "expectedPageCount": 17,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "multi-page-b.pdf",
+          "fileName": "multi-page-b.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-page-limit-b",
+          "expectedByteSize": 7921,
+          "sha256": "dfb9fce27eb8b32e828ad130840c2783b3d2df2cd446f5145645c7804e12da64",
+          "expectedPageCount": 17,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "multi-page-c.pdf",
+          "fileName": "multi-page-c.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-page-limit-c",
+          "expectedByteSize": 7921,
+          "sha256": "e23c1c038871e08824dd5c7368055eb6b82b0e95165593eaa5b23d35b9b38ec2",
+          "expectedPageCount": 17,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-page-limit",
+          "expectedByteSize": 189,
+          "sha256": "015a9d408684ed00bf00267f7937e4dda62387b57485df3f05ec075cdfb938c1"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-document-page-limit",
+      "ticketScenario": "oversized-limit-test",
+      "title": "Twenty-six pages in one PDF",
+      "description": "One PDF with 26 pages, over maxPagesPerDocument 25. Expected PAGE_LIMIT.",
+      "synthetic": true,
+      "directory": "pack-document-page-limit",
+      "expectedNoteCount": 1,
+      "expectedPackFailureCode": "PAGE_LIMIT",
+      "files": [
+        {
+          "path": "too-many-pages.pdf",
+          "fileName": "too-many-pages.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-document-page-limit",
+          "expectedByteSize": 12158,
+          "sha256": "8e98cbe7de05469691b24593b519c9990617272c7b9feeb950781bcba4b3becf",
+          "expectedPageCount": 26,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-document-page-limit",
+          "expectedByteSize": 214,
+          "sha256": "0c0a8bfbdc61ca5702112142a44b213d82152cdaa7885eb51d6d6e4f0b161485"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-notes-limit",
+      "ticketScenario": "oversized-limit-test",
+      "title": "Two broker notes",
+      "description": "The contract allows one note per pack. Two note files expect NOTES_LIMIT.",
+      "synthetic": true,
+      "directory": "pack-notes-limit",
+      "expectedNoteCount": 2,
+      "expectedPackFailureCode": "NOTES_LIMIT",
+      "files": [
+        {
+          "path": "placeholder-contract.pdf",
+          "fileName": "placeholder-contract.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-notes-limit",
+          "expectedByteSize": 1001,
+          "sha256": "5c11ee77114d36c2219f4314e2c926d011e710f0d5f3cfb805c3f52c2075b877",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note-1.txt",
+          "fileName": "broker-note-1.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-notes-limit-1",
+          "expectedByteSize": 147,
+          "sha256": "6b44a549542a5e6237bd7f7f440d4440f7fe716970ce1fa7a8808d3117b18249"
+        },
+        {
+          "path": "broker-note-2.txt",
+          "fileName": "broker-note-2.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-notes-limit-2",
+          "expectedByteSize": 171,
+          "sha256": "a74acdbf8388d218c164603312886b9cf6969d3d8862dfa4712dd381f7e6c476"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    },
+    {
+      "packId": "pack-extracted-text-limit",
+      "ticketScenario": "oversized-limit-test",
+      "title": "Page text just over 8000 characters",
+      "description": "One selectable-text page with 8001 characters. Expected EXTRACTED_TEXT_LIMIT after extraction.",
+      "synthetic": true,
+      "directory": "pack-extracted-text-limit",
+      "expectedNoteCount": 1,
+      "expectedPackFailureCode": "EXTRACTED_TEXT_LIMIT",
+      "files": [
+        {
+          "path": "dense-page.pdf",
+          "fileName": "dense-page.pdf",
+          "contentType": "application/pdf",
+          "kind": "PDF",
+          "materialization": "committed",
+          "documentId": "doc-extracted-text-limit",
+          "expectedByteSize": 8874,
+          "sha256": "39204c672132f4eb436016f5d10fc0dedf1ec85151228bebeaf04f8af98cab4d",
+          "expectedPageCount": 1,
+          "expectedSelectableText": true,
+          "expectedStatus": "EXTRACTED"
+        },
+        {
+          "path": "broker-note.txt",
+          "fileName": "broker-note.txt",
+          "contentType": "text/plain; charset=utf-8",
+          "kind": "NOTE",
+          "materialization": "committed",
+          "noteId": "note-extracted-text-limit",
+          "expectedByteSize": 249,
+          "sha256": "f4df1686ab11d55466d528298d1c22bf686fc256d2f2c6bbf1d6ba2d3572be11"
+        }
+      ],
+      "expectedSites": [],
+      "expectedFacts": []
+    }
+  ]
+}
