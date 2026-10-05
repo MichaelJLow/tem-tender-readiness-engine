@@ -6,6 +6,8 @@ This package owns the synthetic tender schemas, deterministic readiness rules, e
 
 Intake pack schemas (`intake-pack.ts`) define pack, document, extraction, candidate, provenance, draft, confirmation, limits, and failure taxonomy. They do not evaluate readiness. Only a confirmed snapshot may map onto `ReadinessInput` plus the shared `TextSource` contract used by `POST /tenders`. Extraction candidates cannot fill structured tender fields.
 
+`intake-pack-draft.ts` turns immutable extracted pages and broker notes into a review-only draft. Conflicting values stay as multiple candidates. Uncertain site associations stay unassociated. Structured customer, broker, and site fields stay empty until an operator writes them with an explicit patch. That path does not evaluate readiness or invoke pricing.
+
 `intake-pack-fixtures.ts` is the Zod inventory schema for the synthetic packs under [`fixtures/intake-packs/`](../../fixtures/intake-packs/README.md). `intake-pack-processing.ts` classifies uploads and enforces pack limits; it does not parse PDF bytes.
 
 The confidence threshold and accepted date formats are demonstration assumptions documented in `docs/business-rules.md`.

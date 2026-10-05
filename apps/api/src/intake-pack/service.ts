@@ -3,17 +3,22 @@ import {
   INTAKE_PACK_ENTRY_NAME,
   INTAKE_PACK_LIMITS,
   IntakePackSchema,
-  classifyIntakeUpload,
+  applyIntakeDraftPatch,
   applyParsedDocumentToIntakeDocument,
   buildIntakeExtraction,
   canAddIntakeDocument,
+  canPrepareIntakeDraft,
   canPutIntakeNote,
+  classifyIntakeUpload,
   deriveIntakePackStatus,
   evaluateExtractionBounds,
   intakeLayerMayInvokePricing,
+  prepareIntakeDraftFromEvidence,
   storedIntakeByteSize,
   transitionIntakeDocument,
   type IntakeDocument,
+  type IntakeDraft,
+  type IntakeDraftPatchInput,
   type IntakeExtraction,
   type IntakeNote,
   type IntakePack,
@@ -44,6 +49,10 @@ export class IntakeDocumentNotFoundError extends Error {
 
 export class IntakeExtractionNotFoundError extends Error {
   override name = 'IntakeExtractionNotFoundError';
+}
+
+export class IntakeDraftNotFoundError extends Error {
+  override name = 'IntakeDraftNotFoundError';
 }
 
 export class IntakePackService {
@@ -331,6 +340,80 @@ export class IntakePackService {
       throw new IntakeExtractionNotFoundError(`Intake pack ${packId} has no extraction yet.`);
     }
     return pack.extraction;
+  }
+
+  getDraft(packId: string): Promise<IntakeDraft> {
+    return this.enqueue(async () => {
+      this.assertDraftLayerCannotPrice();
+      const pack = await this.getPack(packId);
+      const ensured = await this.ensureDraft(pack);
+      return ensured.draft!;
+    });
+  }
+
+  patchDraft(packId: string, patch: IntakeDraftPatchInput): Promise<IntakeDraft> {
+    return this.enqueue(async () => {
+      this.assertDraftLayerCannotPrice();
+      const pack = await this.getPack(packId);
+      if (pack.status === 'CONFIRMED' || pack.confirmation) {
+        throw new IntakePackConflictError(
+          {
+            code: 'ALREADY_CONFIRMED',
+            message: 'A confirmed Intake pack draft cannot be patched.',
+            retryable: false,
+          },
+          pack,
+        );
+      }
+      const withDraft = await this.ensureDraft(pack);
+      const timestamp = this.now().toISOString();
+      const applied = applyIntakeDraftPatch(withDraft.draft!, patch, timestamp);
+      if (!applied.ok) {
+        throw new IntakePackConflictError(
+          {
+            code: applied.code,
+            message: applied.message,
+            retryable: false,
+          },
+          withDraft,
+        );
+      }
+      const saved = await this.persistDerived({
+        ...withDraft,
+        draft: applied.draft,
+        updatedAt: timestamp,
+      });
+      return saved.draft!;
+    });
+  }
+
+  private async ensureDraft(pack: IntakePack): Promise<IntakePack> {
+    if (pack.draft) return pack;
+    const eligible = canPrepareIntakeDraft(pack);
+    if (!eligible.ok) {
+      throw new IntakeDraftNotFoundError(
+        `Intake pack ${pack.packId} has no review draft yet. ${eligible.reason}`,
+      );
+    }
+    this.assertDraftLayerCannotPrice();
+    const timestamp = this.now().toISOString();
+    const draft = prepareIntakeDraftFromEvidence({
+      packId: pack.packId,
+      updatedAt: timestamp,
+      extraction: pack.extraction,
+      notes: pack.notes,
+    });
+    return this.persistDerived({
+      ...pack,
+      draft,
+      updatedAt: timestamp,
+    });
+  }
+
+  private assertDraftLayerCannotPrice(): void {
+    if (intakeLayerMayInvokePricing('draft')) {
+      throw new Error('Intake pack draft preparation must never invoke pricing.');
+    }
   }
 
   private withPackFailure(pack: IntakePack, failure: IntakePackFailure): IntakePack {

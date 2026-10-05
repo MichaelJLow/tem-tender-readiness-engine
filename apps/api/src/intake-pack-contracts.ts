@@ -15,7 +15,7 @@ const identifier = z.string().trim().min(1).max(TEXT_SOURCE_IDENTIFIER_MAX_CHARS
 
 /**
  * HTTP contract for Intake pack. ENG-19 wires registration and extraction.
- * Draft, confirm, and pricing remain unwired.
+ * ENG-20 wires review-only draft GET/PATCH. Confirm and pricing remain unwired.
  *
  * POST /intake-packs
  * GET  /intake-packs/:packId

@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   INTAKE_PACK_LIMITS,
+  draftStructuredFieldsAreEmpty,
   intakeLayerMayInvokePricing,
 } from '../../../../packages/domain/src/index.js';
 import { buildIntakePackFixtureCatalog } from '../../../../scripts/intake-pack-fixtures.js';
 import { MemoryIntakeOriginalsStore } from './originals-store.js';
 import { MemoryIntakePackRepository } from './repository.js';
-import { IntakePackConflictError, IntakePackService } from './service.js';
+import { IntakeDraftNotFoundError, IntakePackConflictError, IntakePackService } from './service.js';
 
 const catalog = buildIntakePackFixtureCatalog();
 
@@ -201,5 +202,106 @@ describe('Intake pack registration and extraction', () => {
     const second = await service.extract(created.packId);
     expect(second.extraction.extractionId).toBe(first.extraction.extractionId);
     expect(second.pack.draft).toBeUndefined();
+  });
+});
+
+describe('Intake pack evidence-to-draft preparation', () => {
+  it('prepares a review-only draft from extracted pages and notes without filling fields', async () => {
+    const service = createService();
+    const created = await service.createPack();
+    await registerFixture(service, created.packId, 'pack-clean-single-site');
+    await service.extract(created.packId);
+    expect((await service.getPack(created.packId)).draft).toBeUndefined();
+
+    const draft = await service.getDraft(created.packId);
+    expect(intakeLayerMayInvokePricing('draft')).toBe(false);
+    expect(draftStructuredFieldsAreEmpty(draft)).toBe(true);
+    expect(draft.candidates.length).toBeGreaterThan(0);
+    expect(
+      draft.candidates.some(
+        (candidate) =>
+          candidate.field === 'customerLegalName' &&
+          candidate.value === 'Northstar Foods Ltd' &&
+          candidate.provenance.some(
+            (item) => item.sourceKind === 'DOCUMENT_PAGE' && item.pageNumber === 1,
+          ),
+      ),
+    ).toBe(true);
+    expect(
+      draft.candidates.some(
+        (candidate) =>
+          candidate.field === 'meterIdentifier' &&
+          candidate.value === '1234567890123' &&
+          candidate.associationStatus === 'RESOLVED' &&
+          candidate.provenance[0]?.quote.includes('Warehouse MPAN'),
+      ),
+    ).toBe(true);
+    expect(draft.candidates.every((candidate) => candidate.accepted === false)).toBe(true);
+
+    const persisted = await service.getPack(created.packId);
+    expect(persisted.draft?.draftVersion).toBe(1);
+    expect(draftStructuredFieldsAreEmpty(persisted.draft!)).toBe(true);
+    expect(await service.getDraft(created.packId)).toEqual(draft);
+  });
+
+  it('keeps both conflicting contract-end candidates and does not pick a winner', async () => {
+    const service = createService();
+    const created = await service.createPack();
+    await registerFixture(service, created.packId, 'pack-conflicting-evidence');
+    await service.extract(created.packId);
+    const draft = await service.getDraft(created.packId);
+    const dates = draft.candidates.filter((candidate) => candidate.field === 'contractEndDate');
+    expect(dates.map((candidate) => candidate.value)).toEqual(
+      expect.arrayContaining(['2027-03-31', '30/09/2026']),
+    );
+    expect(new Set(dates.map((candidate) => candidate.value)).size).toBeGreaterThanOrEqual(2);
+    expect(draftStructuredFieldsAreEmpty(draft)).toBe(true);
+  });
+
+  it('leaves Harbour-site facts unassociated until reviewed', async () => {
+    const service = createService();
+    const created = await service.createPack();
+    await registerFixture(service, created.packId, 'pack-ambiguous-site-association');
+    await service.extract(created.packId);
+    const draft = await service.getDraft(created.packId);
+    const harbour = draft.candidates.filter(
+      (candidate) => candidate.field === 'siteAddress' && candidate.value === 'the Harbour site',
+    );
+    expect(harbour.length).toBeGreaterThan(0);
+    expect(harbour.every((candidate) => candidate.associationStatus === 'AMBIGUOUS')).toBe(true);
+    expect(harbour.every((candidate) => candidate.siteId == null)).toBe(true);
+    expect(draft.sites).toEqual([]);
+    expect(draftStructuredFieldsAreEmpty(draft)).toBe(true);
+  });
+
+  it('does not prepare a draft before extraction and does not copy accepted values', async () => {
+    const service = createService();
+    const created = await service.createPack();
+    await registerFixture(service, created.packId, 'pack-clean-single-site');
+    await expect(service.getDraft(created.packId)).rejects.toBeInstanceOf(IntakeDraftNotFoundError);
+
+    await service.extract(created.packId);
+    const prepared = await service.getDraft(created.packId);
+    const customer = prepared.candidates.find(
+      (candidate) => candidate.field === 'customerLegalName',
+    );
+    const patched = await service.patchDraft(created.packId, {
+      expectedDraftVersion: 1,
+      acceptedCandidateIds: customer ? [customer.candidateId] : [],
+    });
+    expect(patched.draftVersion).toBe(2);
+    expect(draftStructuredFieldsAreEmpty(patched)).toBe(true);
+
+    const edited = await service.patchDraft(created.packId, {
+      expectedDraftVersion: 2,
+      fieldEdits: { customerLegalName: 'Northstar Foods Ltd' },
+    });
+    expect(edited.customer.legalName).toBe('Northstar Foods Ltd');
+    await expect(
+      service.patchDraft(created.packId, {
+        expectedDraftVersion: 2,
+        fieldEdits: { customerLegalName: 'Stale Ltd' },
+      }),
+    ).rejects.toBeInstanceOf(IntakePackConflictError);
   });
 });
