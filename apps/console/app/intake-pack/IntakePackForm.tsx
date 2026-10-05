@@ -11,9 +11,9 @@ import {
   type DragEvent,
   type FormEvent,
 } from 'react';
+import { IntakePackFlow } from './IntakePackFlow';
 import {
   INTAKE_PACK_ENTRY_NAME,
-  INTAKE_PACK_FLOW_STEPS,
   INTAKE_PACK_LIMITS,
   buildIntakeFileRows,
   canRemoveIntakeFileRow,
@@ -33,6 +33,7 @@ import {
   type IntakePackView,
   type LocalIntakeFile,
 } from '../../src/intake-pack';
+import { canOpenIntakeDraftReview } from '../../src/intake-pack-review';
 
 interface Props {
   initialPackId?: string;
@@ -61,7 +62,8 @@ export function IntakePackForm({ initialPackId }: Props) {
     [pack, localFiles],
   );
   const failedRows = useMemo(() => failedIntakeFileRows(rows), [rows]);
-  const flowStep = currentIntakePackFlowStep(pack ?? undefined);
+  const flowStep = pack?.extraction ? 'extract' : currentIntakePackFlowStep(pack ?? undefined);
+  const reviewOpen = canOpenIntakeDraftReview(pack ?? undefined);
   const canExtract = canTriggerIntakeExtract({
     pack: pack ?? undefined,
     localFiles,
@@ -375,21 +377,7 @@ export function IntakePackForm({ initialPackId }: Props) {
 
   return (
     <>
-      <ol className="intake-flow" aria-label={`${INTAKE_PACK_ENTRY_NAME} steps`}>
-        {INTAKE_PACK_FLOW_STEPS.map((step) => {
-          const current = step.id === flowStep;
-          const later = step.id === 'review' || step.id === 'confirm' || step.id === 'assess';
-          return (
-            <li
-              key={step.id}
-              className={`intake-flow-step${current ? ' current' : ''}${later ? ' later' : ''}`}
-            >
-              <strong>{step.label}</strong>
-              {later ? <small>Later ticket</small> : null}
-            </li>
-          );
-        })}
-      </ol>
+      <IntakePackFlow pack={pack ?? undefined} current={flowStep} />
 
       {loading ? (
         <div className="notice notice-info">
@@ -627,9 +615,9 @@ export function IntakePackForm({ initialPackId }: Props) {
         <section className="detail-card">
           <h2>Extract</h2>
           <p className="source-copy">
-            Extraction reads selectable PDF text only. Scanned pages become OCR_REQUIRED. This
-            Console slice stops at processing status — draft review, confirm, and readiness are
-            later tickets.
+            Extraction reads selectable PDF text only. Scanned pages become OCR_REQUIRED. When the
+            pack is reviewable, open Review to inspect candidates beside the source page. Confirm
+            and readiness remain later tickets.
           </p>
           {pack?.extraction ? (
             <div className="notice notice-info">
@@ -640,22 +628,32 @@ export function IntakePackForm({ initialPackId }: Props) {
                 {pack.extraction.pages
                   .reduce((sum, page) => sum + page.charCount, 0)
                   .toLocaleString('en-GB')}{' '}
-                characters. Immutable evidence is saved. Draft preparation is not available on this
-                page.
+                characters. Immutable evidence is saved. Candidates do not fill structured fields
+                until an operator writes them in Review.
               </span>
             </div>
           ) : null}
           <form className="review-form" onSubmit={extract}>
-            <button className="primary-button" disabled={!canExtract}>
-              {extracting
-                ? 'Extracting…'
-                : pack?.extraction
-                  ? 'Already extracted'
-                  : 'Extract selectable text'}
-            </button>
+            <div className="intake-extract-actions">
+              <button className="primary-button" disabled={!canExtract}>
+                {extracting
+                  ? 'Extracting…'
+                  : pack?.extraction
+                    ? 'Already extracted'
+                    : 'Extract selectable text'}
+              </button>
+              {reviewOpen && pack ? (
+                <Link
+                  className="primary-button"
+                  href={`/intake-pack/${encodeURIComponent(pack.packId)}/review`}
+                >
+                  Open review
+                </Link>
+              ) : null}
+            </div>
             <small className="action-note">
-              Extract never calls pricing and never fills a tender form. A later review step will
-              sit on this evidence.
+              Extract never calls pricing and never fills a tender form. Review is available after
+              extraction; confirm is ENG-23.
             </small>
           </form>
           <p>

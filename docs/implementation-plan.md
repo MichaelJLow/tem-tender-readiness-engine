@@ -450,9 +450,9 @@ path.
 **ENG-17 (contracts):** Zod contracts, limits, failure taxonomy, API surface
 sketch, and [ADR-005](adr/005-intake-pack-boundary.md).
 
-**ENG-21 (this Console slice):** Drop/upload + processing status only. PDFs and
-broker notes, pack limits, file statuses including visible failures, retry/remove
-where safe. No draft review, confirm, or readiness UI.
+**ENG-22 (this Console slice):** draft review beside the source viewer after a
+pack is `REVIEWABLE`. Operator edits, conflict presentation, site isolation,
+and version conflicts. No confirm or readiness UI.
 
 ### Tasks
 
@@ -467,7 +467,7 @@ where safe. No draft review, confirm, or readiness UI.
 - [x] ENG-19 bounded PDF registration and extraction.
 - [x] ENG-20 evidence-to-draft preparation (no silent field fill).
 - [x] ENG-21 Console upload and processing-status UI.
-- [ ] ENG-22 Console draft-review UI.
+- [x] ENG-22 Console draft-review UI.
 - [ ] ENG-23 confirmation adapter and readiness handoff.
 - [ ] ENG-24 safety, eval evidence, and runbook.
 

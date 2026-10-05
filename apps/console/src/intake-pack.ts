@@ -6,6 +6,7 @@ import {
   isIntakeDocumentFailureStatus,
   type IntakeDocumentFailure,
   type IntakeDocumentStatus,
+  type IntakeDraft,
   type IntakePackFailure,
 } from '../../../packages/domain/src/index.js';
 
@@ -80,7 +81,7 @@ export type IntakePackView = {
   documents: IntakeDocumentView[];
   notes: IntakeNoteView[];
   extraction?: IntakeExtractionView;
-  draft?: unknown;
+  draft?: IntakeDraft;
   confirmation?: unknown;
   failure?: IntakePackFailure;
 };
