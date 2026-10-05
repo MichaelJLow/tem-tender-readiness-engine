@@ -11,14 +11,14 @@ The accepted baseline is unchanged. Latest completed results were not promoted.
 
 ## Verdict
 
-| Gate                            | Result                               | Evidence                                                                                                    |
-| ------------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| Deterministic checks and builds | Pass                                 | `npm run check` (243 tests), `npm run build:api`, `npm run build:console`                                   |
-| Full labelled release suite     | **not_run / incomplete**             | [`evals/reports/full-2026-10-05T02-17-47.688Z.md`](../../evals/reports/full-2026-10-05T02-17-47.688Z.md)    |
-| Manual stratified QA            | Completed for inspectable demo paths | This receipt, [`stratified-http-evidence.json`](stratified-http-evidence.json), [screenshots](screenshots/) |
-| `evals/release-evidence.json`   | **Not created**                      | No completed passing clean full report exists for this source                                               |
-| Accepted baseline promotion     | **Not done**                         | `evals/accepted-baseline.json` still points at `full-2026-09-26T23-53-52.654Z`                              |
-| Thresholds                      | Unchanged                            | `evals/thresholds.json`                                                                                     |
+| Gate                            | Result                               | Evidence                                                                                                                                                      |
+| ------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deterministic checks and builds | Pass                                 | `npm run check` (243 tests), `npm run build:api`, `npm run build:console`                                                                                     |
+| Full labelled release suite     | **not_run / incomplete**             | [`evals/reports/full-2026-10-05T02-17-47.688Z.md`](../../evals/reports/full-2026-10-05T02-17-47.688Z.md)                                                      |
+| Manual stratified QA            | Completed for inspectable demo paths | This receipt, [`eng-14-manual-qa.json`](eng-14-manual-qa.json), [`stratified-http-evidence.json`](stratified-http-evidence.json), [screenshots](screenshots/) |
+| `evals/release-evidence.json`   | **Not created**                      | No completed passing clean full report exists for this source                                                                                                 |
+| Accepted baseline promotion     | **Not done**                         | `evals/accepted-baseline.json` still points at `full-2026-09-26T23-53-52.654Z`                                                                                |
+| Thresholds                      | Unchanged                            | `evals/thresholds.json`                                                                                                                                       |
 
 Empty denominators in the not-run report fail the corresponding gates, as
 required by `docs/eval-strategy.md`. The pricing-guard gate on that report
@@ -126,12 +126,15 @@ Reviewed by the ENG-14 agent run acting for MichaelJLow.
 - Did not lower thresholds.
 - Did not point `evals/release-evidence.json` at an incomplete or dirty report.
 - Did not change `evals/accepted-baseline.json`.
-- Manual QA of the inspectable demo paths is signed off.
+- Manual QA of the inspectable demo paths is signed off in
+  [`eng-14-manual-qa.json`](eng-14-manual-qa.json) (`sourceSha` =
+  `2e725d91c8aad75319a15630779c3420810e689c`).
 - The complete full-run verdict required for a stable interview release is
   **not** signed off until a maintainer runs `npm run eval:full` from a clean
   checkout with the configured OpenRouter/OpenAI credentials, the report is
   `completed` + `pass` + `gitDirty: false`, and
-  `npm run evidence:release` verifies the pointer plus this QA record.
+  `npm run evidence:release` verifies a new `evals/release-evidence.json`
+  pointer plus a manual-QA record whose `sourceSha` matches that report.
 
 A later clean full run should keep the current thresholds and the current
 accepted baseline unless a reviewer explicitly promotes a new baseline.

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "sourceSha": "2e725d91c8aad75319a15630779c3420810e689c",
+  "completedAt": "2026-10-05T03:10:00.000Z",
+  "reviewer": "MichaelJLow",
+  "ciUrl": "https://github.com/MichaelJLow/tem-tender-readiness-engine/actions/runs/37256061900",
+  "pullRequestUrl": "https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/23",
+  "checklist": {
+    "cleanHappyPath": true,
+    "multiSiteHappyPath": true,
+    "missingInformation": true,
+    "duplicateCase": true,
+    "contractDateConflict": true,
+    "siteAssociationAmbiguity": true,
+    "modelUncertainty": true,
+    "previousRegression": true,
+    "technicalRetryReplay": true,
+    "pricingGuard": true
+  },
+  "notes": "Stratified synthetic Console/API/archive walkthrough on source 2e725d91c8aad75319a15630779c3420810e689c. Live npm run eval:full is not_run (unconfigured provider; report evals/reports/full-2026-10-05T02-17-47.688Z). No evals/release-evidence.json pointer was created. Accepted baseline and thresholds were not changed. ciUrl is the green Actions run on 3c3f7cb that verified the QA packet before this record was added. Live n8n 1.112.6 and live private S3 restore were not repeated; ENG-7 and ENG-4 remain those receipts."
+}
