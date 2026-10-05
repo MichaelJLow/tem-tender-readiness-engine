@@ -55,17 +55,17 @@ delivery service.
 | API status and route                                                 | `integrationOutcome.type`      | Integration behaviour                                                                                                                                       |
 | -------------------------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `COMPLETED` + `READY_FOR_PRICING`                                    | `PRICING_HANDOFF_RECORDED`     | Records that the API-owned mock handoff succeeded. `pricingOwner` is `TENDER_API` and `handoffAttemptsInitiatedByWorkflow` is `0`; n8n never calls pricing. |
-| `COMPLETED` + `NEEDS_INFORMATION`                                    | `INFORMATION_REQUEST_RECORDED` | Produces a synthetic receipt with `deliveryStatus: NOT_SENT`. No email, chat message, webhook, or other outbound message is sent.                           |
+| `COMPLETED` + `NEEDS_INFORMATION`                                    | `INFORMATION_REQUEST_RECORDED` | Reports the API-persisted synthetic receipt with `deliveryStatus: NOT_SENT`. No email, chat message, webhook, or other outbound message is sent.            |
 | `COMPLETED` + `HUMAN_REVIEW`                                         | `HUMAN_REVIEW_AVAILABLE`       | Returns `consolePath: /tenders/{runId}` for the existing Console case. It does not create a review task or change the route.                                |
 | `COMPLETED` + `DUPLICATE`                                            | `DUPLICATE_RECORDED`           | Stops with an inspectable run/key and no downstream action.                                                                                                 |
 | `PROCESSING` with no route                                           | `PENDING`                      | Retains HTTP `202` and waits for a later replay after document processing.                                                                                  |
 | `FAILED`, a non-2xx API response, or any response carrying `failure` | `TECHNICAL_ERROR`              | Preserves any retained business route and follows the technical error path. No business action is reported as successful.                                   |
 
 Every outcome explicitly reports `outboundMessagesSent: 0`. The stable synthetic
-information-request key is `information-request:{runId}`. API idempotency returns
-the same `runId` on redelivery, so the key is stable for the subsequent
-reliability/idempotency work without pretending that a message has been sent.
-The workflow has only one HTTP Request node, and that node calls `POST /tenders`.
+information-request key is `information-request:{runId}`. The API persists at
+most one receipt for that key; webhook redelivery returns the same `runId` and
+does not create another receipt or send a message. The workflow has only one
+HTTP Request node, and that node calls `POST /tenders`.
 
 A Console review disposition of `REQUEST_INFORMATION` is a separate audit event.
 It remains attached to the `HUMAN_REVIEW` case and is not transformed into an

@@ -1,4 +1,10 @@
-import type { LocalState, PricingHandoff, ReviewEvent, TenderRun } from './contracts.js';
+import type {
+  InformationRequestReceipt,
+  LocalState,
+  PricingHandoff,
+  ReviewEvent,
+  TenderRun,
+} from './contracts.js';
 
 export interface TenderRepository {
   findRunByIdempotencyKey(key: string): Promise<TenderRun | undefined>;
@@ -10,6 +16,8 @@ export interface TenderRepository {
   appendReviewEvent?(event: ReviewEvent, expectedVersion: number): Promise<ReviewEvent>;
   findHandoff(handoffKey: string): Promise<PricingHandoff | undefined>;
   saveHandoff(handoff: PricingHandoff): Promise<void>;
+  findInformationRequestReceipt?(key: string): Promise<InformationRequestReceipt | undefined>;
+  saveInformationRequestReceipt?(receipt: InformationRequestReceipt): Promise<void>;
 }
 
 export interface LocalStateStore {

@@ -175,6 +175,22 @@ export const PricingHandoffSchema = z.object({
 });
 export type PricingHandoff = z.infer<typeof PricingHandoffSchema>;
 
+export const InformationRequestReceiptSchema = z.object({
+  receiptId: z.string().uuid(),
+  key: z.string().regex(/^information-request:[0-9a-f-]{36}$/),
+  runId: z.string().uuid(),
+  tenderId: z.string().min(1),
+  route: z.literal('NEEDS_INFORMATION'),
+  synthetic: z.literal(true),
+  deliveryStatus: z.literal('NOT_SENT'),
+  createdAt: z.string().datetime(),
+});
+export type InformationRequestReceipt = z.infer<typeof InformationRequestReceiptSchema>;
+
+export function informationRequestReceiptKey(runId: string): string {
+  return `information-request:${runId}`;
+}
+
 export const ReviewActionSchema = z.enum([
   'REQUEST_INFORMATION',
   'CONFIRM_DUPLICATE',
@@ -201,8 +217,11 @@ export const LocalStateSchema = z.object({
   runs: z.array(TenderRunSchema),
   handoffs: z.array(PricingHandoffSchema),
   reviewEvents: z.array(ReviewEventSchema).default([]),
+  informationRequestReceipts: z.array(InformationRequestReceiptSchema).default([]),
 });
-export type LocalState = z.infer<typeof LocalStateSchema>;
+export type LocalState = Omit<z.output<typeof LocalStateSchema>, 'informationRequestReceipts'> & {
+  informationRequestReceipts?: InformationRequestReceipt[];
+};
 
 export const TenderResponseSchema = z.object({
   tenderId: z.string(),

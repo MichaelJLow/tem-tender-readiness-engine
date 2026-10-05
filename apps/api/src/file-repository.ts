@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import {
   LocalStateSchema,
   ReviewEventSchema,
+  type InformationRequestReceipt,
   type LocalState,
   type PricingHandoff,
   type ReviewEvent,
@@ -19,7 +20,15 @@ export class FileStateStore implements LocalStateStore {
       const contents = await readFile(this.filePath, 'utf8');
       return LocalStateSchema.parse(JSON.parse(contents) as unknown);
     } catch (error) {
-      if (isMissingFile(error)) return { version: 1, runs: [], handoffs: [], reviewEvents: [] };
+      if (isMissingFile(error)) {
+        return {
+          version: 1,
+          runs: [],
+          handoffs: [],
+          reviewEvents: [],
+          informationRequestReceipts: [],
+        };
+      }
       throw new StateReadError(`Unable to read tender state at ${this.filePath}.`, {
         cause: error,
       });
@@ -119,6 +128,21 @@ export class JsonFileTenderRepository implements TenderRepository {
     const state = await this.store.read();
     if (!state.handoffs.some((existing) => existing.handoffKey === handoff.handoffKey)) {
       state.handoffs.push(handoff);
+      await this.store.write(state);
+    }
+  }
+
+  async findInformationRequestReceipt(key: string): Promise<InformationRequestReceipt | undefined> {
+    return (await this.store.read()).informationRequestReceipts?.find(
+      (receipt) => receipt.key === key,
+    );
+  }
+
+  async saveInformationRequestReceipt(receipt: InformationRequestReceipt): Promise<void> {
+    const state = await this.store.read();
+    const receipts = state.informationRequestReceipts ?? [];
+    if (!receipts.some((existing) => existing.key === receipt.key)) {
+      state.informationRequestReceipts = [...receipts, receipt];
       await this.store.write(state);
     }
   }

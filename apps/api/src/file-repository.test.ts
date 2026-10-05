@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cleanTender } from '../../../tests/fixtures/tenders.js';
+import { cleanTender, missingConsumptionTender } from '../../../tests/fixtures/tenders.js';
 import type { LocalState } from './contracts.js';
 import type { LocalStateStore } from './repository.js';
 import { FileStateStore, JsonFileTenderRepository, StateReadError } from './file-repository.js';
@@ -93,6 +93,40 @@ describe('JsonFileTenderRepository', () => {
     expect(replay.correlationId).toBe('correlation-replay');
     expect(state.runs).toHaveLength(1);
     expect(state.handoffs).toHaveLength(1);
+    expect(state.informationRequestReceipts).toHaveLength(0);
+  });
+
+  it('persists one synthetic information-request receipt across repository instances', async () => {
+    const firstRepository = createRepository();
+    const firstService = new TenderService(
+      firstRepository,
+      new MockPricingGateway(firstRepository),
+    );
+    const firstResult = await firstService.submit(missingConsumptionTender, 'correlation-missing');
+
+    const secondRepository = createRepository();
+    const secondService = new TenderService(
+      secondRepository,
+      new MockPricingGateway(secondRepository),
+    );
+    const replay = await secondService.submit(
+      missingConsumptionTender,
+      'correlation-missing-replay',
+    );
+    const state = await new FileStateStore(statePath).read();
+
+    expect(firstResult.route).toBe('NEEDS_INFORMATION');
+    expect(replay.replayed).toBe(true);
+    expect(replay.runId).toBe(firstResult.runId);
+    expect(state.runs).toHaveLength(1);
+    expect(state.handoffs).toHaveLength(0);
+    expect(state.reviewEvents).toHaveLength(0);
+    expect(state.informationRequestReceipts).toEqual([
+      expect.objectContaining({
+        key: `information-request:${firstResult.runId}`,
+        deliveryStatus: 'NOT_SENT',
+      }),
+    ]);
   });
 
   it('reads Milestone 2 state with long IDs and no textSources field', async () => {
@@ -196,7 +230,13 @@ describe('JsonFileTenderRepository', () => {
 
   it('rejects corrupted state instead of resetting it', async () => {
     const store = new FileStateStore(statePath);
-    await store.write({ version: 1, runs: [], handoffs: [], reviewEvents: [] });
+    await store.write({
+      version: 1,
+      runs: [],
+      handoffs: [],
+      reviewEvents: [],
+      informationRequestReceipts: [],
+    });
     await writeFile(statePath, '{broken');
 
     await expect(store.read()).rejects.toThrow('Unable to read tender state');

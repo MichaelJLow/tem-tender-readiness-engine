@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { IntakeRequestSchema } from '../../apps/api/src/contracts.js';
+import { informationRequestReceiptKey, IntakeRequestSchema } from '../../apps/api/src/contracts.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -223,7 +223,7 @@ describe('n8n tender intake export', () => {
 
     expect(first.body).toMatchObject({
       integrationOutcome: {
-        key: 'information-request:d6acbd9c-8617-401e-b867-2462d5a421aa',
+        key: informationRequestReceiptKey('d6acbd9c-8617-401e-b867-2462d5a421aa'),
         synthetic: true,
         deliveryStatus: 'NOT_SENT',
         outboundMessagesSent: 0,

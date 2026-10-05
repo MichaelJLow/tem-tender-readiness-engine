@@ -376,8 +376,8 @@ text only.
 
 ### Tasks
 
-- [ ] Implement idempotency for intake and downstream handoff.
-- [ ] Test duplicate webhook delivery.
+- [x] Implement idempotency for intake and downstream handoff.
+- [x] Test duplicate webhook delivery.
 - [ ] Add retry policy for transient failures.
 - [ ] Distinguish retryable and terminal failures.
 - [ ] Add explicit error taxonomy.

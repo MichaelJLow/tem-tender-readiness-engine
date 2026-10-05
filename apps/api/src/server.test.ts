@@ -6,7 +6,12 @@ import {
   conflictingDatesTender,
   missingConsumptionTender,
 } from '../../../tests/fixtures/tenders.js';
-import type { LocalState, PricingHandoff, TenderRun } from './contracts.js';
+import type {
+  InformationRequestReceipt,
+  LocalState,
+  PricingHandoff,
+  TenderRun,
+} from './contracts.js';
 import { JsonFileTenderRepository } from './file-repository.js';
 import { createTenderServer } from './server.js';
 import type { PricingGateway } from './pricing-gateway.js';
@@ -14,7 +19,13 @@ import type { LocalStateStore, TenderRepository } from './repository.js';
 import { TenderService } from './service.js';
 
 class MemoryStore implements LocalStateStore {
-  state: LocalState = { version: 1, runs: [], handoffs: [], reviewEvents: [] };
+  state: LocalState = {
+    version: 1,
+    runs: [],
+    handoffs: [],
+    reviewEvents: [],
+    informationRequestReceipts: [],
+  };
 
   async read(): Promise<LocalState> {
     return structuredClone(this.state);
@@ -52,6 +63,21 @@ class MemoryRepository implements TenderRepository {
     const state = await this.store.read();
     if (!state.handoffs.some((item) => item.handoffKey === handoff.handoffKey)) {
       state.handoffs.push(structuredClone(handoff));
+      await this.store.write(state);
+    }
+  }
+
+  async findInformationRequestReceipt(key: string): Promise<InformationRequestReceipt | undefined> {
+    return (await this.store.read()).informationRequestReceipts?.find(
+      (receipt) => receipt.key === key,
+    );
+  }
+
+  async saveInformationRequestReceipt(receipt: InformationRequestReceipt): Promise<void> {
+    const state = await this.store.read();
+    const receipts = state.informationRequestReceipts ?? [];
+    if (!receipts.some((item) => item.key === receipt.key)) {
+      state.informationRequestReceipts = [...receipts, structuredClone(receipt)];
       await this.store.write(state);
     }
   }
@@ -116,10 +142,19 @@ describe('POST /tenders', () => {
   it('does not call pricing for a non-ready tender', async () => {
     const repository = new MemoryRepository();
     const { response, body } = await postTender(repository, missingConsumptionTender);
+    const state = await repository.snapshot();
 
     expect(response.status).toBe(200);
     expect(body.route).toBe('NEEDS_INFORMATION');
-    expect((await repository.snapshot()).handoffs).toHaveLength(0);
+    expect(state.handoffs).toHaveLength(0);
+    expect(state.informationRequestReceipts).toEqual([
+      expect.objectContaining({
+        key: `information-request:${body.runId}`,
+        route: 'NEEDS_INFORMATION',
+        synthetic: true,
+        deliveryStatus: 'NOT_SENT',
+      }),
+    ]);
   });
 
   it('does not call pricing for a tender routed to human review', async () => {
