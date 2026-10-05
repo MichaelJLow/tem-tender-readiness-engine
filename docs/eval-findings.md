@@ -393,11 +393,25 @@ deterministic checks pass.**
 - **Disposition:** report the gap honestly. Manual demo QA is recorded under
   [`docs/release-qa/README.md`](release-qa/README.md) and
   [`docs/release-qa/eng-14-manual-qa.json`](release-qa/eng-14-manual-qa.json).
-  A maintainer-backed `npm run eval:full` on a clean checkout is still required
-  before a stable interview release. The accepted baseline remains
-  `full-2026-09-26T23-53-52.654Z`. Latest completed
-  `full-2026-09-28T19-39-31.237Z` is still not promoted. ENG-13 documentation
+  A provider-backed full run was completed after fixing the trace finding
+  below. Its report is diagnostic because the archive lacked `.git` metadata.
+  The accepted baseline remains `full-2026-09-26T23-53-52.654Z`; the later
+  passing runs have not been promoted. ENG-13 documentation
   landed on `main` after this eval attempt and did not change product sources.
+
+### ENG-14 trace investigation and fix — 2026-10-05
+
+- The first provider-backed full run, [`full-2026-10-05T12-56-37.771Z.md`](../evals/reports/full-2026-10-05T12-56-37.771Z.md), completed 63 cases and failed only the route-and-pricing gate (62/63). `ready-two-site-meters-document` went to `HUMAN_REVIEW`, although both extracted meter IDs were correct and the pricing guard correctly made no handoff.
+- **Trace diagnosis:** the model returned two clear meter observations and two clear site associations, one for each quoted sentence. The deterministic evidence bridge compared every association from the document against each observation. It treated an association for the other sentence as a contradiction, marked both facts ambiguous, and fired `TDR-010` followed by `TDR-012`. The model did not cause the route mismatch.
+- **Fix and regression:** association conflicts now require the fact citation and association citation to refer to the same claim. Tests cover separate site-specific associations in one multi-site document and retain human review for a genuinely conflicting site assignment.
+- The post-fix run, [`full-2026-10-05T13-30-54.275Z.md`](../evals/reports/full-2026-10-05T13-30-54.275Z.md), completed 63/63 cases and passed all 9 gates. Routes and pricing counts matched 63/63; critical facts matched 51/51; unsafe-ready was 0/44; and the previously failing case returned `READY_FOR_PRICING` with one mock handoff.
+- **Case-study note:** this is a useful trace-led debugging example: the eval showed a conservative false positive, while comparing the raw model span with the post-model deterministic signals isolated the fault to evidence reconciliation. The fix preserves the ambiguity policy and pricing guard.
+- **Run provenance:** the post-fix eval ran in a local archive extracted from
+  PR-head commit `8c1b72da9c9eec409a8857f9850276dc80731f29`, with this fix
+  and regression test applied. The archive had no `.git` metadata, so the
+  report records source revision `unknown`; retain it as diagnostic evidence
+  until the change is evaluated from a clean Git revision. Do not promote it
+  over the accepted baseline or select it as release evidence yet.
 
 ## Follow-up log
 
@@ -415,4 +429,5 @@ deterministic checks pass.**
 | 2026-09-28 | post-fix full release rerun   | 49/51 agent facts; separate site-specific quotes in one multi-site association were rejected                                                                                                                               | Remaining validator case fixed locally; deterministic verification before next live rerun                                                                                                                                      |
 | 2026-09-28 | final full release eval       | 63/63 cases; all 9 gates passed; 51/51 agent facts; accepted baseline preserved                                                                                                                                            | Milestone 4 full-eval acceptance met for the synthetic dataset                                                                                                                                                                 |
 | 2026-10-05 | ENG-12 reliability rehearsal  | Visible failure → no unsafe action → safe recovery recorded for provider timeout, invalid model output, persistence read/write, mocked gateway 500, duplicate webhook, and archive missing-object. No live model eval.     | Receipt: [`docs/reliability-rehearsal.md`](reliability-rehearsal.md). Accepted baseline unchanged. Latest results were not promoted.                                                                                           |
-| 2026-10-05 | ENG-14 final release attempt  | Clean full suite on `2e725d9` wrote an explicit `not_run` report: no provider key in this remote environment. Existing full reports are dirty and from older source revisions. Thresholds and accepted baseline unchanged. | Diagnostic report [`full-2026-10-05T02-17-47.688Z.md`](../evals/reports/full-2026-10-05T02-17-47.688Z.md). Manual QA: [`docs/release-qa/eng-14-manual-qa.json`](release-qa/eng-14-manual-qa.json). No `release-evidence.json`. |
+| 2026-10-05 | ENG-14 trace-led fix and full eval | A route mismatch came from treating separate valid site associations as contradictory; the targeted fix passed all 9 gates. The post-fix archive lacked Git metadata. | Before/after reports linked above; 243 tests and API build passed. Diagnostic only until clean-revision eval; accepted baseline unchanged. |
+
