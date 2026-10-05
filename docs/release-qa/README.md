@@ -11,6 +11,39 @@ baseline.
 | ENG-14 (this file) | V1 full eval + stratified demo QA on source `9fbf16f`                     |
 | ENG-24             | Intake pack HTTP/Console QA; deterministic safety tests; runbook handover |
 
+# ENG-24 Intake pack QA receipt
+
+Milestone 10 / [ENG-24](https://linear.app/workwithlayer/issue/ENG-24/intake-pack-safety-eval-evidence-and-runbook)
+is a **sibling** of the ENG-14 V1 packet. It does not retarget
+`evals/release-evidence.json` or promote the accepted baseline.
+
+| Gate                        | Result                                                                                       | Evidence                                                                                                                                                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Deterministic Intake safety | Pass on source `186dba5`                                                                     | Domain/API/console tests plus [`tests/intake-pack-safety.test.ts`](../../tests/intake-pack-safety.test.ts). CI [`37376974868`](https://github.com/MichaelJLow/tem-tender-readiness-engine/actions/runs/37376974868) |
+| HTTP matrix                 | Empty confirm, multi-site no leakage, OCR visible, stale 409, ready-only handoff             | [`eng-24-intake-http-evidence.json`](eng-24-intake-http-evidence.json) via `npx tsx scripts/run-intake-pack-qa.ts`                                                                                                  |
+| Console walkthrough         | Drop → extract → empty fields → operator save → confirm; OCR kept; warehouse/retail isolated | [`eng-24-manual-qa.json`](eng-24-manual-qa.json), [screenshots](#eng-24-screenshots)                                                                                                                                |
+| Pricing guard               | 1 mock handoff (`tender-clean-001` only) after 6 Intake confirms                             | Queue screenshot; isolated `data/eng24-qa/tender-state.json` inventory                                                                                                                                              |
+| Local confirm without a key | `MODEL_PROVIDER_FAILED`, no business route                                                   | Case-detail screenshot. Confirm maps notes/pages as `textSources`; this environment has no provider key. Tests still cover `NEEDS_INFORMATION` / `HUMAN_REVIEW` with `EmptyInterpreter`.                            |
+| Labelled eval pointers      | Unchanged                                                                                    | `evals/pr-evidence.json` / `evals/release-evidence.json` still ENG-14. Dataset hash unchanged. Zero unsafe-ready remains the gate.                                                                                  |
+
+PR: [tem-tender-readiness-engine#32](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/32).
+
+### ENG-24 screenshots
+
+Real Console captures at 1500 × 1000 against a disposable loopback API. All packs are synthetic.
+
+- [Drop](screenshots/eng-24-01-intake-drop.png) — Intake pack with no tender form; synthetic-data notice; PDF limits.
+- [Extract](screenshots/eng-24-02-single-site-extracted.png) — `pack-clean-single-site` stored as immutable evidence; Open review.
+- [Empty review fields](screenshots/eng-24-03-review-empty-fields.png) — Customer/broker stay Empty; candidates do not fill fields.
+- [Operator save](screenshots/eng-24-04-review-operator-saved.png) — Typed warehouse values at draft version 2.
+- [Confirm case](screenshots/eng-24-05-confirm-case-detail.png) — Existing case detail; `FAILED` / `MODEL_PROVIDER_FAILED`; no `READY_FOR_PRICING`.
+- [OCR required](screenshots/eng-24-06-ocr-required.png) — `scanned-invoice.pdf` remains listed; 0 extracted characters.
+- [Warehouse](screenshots/eng-24-07-multi-warehouse.png) — MPAN `1234567890123` on warehouse; retail meter absent.
+- [Retail](screenshots/eng-24-08-multi-retail.png) — MPAN `2345678901234` on retail; warehouse meter absent.
+- [Queue](screenshots/eng-24-09-queue.png) — Ready for pricing = 1 (`tender-clean-001`); Intake confirms have no final route.
+
+Walkthrough: [runbook Intake pack](../runbook.md#console-intake-pack-milestone-10).
+
 # ENG-14 release QA receipt
 
 This is the Milestone 9 release-evidence packet for
