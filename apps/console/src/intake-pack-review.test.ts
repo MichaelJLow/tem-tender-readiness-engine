@@ -8,16 +8,24 @@ import {
   buildIntakeDraftPatch,
   canOpenIntakeDraftReview,
   candidatesForReviewBucket,
+  competingCandidatesForAssignment,
   conflictGroups,
   emptyReviewFieldEdits,
   isDraftStaleError,
+  isIntakeDraftReadOnly,
+  leaveUnassignedCandidate,
+  matchingAcceptedIds,
   operatorFieldState,
   packLevelCandidates,
+  parseAnnualConsumption,
+  rebaseReviewSession,
   resolveConflictChoice,
   reviewFieldEditsFromDraft,
+  reviewSaveIssues,
   reviewSiteIds,
   sourceFocusForCandidate,
   splitAroundQuote,
+  unassignedConflictGroups,
 } from './intake-pack-review.js';
 
 const NOW = '2026-10-05T18:00:00.000Z';
@@ -147,7 +155,7 @@ function multiSiteDraft(): IntakeDraft {
 }
 
 describe('Console Intake pack draft review', () => {
-  it('opens review only after immutable extraction exists', () => {
+  it('opens review only for REVIEWABLE or CONFIRMED packs with extraction', () => {
     const pack: IntakePackView = {
       packId: 'pack-001',
       kind: 'INTAKE_PACK',
@@ -159,21 +167,20 @@ describe('Console Intake pack draft review', () => {
       documents: [],
       notes: [],
     };
+    const extraction = {
+      extractionId: 'ex-1',
+      packId: 'pack-001',
+      createdAt: NOW,
+      immutable: true as const,
+      pages: [],
+      documents: [],
+    };
     expect(canOpenIntakeDraftReview(pack)).toBe(false);
-    expect(
-      canOpenIntakeDraftReview({
-        ...pack,
-        status: 'REVIEWABLE',
-        extraction: {
-          extractionId: 'ex-1',
-          packId: 'pack-001',
-          createdAt: NOW,
-          immutable: true,
-          pages: [],
-          documents: [],
-        },
-      }),
-    ).toBe(true);
+    expect(canOpenIntakeDraftReview({ ...pack, extraction, status: 'EXTRACTING' })).toBe(false);
+    expect(canOpenIntakeDraftReview({ ...pack, extraction, status: 'REVIEWABLE' })).toBe(true);
+    expect(canOpenIntakeDraftReview({ ...pack, extraction, status: 'CONFIRMED' })).toBe(true);
+    expect(isIntakeDraftReadOnly({ ...pack, extraction, status: 'CONFIRMED' })).toBe(true);
+    expect(isIntakeDraftReadOnly({ ...pack, extraction, status: 'REVIEWABLE' })).toBe(false);
   });
 
   it('does not leak warehouse evidence into the retail draft the operator sees', () => {
@@ -328,5 +335,197 @@ describe('Console Intake pack draft review', () => {
       }),
     ).toBe(true);
     expect(isDraftStaleError(400, { error: 'INVALID_INTAKE_DRAFT' })).toBe(false);
+  });
+
+  it('rebases a stale customer-name edit onto concurrent warehouse work without wiping it', () => {
+    const meter = candidate({
+      candidateId: 'candidate-w-meter',
+      field: 'meterIdentifier',
+      value: '1234567890123',
+      siteId: 'site-warehouse',
+    });
+    const base = draft({
+      draftVersion: 1,
+      candidates: [
+        candidate({
+          candidateId: 'candidate-001',
+          field: 'customerLegalName',
+          value: 'Northstar Foods Ltd',
+        }),
+        meter,
+      ],
+    });
+    const latest = draft({
+      draftVersion: 2,
+      candidates: [base.candidates[0]!, { ...meter, accepted: true }],
+      sites: [{ siteId: 'site-warehouse', meterIdentifier: '1234567890123' }],
+    });
+    const rebased = rebaseReviewSession({
+      base,
+      latest,
+      edits: { ...emptyReviewFieldEdits(), customerLegalName: 'Northstar Foods Ltd' },
+      acceptedIds: [],
+    });
+    const patch = buildIntakeDraftPatch({
+      expectedDraftVersion: latest.draftVersion,
+      original: latest,
+      edits: rebased.edits,
+      acceptedIds: rebased.acceptedIds,
+    });
+
+    expect(rebased.edits.customerLegalName).toBe('Northstar Foods Ltd');
+    expect(rebased.edits.sites['site-warehouse']?.meterIdentifier).toBe('1234567890123');
+    expect(rebased.acceptedIds).toEqual(['candidate-w-meter']);
+    expect(patch.fieldEdits.customerLegalName).toBe('Northstar Foods Ltd');
+    expect(patch.fieldEdits.sites).toBeUndefined();
+    expect(patch.rejectedCandidateIds).toEqual([]);
+    expect(patch.acceptedCandidateIds).toEqual([]);
+    expect(
+      rebased.concurrentChanges.some((change) => change.detail.includes('1234567890123')),
+    ).toBe(true);
+  });
+
+  it('does not treat independent unassigned meters as one conflict', () => {
+    const meters: IntakeCandidate[] = [
+      candidate({
+        candidateId: 'm1',
+        field: 'meterIdentifier',
+        value: '1234567890123',
+        siteId: null,
+        associationStatus: 'UNRESOLVED',
+      }),
+      candidate({
+        candidateId: 'm2',
+        field: 'meterIdentifier',
+        value: '9876543210987',
+        siteId: null,
+        associationStatus: 'UNRESOLVED',
+      }),
+    ];
+    expect(conflictGroups(meters)).toEqual([]);
+    expect(unassignedConflictGroups(meters, {})).toEqual([]);
+    expect(
+      unassignedConflictGroups(meters, { m1: 'site-warehouse', m2: 'site-warehouse' }),
+    ).toHaveLength(1);
+  });
+
+  it('assigns unassigned facts to different sites without dropping the first audit', () => {
+    const m1 = candidate({
+      candidateId: 'm1',
+      field: 'meterIdentifier',
+      value: '1234567890123',
+      siteId: null,
+      associationStatus: 'UNRESOLVED',
+    });
+    const m2 = candidate({
+      candidateId: 'm2',
+      field: 'meterIdentifier',
+      value: '9876543210987',
+      siteId: null,
+      associationStatus: 'UNRESOLVED',
+    });
+    const first = resolveConflictChoice({
+      edits: emptyReviewFieldEdits(),
+      acceptedIds: [],
+      group: competingCandidatesForAssignment({
+        candidates: [m1, m2],
+        candidate: m1,
+        targetSiteId: 'site-warehouse',
+        assignedSiteByCandidate: {},
+      }),
+      chosenCandidateId: 'm1',
+      siteId: 'site-warehouse',
+    });
+    const second = resolveConflictChoice({
+      edits: first.edits,
+      acceptedIds: first.acceptedIds,
+      group: competingCandidatesForAssignment({
+        candidates: [m1, m2],
+        candidate: m2,
+        targetSiteId: 'site-retail',
+        assignedSiteByCandidate: { m1: 'site-warehouse' },
+      }),
+      chosenCandidateId: 'm2',
+      siteId: 'site-retail',
+    });
+
+    expect(first.acceptedIds).toEqual(['m1']);
+    expect(second.acceptedIds).toEqual(['m1', 'm2']);
+    expect(second.edits.sites['site-warehouse']?.meterIdentifier).toBe('1234567890123');
+    expect(second.edits.sites['site-retail']?.meterIdentifier).toBe('9876543210987');
+    expect(reviewSiteIds(draft(), second.edits)).toEqual(['site-retail', 'site-warehouse']);
+
+    const left = leaveUnassignedCandidate({
+      edits: second.edits,
+      acceptedIds: second.acceptedIds,
+      candidate: m1,
+      assignedSiteByCandidate: { m1: 'site-warehouse', m2: 'site-retail' },
+    });
+    expect(left.acceptedIds).toEqual(['m2']);
+    expect(left.edits.sites['site-warehouse']?.meterIdentifier).toBe('');
+    expect(left.edits.sites['site-retail']?.meterIdentifier).toBe('9876543210987');
+    expect(left.assignedSiteByCandidate.m1).toBeUndefined();
+    expect(left.assignedSiteByCandidate.m2).toBe('site-retail');
+
+    const neverAssigned = leaveUnassignedCandidate({
+      edits: second.edits,
+      acceptedIds: second.acceptedIds,
+      candidate: m1,
+      assignedSiteByCandidate: { m2: 'site-retail' },
+    });
+    expect(neverAssigned.acceptedIds).toEqual(['m2']);
+    expect(neverAssigned.edits.sites['site-warehouse']?.meterIdentifier).toBe('1234567890123');
+    expect(neverAssigned.edits.sites['site-retail']?.meterIdentifier).toBe('9876543210987');
+  });
+
+  it('rejects invalid annual consumption instead of rewriting digits', () => {
+    expect(parseAnnualConsumption('24000')).toEqual({ ok: true, value: 24000 });
+    expect(parseAnnualConsumption('')).toEqual({ ok: true, value: null });
+    expect(parseAnnualConsumption('24,000.5').ok).toBe(false);
+    expect(parseAnnualConsumption('-100').ok).toBe(false);
+    expect(
+      reviewSaveIssues({
+        ...emptyReviewFieldEdits(),
+        sites: {
+          'site-warehouse': {
+            siteId: 'site-warehouse',
+            address: '',
+            meterIdentifier: '',
+            annualConsumptionKwh: '24,000.5',
+            contractEndDate: '',
+          },
+        },
+      }).some((issue) => issue.includes('24,000.5')),
+    ).toBe(true);
+  });
+
+  it('drops accepted audit when the operator retypes away from that candidate', () => {
+    const customer = candidate({
+      candidateId: 'candidate-001',
+      field: 'customerLegalName',
+      value: 'Northstar Foods Ltd',
+    });
+    expect(
+      matchingAcceptedIds({
+        candidates: [customer],
+        edits: { ...emptyReviewFieldEdits(), customerLegalName: 'Other Ltd' },
+        acceptedIds: ['candidate-001'],
+      }),
+    ).toEqual([]);
+    expect(
+      matchingAcceptedIds({
+        candidates: [customer],
+        edits: emptyReviewFieldEdits(),
+        acceptedIds: ['candidate-001'],
+      }),
+    ).toEqual(['candidate-001']);
+  });
+
+  it('does not highlight a fallback token when the exact quote is missing', () => {
+    const split = splitAroundQuote(
+      'Warehouse MPAN 1234567890123',
+      'Schedule A contract end date 2027-03-31',
+    );
+    expect(split.kind).toBe('miss');
   });
 });

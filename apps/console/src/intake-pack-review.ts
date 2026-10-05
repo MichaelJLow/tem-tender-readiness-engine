@@ -66,8 +66,28 @@ export type IntakeDraftPatchBody = {
   };
 };
 
+export type ConcurrentDraftChange = {
+  label: string;
+  detail: string;
+};
+
+export type ConsumptionParseResult =
+  { ok: true; value: number | null } | { ok: false; message: string };
+
+const SITE_VALUE_KEYS = [
+  'address',
+  'meterIdentifier',
+  'annualConsumptionKwh',
+  'contractEndDate',
+] as const;
+
 export function canOpenIntakeDraftReview(pack?: IntakePackView): boolean {
-  return Boolean(pack?.extraction);
+  if (!pack?.extraction) return false;
+  return pack.status === 'REVIEWABLE' || pack.status === 'CONFIRMED';
+}
+
+export function isIntakeDraftReadOnly(pack?: IntakePackView): boolean {
+  return pack?.status === 'CONFIRMED';
 }
 
 export function isSiteScopedDraftField(field: IntakeDraftField): field is SiteScopedDraftField {
@@ -98,7 +118,7 @@ export function displaySiteLabel(siteId: string | null | undefined): string {
   return siteId;
 }
 
-export function reviewSiteIds(draft: IntakeDraft): string[] {
+export function reviewSiteIds(draft: IntakeDraft, edits?: ReviewFieldEdits): string[] {
   const ids = new Set<string>();
   for (const site of draft.sites) {
     if (site.siteId) ids.add(site.siteId);
@@ -106,6 +126,7 @@ export function reviewSiteIds(draft: IntakeDraft): string[] {
   for (const candidate of draft.candidates) {
     if (candidate.siteId) ids.add(candidate.siteId);
   }
+  for (const siteId of Object.keys(edits?.sites ?? {})) ids.add(siteId);
   return [...ids].sort((left, right) =>
     displaySiteLabel(left).localeCompare(displaySiteLabel(right), 'en-GB'),
   );
@@ -149,6 +170,7 @@ export function candidatesForReviewBucket(
 export function conflictGroups(candidates: IntakeCandidate[]): ReviewConflictGroup[] {
   const grouped = new Map<string, IntakeCandidate[]>();
   for (const candidate of candidates) {
+    if (isSiteScopedDraftField(candidate.field) && !candidate.siteId) continue;
     const siteKey = isSiteScopedDraftField(candidate.field) ? (candidate.siteId ?? '') : '';
     const key = `${candidate.field}\0${siteKey}`;
     const existing = grouped.get(key);
@@ -170,6 +192,50 @@ export function conflictGroups(candidates: IntakeCandidate[]): ReviewConflictGro
     });
   }
   return conflicts;
+}
+
+export function unassignedConflictGroups(
+  candidates: IntakeCandidate[],
+  assignedSiteByCandidate: Record<string, string>,
+): ReviewConflictGroup[] {
+  const grouped = new Map<string, IntakeCandidate[]>();
+  for (const candidate of candidates) {
+    const targetSiteId = assignedSiteByCandidate[candidate.candidateId];
+    if (!targetSiteId) continue;
+    const key = `${candidate.field}\0${targetSiteId}`;
+    const existing = grouped.get(key);
+    if (existing) existing.push(candidate);
+    else grouped.set(key, [candidate]);
+  }
+
+  const conflicts: ReviewConflictGroup[] = [];
+  for (const [key, group] of grouped) {
+    const values = new Set(group.map((candidate) => candidate.value));
+    if (values.size < 2) continue;
+    const first = group[0];
+    if (!first) continue;
+    conflicts.push({
+      key,
+      field: first.field,
+      siteId: assignedSiteByCandidate[first.candidateId] ?? null,
+      candidates: group,
+    });
+  }
+  return conflicts;
+}
+
+export function competingCandidatesForAssignment(input: {
+  candidates: IntakeCandidate[];
+  candidate: IntakeCandidate;
+  targetSiteId: string;
+  assignedSiteByCandidate: Record<string, string>;
+}): IntakeCandidate[] {
+  return input.candidates.filter((item) => {
+    if (item.field !== input.candidate.field) return false;
+    if (item.candidateId === input.candidate.candidateId) return true;
+    if (input.assignedSiteByCandidate[item.candidateId] === input.targetSiteId) return true;
+    return item.siteId === input.targetSiteId;
+  });
 }
 
 export function operatorFieldState(value: string | undefined | null): 'empty' | 'operator' {
@@ -290,14 +356,10 @@ export function resolveConflictChoice(input: {
   const acceptedIds = input.acceptedIds.filter((id) => !groupIds.has(id));
   if (!input.chosenCandidateId) {
     const first = input.group[0];
+    const targetSiteId =
+      first && isSiteScopedDraftField(first.field) ? (input.siteId ?? first.siteId ?? null) : null;
     return {
-      edits: first
-        ? clearOperatorField(
-            input.edits,
-            first.field,
-            isSiteScopedDraftField(first.field) ? (input.siteId ?? first.siteId ?? null) : null,
-          )
-        : input.edits,
+      edits: first ? clearOperatorField(input.edits, first.field, targetSiteId) : input.edits,
       acceptedIds,
     };
   }
@@ -306,6 +368,33 @@ export function resolveConflictChoice(input: {
   return {
     edits: applyCandidateValueToEdits(input.edits, chosen, input.siteId ?? chosen.siteId),
     acceptedIds: [...acceptedIds, chosen.candidateId],
+  };
+}
+
+export function leaveUnassignedCandidate(input: {
+  edits: ReviewFieldEdits;
+  acceptedIds: string[];
+  candidate: IntakeCandidate;
+  assignedSiteByCandidate: Record<string, string>;
+}): {
+  edits: ReviewFieldEdits;
+  acceptedIds: string[];
+  assignedSiteByCandidate: Record<string, string>;
+} {
+  const targetSiteId = input.assignedSiteByCandidate[input.candidate.candidateId];
+  const resolved = resolveConflictChoice({
+    edits: input.edits,
+    acceptedIds: input.acceptedIds,
+    group: [input.candidate],
+    chosenCandidateId: null,
+    siteId: targetSiteId ?? null,
+  });
+  const assignedSiteByCandidate = { ...input.assignedSiteByCandidate };
+  delete assignedSiteByCandidate[input.candidate.candidateId];
+  return {
+    edits: resolved.edits,
+    acceptedIds: resolved.acceptedIds,
+    assignedSiteByCandidate,
   };
 }
 
@@ -367,23 +456,189 @@ export function splitAroundQuote(
       after: text.slice(index + needle.length),
     };
   }
-  const token = needle.split(/\s+/).find((part) => part.length >= 6);
-  if (token) {
-    const tokenIndex = text.toLowerCase().indexOf(token.toLowerCase());
-    if (tokenIndex >= 0) {
-      return {
-        kind: 'hit',
-        before: text.slice(0, tokenIndex),
-        match: text.slice(tokenIndex, tokenIndex + token.length),
-        after: text.slice(tokenIndex + token.length),
-      };
-    }
-  }
   return { kind: 'miss', text };
 }
 
 export function acceptedCandidateIdsFromDraft(draft: IntakeDraft): string[] {
   return draft.candidates.filter((candidate) => candidate.accepted).map((c) => c.candidateId);
+}
+
+export function matchingAcceptedIds(input: {
+  candidates: IntakeCandidate[];
+  edits: ReviewFieldEdits;
+  acceptedIds: string[];
+  assignedSiteByCandidate?: Record<string, string>;
+}): string[] {
+  return input.acceptedIds.filter((id) => {
+    const candidate = input.candidates.find((item) => item.candidateId === id);
+    if (!candidate) return false;
+    const operatorValue = operatorValueForCandidate(
+      input.edits,
+      candidate,
+      input.assignedSiteByCandidate?.[id] ?? candidate.siteId,
+    );
+    if (!operatorValue.trim()) return true;
+    return operatorValue.trim() === candidate.value;
+  });
+}
+
+export function rebaseReviewSession(input: {
+  base: IntakeDraft;
+  latest: IntakeDraft;
+  edits: ReviewFieldEdits;
+  acceptedIds: string[];
+}): {
+  edits: ReviewFieldEdits;
+  acceptedIds: string[];
+  concurrentChanges: ConcurrentDraftChange[];
+} {
+  const baseEdits = reviewFieldEditsFromDraft(input.base);
+  const latestEdits = reviewFieldEditsFromDraft(input.latest);
+  const concurrentChanges: ConcurrentDraftChange[] = [];
+
+  if (latestEdits.customerLegalName !== baseEdits.customerLegalName) {
+    concurrentChanges.push({
+      label: displayDraftField('customerLegalName'),
+      detail: latestEdits.customerLegalName || '(empty)',
+    });
+  }
+  if (latestEdits.brokerLegalName !== baseEdits.brokerLegalName) {
+    concurrentChanges.push({
+      label: displayDraftField('brokerLegalName'),
+      detail: latestEdits.brokerLegalName || '(empty)',
+    });
+  }
+
+  const customerLegalName =
+    input.edits.customerLegalName !== baseEdits.customerLegalName
+      ? input.edits.customerLegalName
+      : latestEdits.customerLegalName;
+  const brokerLegalName =
+    input.edits.brokerLegalName !== baseEdits.brokerLegalName
+      ? input.edits.brokerLegalName
+      : latestEdits.brokerLegalName;
+
+  const siteIds = new Set([
+    ...Object.keys(baseEdits.sites),
+    ...Object.keys(latestEdits.sites),
+    ...Object.keys(input.edits.sites),
+  ]);
+  const sites: ReviewFieldEdits['sites'] = {};
+  for (const siteId of siteIds) {
+    const baseSite = baseEdits.sites[siteId] ?? emptySiteEdit(siteId);
+    const latestSite = latestEdits.sites[siteId] ?? emptySiteEdit(siteId);
+    const localSite = input.edits.sites[siteId];
+    const merged = emptySiteEdit(siteId);
+    for (const key of SITE_VALUE_KEYS) {
+      if (latestSite[key] !== baseSite[key]) {
+        concurrentChanges.push({
+          label: `${displaySiteLabel(siteId)} ${displayDraftField(fieldForSiteKey(key))}`,
+          detail: latestSite[key] || '(empty)',
+        });
+      }
+      const localChanged = Boolean(localSite && localSite[key] !== baseSite[key]);
+      merged[key] = localChanged && localSite ? localSite[key] : latestSite[key];
+    }
+    if (latestEdits.sites[siteId] || (localSite && siteHasOperatorValue(localSite))) {
+      sites[siteId] = merged;
+    }
+  }
+
+  const baseAccepted = new Set(acceptedCandidateIdsFromDraft(input.base));
+  const latestAccepted = new Set(acceptedCandidateIdsFromDraft(input.latest));
+  const localAccepted = new Set(input.acceptedIds);
+  const nextAccepted = new Set(latestAccepted);
+  for (const id of baseAccepted) {
+    if (!localAccepted.has(id)) nextAccepted.delete(id);
+  }
+  for (const id of localAccepted) {
+    if (!baseAccepted.has(id)) nextAccepted.add(id);
+  }
+  for (const id of latestAccepted) {
+    if (baseAccepted.has(id)) continue;
+    const candidate = input.latest.candidates.find((item) => item.candidateId === id);
+    concurrentChanges.push({
+      label: 'Accepted candidate',
+      detail: candidate ? `${displayDraftField(candidate.field)} · ${candidate.value}` : id,
+    });
+  }
+
+  return {
+    edits: { customerLegalName, brokerLegalName, sites },
+    acceptedIds: [...nextAccepted],
+    concurrentChanges,
+  };
+}
+
+export function describeConcurrentDraftChanges(changes: ConcurrentDraftChange[]): string {
+  if (changes.length === 0) {
+    return 'No other fields changed. Your unsaved edits are ready to save on this version.';
+  }
+  return `Kept concurrent work: ${changes.map((change) => `${change.label} → ${change.detail}`).join('; ')}.`;
+}
+
+export function parseAnnualConsumption(raw: string): ConsumptionParseResult {
+  const trimmed = raw.trim();
+  if (!trimmed) return { ok: true, value: null };
+  if (!/^\d+(?:\.\d+)?$/.test(trimmed)) {
+    return {
+      ok: false,
+      message: `Annual consumption “${trimmed}” is not a valid number.`,
+    };
+  }
+  const value = Number(trimmed);
+  if (!Number.isFinite(value)) {
+    return { ok: false, message: `Annual consumption “${trimmed}” is not a valid number.` };
+  }
+  return { ok: true, value };
+}
+
+export function reviewSaveIssues(edits: ReviewFieldEdits): string[] {
+  const issues: string[] = [];
+  for (const site of Object.values(edits.sites)) {
+    const parsed = parseAnnualConsumption(site.annualConsumptionKwh);
+    if (!parsed.ok) {
+      issues.push(`${displaySiteLabel(site.siteId)}: ${parsed.message}`);
+    }
+  }
+  return issues;
+}
+
+function operatorValueForCandidate(
+  edits: ReviewFieldEdits,
+  candidate: IntakeCandidate,
+  siteId: string | null | undefined,
+): string {
+  if (candidate.field === 'customerLegalName') return edits.customerLegalName;
+  if (candidate.field === 'brokerLegalName') return edits.brokerLegalName;
+  if (!siteId) return '';
+  const site = edits.sites[siteId];
+  if (!site) return '';
+  switch (candidate.field) {
+    case 'siteAddress':
+      return site.address;
+    case 'meterIdentifier':
+      return site.meterIdentifier;
+    case 'annualConsumptionKwh':
+      return site.annualConsumptionKwh;
+    case 'contractEndDate':
+      return site.contractEndDate;
+    default:
+      return '';
+  }
+}
+
+function fieldForSiteKey(key: (typeof SITE_VALUE_KEYS)[number]): IntakeDraftField {
+  switch (key) {
+    case 'address':
+      return 'siteAddress';
+    case 'meterIdentifier':
+      return 'meterIdentifier';
+    case 'annualConsumptionKwh':
+      return 'annualConsumptionKwh';
+    case 'contractEndDate':
+      return 'contractEndDate';
+  }
 }
 
 export function buildIntakeDraftPatch(input: {
@@ -450,12 +705,12 @@ function sitesFromEdits(edits: ReviewFieldEdits, original: IntakeDraft): IntakeD
 }
 
 function toDraftSite(edit: ReviewSiteEdit): IntakeDraftSite {
-  const consumption = parseConsumption(edit.annualConsumptionKwh);
+  const consumption = parseAnnualConsumption(edit.annualConsumptionKwh);
   return {
     siteId: edit.siteId,
     address: edit.address.trim() || undefined,
     meterIdentifier: edit.meterIdentifier.trim() || null,
-    annualConsumptionKwh: consumption,
+    annualConsumptionKwh: consumption.ok ? consumption.value : null,
     contractEndDate: edit.contractEndDate.trim() || null,
   };
 }
@@ -467,13 +722,6 @@ function siteHasOperatorValue(edit: ReviewSiteEdit): boolean {
     edit.annualConsumptionKwh.trim() ||
     edit.contractEndDate.trim(),
   );
-}
-
-function parseConsumption(raw: string): number | null {
-  const digits = raw.replace(/[^\d]/g, '');
-  if (!digits) return null;
-  const value = Number(digits);
-  return Number.isFinite(value) ? value : null;
 }
 
 function sameSites(left: IntakeDraftSite[], right: IntakeDraftSite[]): boolean {

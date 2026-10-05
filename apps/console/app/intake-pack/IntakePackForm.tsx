@@ -652,8 +652,8 @@ export function IntakePackForm({ initialPackId }: Props) {
               ) : null}
             </div>
             <small className="action-note">
-              Extract never calls pricing and never fills a tender form. Review is available after
-              extraction; confirm is ENG-23.
+              Extract never calls pricing and never fills a tender form. Review opens when the pack
+              is REVIEWABLE; confirm is ENG-23.
             </small>
           </form>
           <p>

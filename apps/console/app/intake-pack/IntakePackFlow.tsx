@@ -38,7 +38,9 @@ export function IntakePackFlow({ pack, current }: Props) {
                 </Link>
               </small>
             ) : null}
-            {step.id === 'review' && !reviewOpen ? <small>After extract</small> : null}
+            {step.id === 'review' && !reviewOpen ? (
+              <small>When the pack is reviewable</small>
+            ) : null}
             {step.id === 'confirm' || step.id === 'assess' ? <small>Later ticket</small> : null}
           </li>
         );

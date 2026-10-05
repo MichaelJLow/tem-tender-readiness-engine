@@ -121,8 +121,10 @@ inspect candidates beside the extracted PDF page or broker notes, resolve or
 leave conflicts, assign unassociated site facts, and save operator edits
 through `PATCH /intake-packs/:packId/draft`. Extraction never fills structured
 fields; accepted candidates are audit-only until the operator writes a value.
-A stale `expectedDraftVersion` returns `DRAFT_STALE`. Confirm and readiness
-remain later tickets. Use `fixtures/intake-packs/` for sample PDFs. The
+A stale `expectedDraftVersion` returns `DRAFT_STALE`. The Console rebases only
+the fields the operator actually changed onto the latest draft and surfaces
+concurrent work; it does not resubmit an untouched full-site snapshot. Confirm
+and readiness remain later tickets. Use `fixtures/intake-packs/` for sample PDFs. The
 persistent notice on Drop and Review labels the data as synthetic.
 
 ## Milestone 3 live model smoke check

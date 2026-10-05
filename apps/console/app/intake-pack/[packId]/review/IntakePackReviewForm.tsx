@@ -12,24 +12,35 @@ import {
 } from '../../../../src/intake-pack';
 import {
   UNASSIGNED_REVIEW_BUCKET,
+  acceptedCandidateIdsFromDraft,
   assignableReviewSiteIds,
   buildIntakeDraftPatch,
+  canOpenIntakeDraftReview,
   candidatesForReviewBucket,
+  competingCandidatesForAssignment,
   conflictGroups,
+  describeConcurrentDraftChanges,
   displayDraftField,
   displaySiteLabel,
   documentPageNumbers,
   emptyReviewFieldEdits,
   extractionPage,
   isDraftStaleError,
+  isIntakeDraftReadOnly,
+  leaveUnassignedCandidate,
+  matchingAcceptedIds,
   operatorFieldState,
   packLevelCandidates,
+  parseAnnualConsumption,
+  rebaseReviewSession,
   resolveConflictChoice,
   reviewFieldEditsFromDraft,
+  reviewSaveIssues,
   reviewSiteIds,
   siteEditForDisplay,
   sourceFocusForCandidate,
   splitAroundQuote,
+  unassignedConflictGroups,
   type IntakeCandidate,
   type IntakeDraft,
   type IntakeDraftField,
@@ -58,43 +69,20 @@ export function IntakePackReviewForm({ packId }: Props) {
   const [notice, setNotice] = useState('');
   const [assignSiteByCandidate, setAssignSiteByCandidate] = useState<Record<string, string>>({});
 
-  const applyLoadedDraft = useCallback(
-    (
-      next: IntakeDraft,
-      nextPack: IntakePackView | null,
-      options: { keepEdits: boolean; stale?: boolean },
-    ) => {
-      setDraft(next);
-      if (!options.keepEdits) {
-        setEdits(reviewFieldEditsFromDraft(next));
-        setAcceptedIds(
-          next.candidates
-            .filter((candidate) => candidate.accepted)
-            .map((candidate) => candidate.candidateId),
-        );
-      }
-      const sites = reviewSiteIds(next);
-      setBucketId((current) => {
-        if (
-          options.keepEdits &&
-          (current === UNASSIGNED_REVIEW_BUCKET || sites.includes(current))
-        ) {
-          return current;
-        }
-        return sites[0] ?? UNASSIGNED_REVIEW_BUCKET;
-      });
-      const firstExtracted = nextPack?.documents.find(
-        (document) => document.status === 'EXTRACTED',
-      );
-      setViewerDocumentId((current) => current || firstExtracted?.documentId || '');
-      if (options.stale) {
-        setNotice(
-          `Draft version changed to ${next.draftVersion}. Your unsaved edits are still here — save again to write them on the new version.`,
-        );
-      }
-    },
-    [],
-  );
+  const applyLoadedDraft = useCallback((next: IntakeDraft, nextPack: IntakePackView | null) => {
+    const nextEdits = reviewFieldEditsFromDraft(next);
+    setDraft(next);
+    setEdits(nextEdits);
+    setAcceptedIds(acceptedCandidateIdsFromDraft(next));
+    setAssignSiteByCandidate({});
+    const sites = reviewSiteIds(next, nextEdits);
+    setBucketId((current) => {
+      if (current === UNASSIGNED_REVIEW_BUCKET || sites.includes(current)) return current;
+      return sites[0] ?? UNASSIGNED_REVIEW_BUCKET;
+    });
+    const firstExtracted = nextPack?.documents.find((document) => document.status === 'EXTRACTED');
+    setViewerDocumentId((current) => current || firstExtracted?.documentId || '');
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -123,7 +111,7 @@ export function IntakePackReviewForm({ packId }: Props) {
           draftBody.message ?? draftBody.error ?? 'Unable to prepare the review draft.',
         );
       }
-      applyLoadedDraft(draftBody, packBody, { keepEdits: false });
+      applyLoadedDraft(draftBody, packBody);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to load review.');
     } finally {
@@ -143,10 +131,24 @@ export function IntakePackReviewForm({ packId }: Props) {
     }
   }, [focus]);
 
-  const siteIds = useMemo(() => (draft ? reviewSiteIds(draft) : []), [draft]);
+  const reviewOpen = canOpenIntakeDraftReview(pack ?? undefined);
+  const readOnly = isIntakeDraftReadOnly(pack ?? undefined);
+  const siteIds = useMemo(() => (draft ? reviewSiteIds(draft, edits) : []), [draft, edits]);
   const assignableSites = useMemo(
     () => (draft ? assignableReviewSiteIds(draft, edits) : ['site-warehouse', 'site-retail']),
     [draft, edits],
+  );
+  const effectiveAcceptedIds = useMemo(
+    () =>
+      draft
+        ? matchingAcceptedIds({
+            candidates: draft.candidates,
+            edits,
+            acceptedIds,
+            assignedSiteByCandidate: assignSiteByCandidate,
+          })
+        : acceptedIds,
+    [acceptedIds, assignSiteByCandidate, draft, edits],
   );
   const patch = useMemo(
     () =>
@@ -155,10 +157,10 @@ export function IntakePackReviewForm({ packId }: Props) {
             expectedDraftVersion: draft.draftVersion,
             original: draft,
             edits,
-            acceptedIds,
+            acceptedIds: effectiveAcceptedIds,
           })
         : null,
-    [acceptedIds, draft, edits],
+    [draft, edits, effectiveAcceptedIds],
   );
   const dirty = Boolean(
     patch &&
@@ -166,6 +168,7 @@ export function IntakePackReviewForm({ packId }: Props) {
       patch.rejectedCandidateIds.length > 0 ||
       Object.keys(patch.fieldEdits).length > 0),
   );
+  const saveIssues = useMemo(() => reviewSaveIssues(edits), [edits]);
   const bucketCandidates = useMemo(() => {
     if (!draft) return [];
     return candidatesForReviewBucket(draft.candidates, bucketId);
@@ -174,15 +177,25 @@ export function IntakePackReviewForm({ packId }: Props) {
     () => (draft ? packLevelCandidates(draft.candidates) : []),
     [draft],
   );
-  const bucketConflicts = useMemo(() => conflictGroups(bucketCandidates), [bucketCandidates]);
+  const bucketConflicts = useMemo(
+    () =>
+      bucketId === UNASSIGNED_REVIEW_BUCKET
+        ? unassignedConflictGroups(bucketCandidates, assignSiteByCandidate)
+        : conflictGroups(bucketCandidates),
+    [assignSiteByCandidate, bucketCandidates, bucketId],
+  );
   const packConflicts = useMemo(() => conflictGroups(packCandidates), [packCandidates]);
   const conflictCount = draft
     ? conflictGroups(packLevelCandidates(draft.candidates)).length +
-      [...reviewSiteIds(draft), UNASSIGNED_REVIEW_BUCKET].reduce(
+      reviewSiteIds(draft, edits).reduce(
         (total, id) =>
           total + conflictGroups(candidatesForReviewBucket(draft.candidates, id)).length,
         0,
-      )
+      ) +
+      unassignedConflictGroups(
+        candidatesForReviewBucket(draft.candidates, UNASSIGNED_REVIEW_BUCKET),
+        assignSiteByCandidate,
+      ).length
     : 0;
 
   const pageNumbers = documentPageNumbers(pack?.extraction, viewerDocumentId);
@@ -208,7 +221,7 @@ export function IntakePackReviewForm({ packId }: Props) {
     ).find((item) => item.candidates.some((entry) => entry.candidateId === candidate.candidateId));
     const result = resolveConflictChoice({
       edits,
-      acceptedIds,
+      acceptedIds: effectiveAcceptedIds,
       group: group?.candidates ?? [candidate],
       chosenCandidateId: candidate.candidateId,
       siteId: siteId ?? candidate.siteId,
@@ -218,22 +231,85 @@ export function IntakePackReviewForm({ packId }: Props) {
     openCandidate(candidate);
   }
 
-  function leaveUnresolved(group: IntakeCandidate[]) {
+  function assignUnassigned(candidate: IntakeCandidate, siteId: string) {
+    if (!draft || readOnly) return;
+    const group = competingCandidatesForAssignment({
+      candidates: draft.candidates,
+      candidate,
+      targetSiteId: siteId,
+      assignedSiteByCandidate: assignSiteByCandidate,
+    });
+    const result = resolveConflictChoice({
+      edits,
+      acceptedIds: effectiveAcceptedIds,
+      group,
+      chosenCandidateId: candidate.candidateId,
+      siteId,
+    });
+    setEdits(result.edits);
+    setAcceptedIds(result.acceptedIds);
+    setAssignSiteByCandidate((current) => ({ ...current, [candidate.candidateId]: siteId }));
+    setBucketId(siteId);
+    openCandidate(candidate);
+  }
+
+  function leaveUnresolved(group: IntakeCandidate[], siteId?: string | null) {
+    if (readOnly) return;
     const first = group[0];
     const result = resolveConflictChoice({
       edits,
-      acceptedIds,
+      acceptedIds: effectiveAcceptedIds,
       group,
       chosenCandidateId: null,
-      siteId: bucketId === UNASSIGNED_REVIEW_BUCKET ? null : bucketId,
+      siteId: siteId ?? (bucketId === UNASSIGNED_REVIEW_BUCKET ? null : bucketId),
     });
     setEdits(result.edits);
     setAcceptedIds(result.acceptedIds);
     if (first) openCandidate(first);
   }
 
+  function leaveUnassigned(candidate: IntakeCandidate) {
+    if (readOnly) return;
+    const left = leaveUnassignedCandidate({
+      edits,
+      acceptedIds: effectiveAcceptedIds,
+      candidate,
+      assignedSiteByCandidate: assignSiteByCandidate,
+    });
+    setEdits(left.edits);
+    setAcceptedIds(left.acceptedIds);
+    setAssignSiteByCandidate(left.assignedSiteByCandidate);
+    openCandidate(candidate);
+  }
+
+  function leaveUnassignedGroup(group: IntakeCandidate[]) {
+    if (readOnly) return;
+    let nextEdits = edits;
+    let nextAccepted = effectiveAcceptedIds;
+    let nextAssign = assignSiteByCandidate;
+    for (const candidate of group) {
+      const left = leaveUnassignedCandidate({
+        edits: nextEdits,
+        acceptedIds: nextAccepted,
+        candidate,
+        assignedSiteByCandidate: nextAssign,
+      });
+      nextEdits = left.edits;
+      nextAccepted = left.acceptedIds;
+      nextAssign = left.assignedSiteByCandidate;
+    }
+    setEdits(nextEdits);
+    setAcceptedIds(nextAccepted);
+    setAssignSiteByCandidate(nextAssign);
+    if (group[0]) openCandidate(group[0]);
+  }
+
   async function save() {
-    if (!draft || !patch || !dirty) return;
+    if (!draft || !patch || !dirty || readOnly) return;
+    if (saveIssues.length > 0) {
+      setError(saveIssues.join(' '));
+      return;
+    }
     setSaving(true);
     setError('');
     setNotice('');
@@ -247,7 +323,18 @@ export function IntakePackReviewForm({ packId }: Props) {
       if (isDraftStaleError(response.status, body)) {
         const latest = body.pack?.draft;
         if (latest) {
-          applyLoadedDraft(latest, pack, { keepEdits: true, stale: true });
+          const rebased = rebaseReviewSession({
+            base: draft,
+            latest,
+            edits,
+            acceptedIds: effectiveAcceptedIds,
+          });
+          setDraft(latest);
+          setEdits(rebased.edits);
+          setAcceptedIds(rebased.acceptedIds);
+          setNotice(
+            `Draft version changed to ${latest.draftVersion}. ${describeConcurrentDraftChanges(rebased.concurrentChanges)} Save again to write your remaining edits.`,
+          );
         } else {
           await load();
           setNotice('Draft version changed. Reload complete — save again if your edits remain.');
@@ -255,7 +342,7 @@ export function IntakePackReviewForm({ packId }: Props) {
         throw new Error(
           body.failure?.message ??
             body.message ??
-            'Someone else saved this draft. Reload the current version and save again.',
+            'Someone else saved this draft. Your unchanged fields were kept from the latest version; save again.',
         );
       }
       if (!response.ok) {
@@ -263,7 +350,7 @@ export function IntakePackReviewForm({ packId }: Props) {
           body.failure?.message ?? body.message ?? body.error ?? 'Unable to save draft.',
         );
       }
-      applyLoadedDraft(body, pack, { keepEdits: false });
+      applyLoadedDraft(body, pack);
       setNotice(
         `Saved operator edits as draft version ${body.draftVersion}. Confirm remains a later ticket.`,
       );
@@ -297,7 +384,26 @@ export function IntakePackReviewForm({ packId }: Props) {
         </div>
       ) : null}
 
-      {pack && draft ? (
+      {pack && pack.extraction && !reviewOpen ? (
+        <div className="notice notice-warning">
+          <strong>Not reviewable yet</strong>
+          <span>
+            Review opens when this pack is REVIEWABLE.{' '}
+            <Link className="text-link" href={`/intake-pack/${encodeURIComponent(packId)}`}>
+              Return to Drop + extract
+            </Link>
+          </span>
+        </div>
+      ) : null}
+
+      {readOnly ? (
+        <div className="notice notice-info" role="status">
+          <strong>Confirmed pack</strong>
+          <span>This draft is read-only. Confirm, readiness, and pricing stay unwired here.</span>
+        </div>
+      ) : null}
+
+      {pack && draft && reviewOpen ? (
         <div className="stat-grid intake-stats">
           <article className="stat-card">
             <span>Pack status</span>
@@ -328,7 +434,7 @@ export function IntakePackReviewForm({ packId }: Props) {
         </div>
       ) : null}
 
-      {pack && draft ? (
+      {pack && draft && reviewOpen ? (
         <div className="review-split">
           <section className="panel intake-panel review-fields">
             <div className="panel-heading">
@@ -359,11 +465,12 @@ export function IntakePackReviewForm({ packId }: Props) {
                 ]}
                 candidates={packCandidates}
                 conflicts={packConflicts}
-                acceptedIds={acceptedIds}
+                acceptedIds={effectiveAcceptedIds}
                 focusId={focus?.candidateId}
+                readOnly={readOnly}
                 onOpen={openCandidate}
                 onUse={(candidate) => useCandidate(candidate)}
-                onLeaveUnresolved={leaveUnresolved}
+                onLeaveUnresolved={(group) => leaveUnresolved(group)}
               />
 
               <div className="review-site-tabs" role="tablist" aria-label="Sites in this draft">
@@ -394,16 +501,15 @@ export function IntakePackReviewForm({ packId }: Props) {
                 <UnassignedBlock
                   candidates={bucketCandidates}
                   conflicts={bucketConflicts}
-                  acceptedIds={acceptedIds}
+                  acceptedIds={effectiveAcceptedIds}
                   assignableSites={assignableSites}
                   assignSiteByCandidate={assignSiteByCandidate}
                   focusId={focus?.candidateId}
-                  onAssignSiteChange={(candidateId, siteId) =>
-                    setAssignSiteByCandidate((current) => ({ ...current, [candidateId]: siteId }))
-                  }
+                  readOnly={readOnly}
                   onOpen={openCandidate}
-                  onAssign={(candidate, siteId) => useCandidate(candidate, siteId)}
-                  onLeaveUnresolved={leaveUnresolved}
+                  onAssign={assignUnassigned}
+                  onLeaveCandidate={leaveUnassigned}
+                  onLeaveUnresolved={leaveUnassignedGroup}
                 />
               ) : (
                 <SiteBlock
@@ -412,11 +518,12 @@ export function IntakePackReviewForm({ packId }: Props) {
                   onEdits={setEdits}
                   candidates={bucketCandidates}
                   conflicts={bucketConflicts}
-                  acceptedIds={acceptedIds}
+                  acceptedIds={effectiveAcceptedIds}
                   focusId={focus?.candidateId}
+                  readOnly={readOnly}
                   onOpen={openCandidate}
                   onUse={(candidate) => useCandidate(candidate, bucketId)}
-                  onLeaveUnresolved={leaveUnresolved}
+                  onLeaveUnresolved={(group) => leaveUnresolved(group, bucketId)}
                 />
               )}
             </div>
@@ -537,16 +644,21 @@ export function IntakePackReviewForm({ packId }: Props) {
         </div>
       ) : null}
 
-      {pack && draft ? (
+      {pack && draft && reviewOpen && !readOnly ? (
         <div className="review-save-bar">
           <button
             className="primary-button"
             type="button"
-            disabled={!dirty || saving}
+            disabled={!dirty || saving || saveIssues.length > 0}
             onClick={() => void save()}
           >
             {saving ? 'Saving…' : 'Save operator edits'}
           </button>
+          {saveIssues.length > 0 ? (
+            <div className="form-error" role="alert">
+              {saveIssues.join(' ')}
+            </div>
+          ) : null}
           <small className="action-note">
             Save writes your values and accepted-candidate audit through PATCH. It does not confirm
             the pack, assess readiness, or call pricing.
@@ -557,6 +669,12 @@ export function IntakePackReviewForm({ packId }: Props) {
             </Link>
           </p>
         </div>
+      ) : pack && draft && reviewOpen ? (
+        <p>
+          <Link className="text-link" href={`/intake-pack/${encodeURIComponent(packId)}`}>
+            ← Back to Drop + extract
+          </Link>
+        </p>
       ) : null}
 
       {error ? (
@@ -583,6 +701,7 @@ function FieldBlock(props: {
   conflicts: ReturnType<typeof conflictGroups>;
   acceptedIds: string[];
   focusId?: string;
+  readOnly: boolean;
   onOpen: (candidate: IntakeCandidate, provenanceIndex?: number) => void;
   onUse: (candidate: IntakeCandidate) => void;
   onLeaveUnresolved: (group: IntakeCandidate[]) => void;
@@ -590,28 +709,39 @@ function FieldBlock(props: {
   return (
     <div className="review-field-block">
       <h3>{props.title}</h3>
-      {props.fields.map((item) => (
-        <label key={item.field} className="review-field">
-          <span className="review-field-label">
-            {displayDraftField(item.field)}
-            <span
-              className={`pill ${operatorFieldState(item.value) === 'empty' ? 'pill-neutral' : 'pill-success'}`}
-            >
-              {operatorFieldState(item.value) === 'empty' ? 'Empty' : 'Operator edit'}
+      {props.fields.map((item) => {
+        const parsed =
+          item.field === 'annualConsumptionKwh' ? parseAnnualConsumption(item.value) : null;
+        const invalid = parsed != null && !parsed.ok;
+        return (
+          <label key={item.field} className="review-field">
+            <span className="review-field-label">
+              {displayDraftField(item.field)}
+              <span
+                className={`pill ${operatorFieldState(item.value) === 'empty' ? 'pill-neutral' : 'pill-success'}`}
+              >
+                {operatorFieldState(item.value) === 'empty' ? 'Empty' : 'Operator edit'}
+              </span>
             </span>
-          </span>
-          <input
-            value={item.value}
-            onChange={(event) => item.onChange(event.target.value)}
-            placeholder="Empty — extraction does not fill this field"
-          />
-        </label>
-      ))}
+            <input
+              value={item.value}
+              onChange={(event) => item.onChange(event.target.value)}
+              placeholder="Empty — extraction does not fill this field"
+              disabled={props.readOnly}
+              aria-invalid={invalid || undefined}
+            />
+            {parsed && !parsed.ok ? (
+              <span className="review-field-issue">{parsed.message}</span>
+            ) : null}
+          </label>
+        );
+      })}
       <CandidateList
         candidates={props.candidates}
         conflicts={props.conflicts}
         acceptedIds={props.acceptedIds}
         focusId={props.focusId}
+        readOnly={props.readOnly}
         onOpen={props.onOpen}
         onUse={props.onUse}
         onLeaveUnresolved={props.onLeaveUnresolved}
@@ -628,12 +758,14 @@ function SiteBlock(props: {
   conflicts: ReturnType<typeof conflictGroups>;
   acceptedIds: string[];
   focusId?: string;
+  readOnly: boolean;
   onOpen: (candidate: IntakeCandidate, provenanceIndex?: number) => void;
   onUse: (candidate: IntakeCandidate) => void;
   onLeaveUnresolved: (group: IntakeCandidate[]) => void;
 }) {
   const site = siteEditForDisplay(props.edits, props.siteId);
   function update(partial: Partial<typeof site>) {
+    if (props.readOnly) return;
     props.onEdits({
       ...props.edits,
       sites: {
@@ -671,6 +803,7 @@ function SiteBlock(props: {
       conflicts={props.conflicts}
       acceptedIds={props.acceptedIds}
       focusId={props.focusId}
+      readOnly={props.readOnly}
       onOpen={props.onOpen}
       onUse={props.onUse}
       onLeaveUnresolved={props.onLeaveUnresolved}
@@ -685,9 +818,10 @@ function UnassignedBlock(props: {
   assignableSites: string[];
   assignSiteByCandidate: Record<string, string>;
   focusId?: string;
-  onAssignSiteChange: (candidateId: string, siteId: string) => void;
+  readOnly: boolean;
   onOpen: (candidate: IntakeCandidate, provenanceIndex?: number) => void;
   onAssign: (candidate: IntakeCandidate, siteId: string) => void;
+  onLeaveCandidate: (candidate: IntakeCandidate) => void;
   onLeaveUnresolved: (group: IntakeCandidate[]) => void;
 }) {
   return (
@@ -701,7 +835,8 @@ function UnassignedBlock(props: {
         <div className="notice notice-warning">
           <strong>Conflicts in unassigned evidence</strong>
           <span>
-            Values that disagree are listed together. You can assign one or leave them unresolved.
+            Values assigned to the same site that disagree are listed together. Independent
+            unassigned facts stay separate until they target the same site.
           </span>
         </div>
       ) : null}
@@ -709,61 +844,99 @@ function UnassignedBlock(props: {
         <p className="muted">No unassigned site-scoped candidates.</p>
       ) : (
         <ul className="review-candidate-list">
-          {props.candidates.map((candidate) => {
-            const selectedSite =
-              props.assignSiteByCandidate[candidate.candidateId] ??
-              props.assignableSites[0] ??
-              'site-warehouse';
-            return (
-              <li
-                key={candidate.candidateId}
-                className={`review-candidate${props.focusId === candidate.candidateId ? ' focused' : ''}`}
-              >
-                <CandidateBody
-                  candidate={candidate}
-                  accepted={props.acceptedIds.includes(candidate.candidateId)}
-                  onOpen={props.onOpen}
-                />
-                <div className="candidate-actions">
-                  <label>
-                    Assign to site
-                    <select
-                      value={selectedSite}
-                      onChange={(event) =>
-                        props.onAssignSiteChange(candidate.candidateId, event.target.value)
-                      }
-                    >
-                      {props.assignableSites.map((siteId) => (
-                        <option key={siteId} value={siteId}>
-                          {displaySiteLabel(siteId)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => props.onAssign(candidate, selectedSite)}
-                  >
-                    Assign as operator value
-                  </button>
-                </div>
-              </li>
-            );
-          })}
+          {props.candidates.map((candidate) => (
+            <UnassignedCandidateRow
+              key={candidate.candidateId}
+              candidate={candidate}
+              accepted={props.acceptedIds.includes(candidate.candidateId)}
+              assignableSites={props.assignableSites}
+              assignedSiteId={props.assignSiteByCandidate[candidate.candidateId]}
+              focused={props.focusId === candidate.candidateId}
+              readOnly={props.readOnly}
+              onOpen={props.onOpen}
+              onAssign={props.onAssign}
+              onLeave={() => props.onLeaveCandidate(candidate)}
+            />
+          ))}
         </ul>
       )}
       {props.conflicts.map((group) => (
-        <button
-          key={group.key}
-          type="button"
-          className="secondary-button"
-          onClick={() => props.onLeaveUnresolved(group.candidates)}
-        >
-          Leave {displayDraftField(group.field)} unresolved
-        </button>
+        <div key={group.key} className="review-conflict">
+          <div className="review-conflict-heading">
+            <strong>
+              Conflict · {displayDraftField(group.field)}
+              {group.siteId ? ` · ${displaySiteLabel(group.siteId)}` : ''}
+            </strong>
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={props.readOnly}
+              onClick={() => props.onLeaveUnresolved(group.candidates)}
+            >
+              Leave unresolved
+            </button>
+          </div>
+        </div>
       ))}
     </div>
+  );
+}
+
+function UnassignedCandidateRow(props: {
+  candidate: IntakeCandidate;
+  accepted: boolean;
+  assignableSites: string[];
+  assignedSiteId?: string;
+  focused: boolean;
+  readOnly: boolean;
+  onOpen: (candidate: IntakeCandidate, provenanceIndex?: number) => void;
+  onAssign: (candidate: IntakeCandidate, siteId: string) => void;
+  onLeave: () => void;
+}) {
+  const [choice, setChoice] = useState(
+    props.assignedSiteId ?? props.assignableSites[0] ?? 'site-warehouse',
+  );
+  useEffect(() => {
+    if (props.assignedSiteId) setChoice(props.assignedSiteId);
+  }, [props.assignedSiteId]);
+  const selectedSite = choice;
+
+  return (
+    <li className={`review-candidate${props.focused ? ' focused' : ''}`}>
+      <CandidateBody candidate={props.candidate} accepted={props.accepted} onOpen={props.onOpen} />
+      <div className="candidate-actions">
+        <label>
+          Assign to site
+          <select
+            value={selectedSite}
+            disabled={props.readOnly}
+            onChange={(event) => setChoice(event.target.value)}
+          >
+            {props.assignableSites.map((siteId) => (
+              <option key={siteId} value={siteId}>
+                {displaySiteLabel(siteId)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={props.readOnly}
+          onClick={() => props.onAssign(props.candidate, selectedSite)}
+        >
+          Assign as operator value
+        </button>
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={props.readOnly}
+          onClick={props.onLeave}
+        >
+          Leave unresolved
+        </button>
+      </div>
+    </li>
   );
 }
 
@@ -772,6 +945,7 @@ function CandidateList(props: {
   conflicts: ReturnType<typeof conflictGroups>;
   acceptedIds: string[];
   focusId?: string;
+  readOnly: boolean;
   onOpen: (candidate: IntakeCandidate, provenanceIndex?: number) => void;
   onUse: (candidate: IntakeCandidate) => void;
   onLeaveUnresolved: (group: IntakeCandidate[]) => void;
@@ -794,6 +968,7 @@ function CandidateList(props: {
             <button
               type="button"
               className="secondary-button"
+              disabled={props.readOnly}
               onClick={() => props.onLeaveUnresolved(group.candidates)}
             >
               Leave unresolved
@@ -806,6 +981,7 @@ function CandidateList(props: {
                 candidate={candidate}
                 accepted={props.acceptedIds.includes(candidate.candidateId)}
                 focused={props.focusId === candidate.candidateId}
+                readOnly={props.readOnly}
                 onOpen={props.onOpen}
                 onUse={props.onUse}
               />
@@ -821,6 +997,7 @@ function CandidateList(props: {
               candidate={candidate}
               accepted={props.acceptedIds.includes(candidate.candidateId)}
               focused={props.focusId === candidate.candidateId}
+              readOnly={props.readOnly}
               onOpen={props.onOpen}
               onUse={props.onUse}
             />
@@ -835,6 +1012,7 @@ function CandidateItem(props: {
   candidate: IntakeCandidate;
   accepted: boolean;
   focused: boolean;
+  readOnly: boolean;
   onOpen: (candidate: IntakeCandidate, provenanceIndex?: number) => void;
   onUse: (candidate: IntakeCandidate) => void;
 }) {
@@ -845,6 +1023,7 @@ function CandidateItem(props: {
         <button
           type="button"
           className="secondary-button"
+          disabled={props.readOnly}
           onClick={() => props.onUse(props.candidate)}
         >
           Use as operator value
