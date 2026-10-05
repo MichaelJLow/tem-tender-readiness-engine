@@ -388,7 +388,7 @@ accepts structured data and already-extracted document text only.
 - [x] Add safe replay/retry operation.
 - [x] Add structured logging and audit events.
 - [x] Add GitHub Actions for format/lint, typecheck, tests, API/Console builds, and committed reasoning-evidence checks.
-- [ ] Select stable-release evidence (`evals/release-evidence.json` plus manual QA). The workflow exists; ENG-14 owns the evidence pointer.
+- [x] Select stable-release evidence (`evals/release-evidence.json` plus manual QA). ENG-14 recorded the pointer; accepted baseline not promoted.
 - [ ] Use GitHub-to-AWS OIDC. Not implemented; archive upload uses a local AWS CLI profile. Deferred with hosted runtime.
 - [x] Rehearse provider timeout, invalid model output, storage failure, downstream `500`, duplicate webhook, and archive missing-object.
 
@@ -399,7 +399,8 @@ At least one failure can be demonstrated end to end: visible failure → no unsa
 **Accepted (2026-10-05):** ENG-8, ENG-9, ENG-10, ENG-11, and ENG-12 are merged.
 The [reliability rehearsal](reliability-rehearsal.md) records the visible
 recovery story. CI is [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
-The release-evidence workflow is present but has no selected pointer yet.
+ENG-14 selected [`evals/release-evidence.json`](../evals/release-evidence.json);
+the accepted baseline was not promoted.
 
 ### Suggested branch
 
@@ -413,15 +414,15 @@ The release-evidence workflow is present but has no selected pointer yet.
 
 ### Tasks
 
-- [ ] Cut stable release/tag. Owned by ENG-15; do not tag from this documentation change.
+- [ ] Cut stable release/tag `v1.0.0`. Packaging and notes are in [`docs/releases/v1.0.0.md`](releases/v1.0.0.md); do not push the tag until Mike confirms the merge SHA.
 - [x] Finish README and architecture diagram for the implemented local V1.
 - [x] Add local setup, n8n import, archive/restore, and recovery instructions. Hosted deployment remains deferred.
 - [x] Document key architecture decisions in `docs/adr/`.
 - [x] Add known limitations and realistic future improvements.
 - [x] Remove or mark stale planning paths; keep failure and eval findings.
-- [ ] Run the tracked secrets/security review for the tagged release (ENG-15).
-- [ ] Run the final full eval suite and retain release evidence (ENG-14). Do not promote latest results over the accepted baseline here.
-- [ ] Complete stratified manual QA (ENG-14).
+- [x] Run the tracked secrets/security review ([`docs/releases/security-check-2026-10-05.md`](releases/security-check-2026-10-05.md)).
+- [x] Run the final full eval suite and retain release evidence (ENG-14). Do not promote latest results over the accepted baseline here.
+- [x] Complete stratified manual QA (ENG-14).
 - [x] Capture clean Console screenshots. Existing authentic set: [operations-console](screenshots/operations-console/README.md).
 - [x] Prepare happy path, missing information, human review, pending, duplicate, and technical-failure fixtures under `integrations/n8n/fixtures/` and `tests/fixtures/`.
 - [x] Verify displayed eval metrics are retained report output, with latest and accepted labelled separately.
@@ -430,9 +431,9 @@ The release-evidence workflow is present but has no selected pointer yet.
 
 An engineer can review the repository without verbal context and the demo can be run repeatedly without fragile manual setup.
 
-**ENG-13 (this documentation pass):** reviewer-facing docs and receipts now
-describe the implemented local V1. Milestone 9 is not complete until ENG-14
-and ENG-15 finish evals, manual QA, and the tag.
+**ENG-13 / ENG-14:** reviewer docs, selected full eval, and manual QA are on
+`main`. ENG-15 packages notes and the security receipt. Milestone 9 is not
+complete until the confirmed `v1.0.0` tag exists. ENG-16 stays optional.
 
 ### Optional portfolio extension after all milestones
 

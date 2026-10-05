@@ -299,11 +299,15 @@ full eval suite
 → metric gate
 → manual QA sign-off
 → release-evidence pointer
-→ tag (ENG-15)
+→ tag v1.0.0 (ENG-15; only after packaging merges and Mike confirms the SHA)
 ```
 
 There is no hosted deploy in V1. The `Release evidence` workflow verifies a
 selected full report and manual-QA record; it does not run live model calls.
+Packaging notes, demo coverage, and the copy-paste tag commands are in
+[`docs/releases/v1.0.0.md`](releases/v1.0.0.md). The secrets/security receipt is
+[`docs/releases/security-check-2026-10-05.md`](releases/security-check-2026-10-05.md).
+Do not push the tag from ticket creation or from an unconfirmed SHA.
 
 ## Deployment blockers
 

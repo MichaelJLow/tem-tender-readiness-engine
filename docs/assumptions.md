@@ -104,7 +104,7 @@ The implemented prototype demonstrates that it can:
 - expose technical failures and recover without duplicate side effects,
 - archive and restore synthetic evidence through a private S3 snapshot.
 
-Any hours-reclaimed calculation remains illustrative and is not presented as real customer data. Final interview-release evals, manual QA sign-off, and a git tag remain open follow-on work.
+Any hours-reclaimed calculation remains illustrative and is not presented as real customer data. Final evals and manual QA are recorded in [`evals/release-evidence.json`](../evals/release-evidence.json) and [`docs/release-qa/`](release-qa/README.md). The proposed `v1.0.0` tag is packaged in [`docs/releases/v1.0.0.md`](releases/v1.0.0.md) and is created only on the confirmed SHA after that packaging merges. Optional PDF intake remains [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/optional-add-realistic-synthetic-tender-packs-and-bounded-pdf-to-text).
 
 ## Verified limitations
 
