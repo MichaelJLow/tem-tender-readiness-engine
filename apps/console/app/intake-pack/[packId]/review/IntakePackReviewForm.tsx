@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { IntakePackFlow } from '../../IntakePackFlow';
 import {
@@ -15,9 +16,11 @@ import {
   acceptedCandidateIdsFromDraft,
   assignableReviewSiteIds,
   buildIntakeDraftPatch,
+  canConfirmIntakeDraftReview,
   canOpenIntakeDraftReview,
   candidatesForReviewBucket,
   competingCandidatesForAssignment,
+  confirmationRunId,
   conflictGroups,
   describeConcurrentDraftChanges,
   displayDraftField,
@@ -25,6 +28,8 @@ import {
   documentPageNumbers,
   emptyReviewFieldEdits,
   extractionPage,
+  intakeCaseDetailPath,
+  intakeConfirmIdempotencyKey,
   isDraftStaleError,
   isIntakeDraftReadOnly,
   leaveUnassignedCandidate,
@@ -55,6 +60,7 @@ interface Props {
 type BucketId = typeof UNASSIGNED_REVIEW_BUCKET | string;
 
 export function IntakePackReviewForm({ packId }: Props) {
+  const router = useRouter();
   const [pack, setPack] = useState<IntakePackView | null>(null);
   const [draft, setDraft] = useState<IntakeDraft | null>(null);
   const [edits, setEdits] = useState<ReviewFieldEdits>(emptyReviewFieldEdits());
@@ -65,6 +71,7 @@ export function IntakePackReviewForm({ packId }: Props) {
   const [viewerPage, setViewerPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [assignSiteByCandidate, setAssignSiteByCandidate] = useState<Record<string, string>>({});
@@ -133,6 +140,7 @@ export function IntakePackReviewForm({ packId }: Props) {
 
   const reviewOpen = canOpenIntakeDraftReview(pack ?? undefined);
   const readOnly = isIntakeDraftReadOnly(pack ?? undefined);
+  const caseRunId = confirmationRunId(pack?.confirmation);
   const siteIds = useMemo(() => (draft ? reviewSiteIds(draft, edits) : []), [draft, edits]);
   const assignableSites = useMemo(
     () => (draft ? assignableReviewSiteIds(draft, edits) : ['site-warehouse', 'site-retail']),
@@ -168,6 +176,11 @@ export function IntakePackReviewForm({ packId }: Props) {
       patch.rejectedCandidateIds.length > 0 ||
       Object.keys(patch.fieldEdits).length > 0),
   );
+  const canConfirm = canConfirmIntakeDraftReview({
+    pack: pack ?? undefined,
+    draft,
+    dirty,
+  });
   const saveIssues = useMemo(() => reviewSaveIssues(edits), [edits]);
   const bucketCandidates = useMemo(() => {
     if (!draft) return [];
@@ -351,13 +364,52 @@ export function IntakePackReviewForm({ packId }: Props) {
         );
       }
       applyLoadedDraft(body, pack);
-      setNotice(
-        `Saved operator edits as draft version ${body.draftVersion}. Confirm remains a later ticket.`,
-      );
+      setNotice(`Saved operator edits as draft version ${body.draftVersion}.`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to save draft.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function confirmPack() {
+    if (!draft || !canConfirm) return;
+    setConfirming(true);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch(`/api/intake-packs/${encodeURIComponent(packId)}/confirm`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          expectedDraftVersion: draft.draftVersion,
+          idempotencyKey: intakeConfirmIdempotencyKey(packId),
+        }),
+      });
+      const body = await readJson<{ runId?: string; tenderId?: string } & IntakeApiErrorBody>(
+        response,
+      );
+      if (isDraftStaleError(response.status, body)) {
+        await load();
+        throw new Error(
+          body.failure?.message ??
+            body.message ??
+            'This draft version is stale. Reload the latest version, save if needed, then confirm again.',
+        );
+      }
+      if (!response.ok && !body.runId) {
+        throw new Error(
+          body.failure?.message ?? body.message ?? body.error ?? 'Unable to confirm this pack.',
+        );
+      }
+      if (!body.runId) {
+        throw new Error('Confirmation succeeded without a case id.');
+      }
+      router.push(intakeCaseDetailPath(body.runId));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to confirm this pack.');
+    } finally {
+      setConfirming(false);
     }
   }
 
@@ -399,7 +451,19 @@ export function IntakePackReviewForm({ packId }: Props) {
       {readOnly ? (
         <div className="notice notice-info" role="status">
           <strong>Confirmed pack</strong>
-          <span>This draft is read-only. Confirm, readiness, and pricing stay unwired here.</span>
+          <span>
+            This draft is read-only. Confirmation already handed off into the existing case path
+            {caseRunId ? (
+              <>
+                .{' '}
+                <Link className="text-link" href={intakeCaseDetailPath(caseRunId)}>
+                  Open case detail
+                </Link>
+              </>
+            ) : (
+              '. Confirm does not force READY_FOR_PRICING.'
+            )}
+          </span>
         </div>
       ) : null}
 
@@ -649,10 +713,18 @@ export function IntakePackReviewForm({ packId }: Props) {
           <button
             className="primary-button"
             type="button"
-            disabled={!dirty || saving || saveIssues.length > 0}
+            disabled={!dirty || saving || confirming || saveIssues.length > 0}
             onClick={() => void save()}
           >
             {saving ? 'Saving…' : 'Save operator edits'}
+          </button>
+          <button
+            className="primary-button"
+            type="button"
+            disabled={!canConfirm || saving || confirming || saveIssues.length > 0}
+            onClick={() => void confirmPack()}
+          >
+            {confirming ? 'Confirming…' : 'Confirm'}
           </button>
           {saveIssues.length > 0 ? (
             <div className="form-error" role="alert">
@@ -660,8 +732,9 @@ export function IntakePackReviewForm({ packId }: Props) {
             </div>
           ) : null}
           <small className="action-note">
-            Save writes your values and accepted-candidate audit through PATCH. It does not confirm
-            the pack, assess readiness, or call pricing.
+            Save writes your values through PATCH. Confirm snapshots this draft version, hands off
+            into the existing tender path, and opens case detail. Confirm is not a ready route and
+            does not call pricing from this screen.
           </small>
           <p>
             <Link className="text-link" href={`/intake-pack/${encodeURIComponent(packId)}`}>
@@ -684,7 +757,7 @@ export function IntakePackReviewForm({ packId }: Props) {
       ) : null}
       <p className="fine-print">
         Local demonstration using synthetic tender data. {INTAKE_PACK_ENTRY_NAME} review does not
-        create a pricing handoff.
+        call pricing. Only a later READY_FOR_PRICING case on the existing tender path may.
       </p>
     </>
   );

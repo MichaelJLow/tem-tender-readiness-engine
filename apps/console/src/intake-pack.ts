@@ -70,6 +70,17 @@ export type IntakeExtractionView = {
   }>;
 };
 
+export type IntakeConfirmationView = {
+  confirmationId: string;
+  packId: string;
+  draftVersion: number;
+  actor: string;
+  confirmedAt: string;
+  idempotencyKey: string;
+  tenderId: string;
+  runId?: string;
+};
+
 export type IntakePackView = {
   packId: string;
   kind: 'INTAKE_PACK';
@@ -82,7 +93,7 @@ export type IntakePackView = {
   notes: IntakeNoteView[];
   extraction?: IntakeExtractionView;
   draft?: IntakeDraft;
-  confirmation?: unknown;
+  confirmation?: IntakeConfirmationView;
   failure?: IntakePackFailure;
 };
 
@@ -245,6 +256,7 @@ export function canTriggerIntakeExtract(input: {
 export function currentIntakePackFlowStep(pack?: IntakePackView): IntakePackFlowStepId {
   if (!pack || pack.status === 'CREATED' || pack.status === 'RECEIVING') return 'drop';
   if (pack.status === 'EXTRACTING') return 'extract';
+  if (pack.status === 'CONFIRMED') return 'confirm';
   if (pack.extraction) return 'review';
   if (pack.status === 'FAILED' || pack.status === 'REVIEWABLE') return 'extract';
   return 'drop';

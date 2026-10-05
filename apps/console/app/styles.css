@@ -1151,9 +1151,15 @@ a.primary-button {
 }
 .review-save-bar {
   margin-top: 16px;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  justify-items: start;
+  align-items: center;
+}
+.review-save-bar .action-note,
+.review-save-bar .form-error,
+.review-save-bar p {
+  flex-basis: 100%;
 }
 @media (max-width: 1100px) {
   .review-split {

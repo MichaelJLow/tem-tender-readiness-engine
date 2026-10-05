@@ -1,18 +1,25 @@
 import type { Server } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { afterEach, describe, expect, it } from 'vitest';
+import { evaluateReadiness } from '../../../../packages/domain/src/index.js';
 import { cleanTender } from '../../../../tests/fixtures/tenders.js';
 import type {
   InformationRequestReceipt,
+  IntakeRequest,
   LocalState,
   PricingHandoff,
   TenderRun,
 } from '../contracts.js';
 import { MockPricingGateway } from '../pricing-gateway.js';
+import type { PricingGateway } from '../pricing-gateway.js';
 import type { LocalStateStore, TenderRepository } from '../repository.js';
 import { createTenderServer } from '../server.js';
 import { TenderService } from '../service.js';
+import type { TenderInterpreter } from '../reasoning/interpreter.js';
 import { buildIntakePackFixtureCatalog } from '../../../../scripts/intake-pack-fixtures.js';
+import { createIntakeConfirmationHandoff } from './confirmation-adapter.js';
 import { MemoryIntakeOriginalsStore } from './originals-store.js';
+import { parseSelectablePdf } from './pdf-parser.js';
 import { MemoryIntakePackRepository } from './repository.js';
 import { IntakePackService } from './service.js';
 
@@ -189,11 +196,8 @@ describe('Intake pack HTTP routes', () => {
 
   it('prepares a review-only draft over HTTP without calling pricing or readiness', async () => {
     const tenders = new MemoryRepository();
-    const intake = new IntakePackService(
-      new MemoryIntakePackRepository(),
-      new MemoryIntakeOriginalsStore(),
-    );
-    const { origin } = await listen(tenders, intake);
+    const gateway = new CountingGateway(tenders);
+    const { origin } = await listenWired(tenders, gateway);
     const spec = catalog.specs.find((item) => item.packId === 'pack-conflicting-evidence')!;
     const created = await fetch(`${origin}/intake-packs`, { method: 'POST' });
     const pack = (await created.json()) as { packId: string };
@@ -256,14 +260,149 @@ describe('Intake pack HTTP routes', () => {
     expect(patched.status).toBe(200);
     expect(((await patched.json()) as { draftVersion: number }).draftVersion).toBe(2);
 
+    const stale = await fetch(`${origin}/intake-packs/${pack.packId}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ expectedDraftVersion: 1, idempotencyKey: `confirm:${pack.packId}` }),
+    });
+    expect(stale.status).toBe(409);
+    expect(((await stale.json()) as { error: string }).error).toBe('DRAFT_STALE');
+    expect(gateway.calls).toBe(0);
+    expect((await tenders.snapshot()).handoffs).toHaveLength(0);
+    expect((await tenders.snapshot()).runs).toHaveLength(0);
+
+    const missingConfirmation = await fetch(`${origin}/intake-packs/${pack.packId}/confirmation`);
+    expect(missingConfirmation.status).toBe(404);
+
     const confirm = await fetch(`${origin}/intake-packs/${pack.packId}/confirm`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ expectedDraftVersion: 2, idempotencyKey: 'should-not-confirm' }),
+      body: JSON.stringify({ expectedDraftVersion: 2, idempotencyKey: `confirm:${pack.packId}` }),
     });
-    expect(confirm.status).toBe(404);
+    expect(confirm.status).toBe(200);
+    const confirmed = (await confirm.json()) as {
+      packId: string;
+      tenderId: string;
+      runId: string;
+      confirmation: {
+        actor: string;
+        draftVersion: number;
+        submission: { tender: { customer: { legalName?: string } } };
+      };
+    };
+    expect(confirmed.packId).toBe(pack.packId);
+    expect(confirmed.runId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    );
+    expect(confirmed.confirmation.actor).toBe('local-demo-operator');
+    expect(confirmed.confirmation.draftVersion).toBe(2);
+    expect(confirmed.confirmation.submission.tender.customer.legalName ?? '').toBe('');
+    const snapshot = await tenders.snapshot();
+    expect(snapshot.runs).toHaveLength(1);
+    expect(snapshot.runs[0]?.route).toBeDefined();
+    expect(snapshot.runs[0]?.route).not.toBe('READY_FOR_PRICING');
+    expect(snapshot.handoffs).toHaveLength(0);
+    expect(gateway.calls).toBe(0);
+
+    const replay = await fetch(`${origin}/intake-packs/${pack.packId}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ expectedDraftVersion: 2, idempotencyKey: `confirm:${pack.packId}` }),
+    });
+    expect(replay.status).toBe(200);
+    const replayed = (await replay.json()) as { tenderId: string; runId: string };
+    expect(replayed.tenderId).toBe(confirmed.tenderId);
+    expect(replayed.runId).toBe(confirmed.runId);
+    expect((await tenders.snapshot()).runs).toHaveLength(1);
     expect((await tenders.snapshot()).handoffs).toHaveLength(0);
-    expect((await tenders.snapshot()).runs).toHaveLength(0);
+    expect(gateway.calls).toBe(0);
+
+    const stored = await fetch(`${origin}/intake-packs/${pack.packId}/confirmation`);
+    expect(stored.status).toBe(200);
+    expect(((await stored.json()) as { tenderId: string }).tenderId).toBe(confirmed.tenderId);
+  });
+
+  it('confirms a complete operator-edited draft without forcing READY_FOR_PRICING or calling pricing', async () => {
+    const tenders = new MemoryRepository();
+    const gateway = new CountingGateway(tenders);
+    const { origin, intake } = await listenWired(tenders, gateway);
+    const created = await intake.createPack();
+    await registerHttpFixture(origin, created.packId, 'pack-clean-single-site');
+    await fetch(`${origin}/intake-packs/${created.packId}/extractions`, { method: 'POST' });
+    const drafted = await fetch(`${origin}/intake-packs/${created.packId}/draft`);
+    expect(drafted.status).toBe(200);
+    expect(gateway.calls).toBe(0);
+
+    const patched = await fetch(`${origin}/intake-packs/${created.packId}/draft`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: 1,
+        fieldEdits: {
+          customerLegalName: 'Northstar Foods Ltd',
+          brokerLegalName: 'Harbour Energy Partners',
+          sites: [
+            {
+              siteId: 'site-warehouse',
+              address: '10 Example Street, London',
+              meterIdentifier: '1234567890123',
+              annualConsumptionKwh: 24000,
+              contractEndDate: '2027-03-31',
+            },
+          ],
+        },
+      }),
+    });
+    expect(patched.status).toBe(200);
+    expect(gateway.calls).toBe(0);
+
+    const spoofed = await fetch(`${origin}/intake-packs/${created.packId}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: 2,
+        idempotencyKey: `confirm:${created.packId}`,
+        actor: 'spoofed-operator',
+      }),
+    });
+    expect(spoofed.status).toBe(400);
+    expect(gateway.calls).toBe(0);
+
+    const confirm = await fetch(`${origin}/intake-packs/${created.packId}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: 2,
+        idempotencyKey: `confirm:${created.packId}`,
+      }),
+    });
+    expect(confirm.status).toBe(200);
+    const confirmed = (await confirm.json()) as {
+      tenderId: string;
+      runId: string;
+      confirmation: { submission: Parameters<typeof evaluateReadiness>[0] };
+    };
+    expect(evaluateReadiness(confirmed.confirmation.submission).route).toBe('READY_FOR_PRICING');
+    const snapshot = await tenders.snapshot();
+    expect(snapshot.runs).toHaveLength(1);
+    expect(snapshot.runs[0]?.runId).toBe(confirmed.runId);
+    expect(snapshot.runs[0]?.route).not.toBe('READY_FOR_PRICING');
+    expect(snapshot.handoffs).toHaveLength(0);
+    expect(gateway.calls).toBe(0);
+
+    const replay = await fetch(`${origin}/intake-packs/${created.packId}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: 2,
+        idempotencyKey: `confirm:${created.packId}`,
+      }),
+    });
+    expect(replay.status).toBe(200);
+    expect(((await replay.json()) as { runId: string }).runId).toBe(confirmed.runId);
+    expect((await tenders.snapshot()).runs).toHaveLength(1);
+    expect((await tenders.snapshot()).handoffs).toHaveLength(0);
+    expect(gateway.calls).toBe(0);
   });
 
   it('does not treat intake-pack extraction as a tender pricing submission', async () => {
@@ -287,8 +426,10 @@ describe('Intake pack HTTP routes', () => {
 async function listen(
   repository: MemoryRepository,
   intake: IntakePackService,
+  gateway: PricingGateway = new MockPricingGateway(repository),
+  interpreter?: TenderInterpreter,
 ): Promise<{ origin: string }> {
-  const service = new TenderService(repository, new MockPricingGateway(repository));
+  const service = new TenderService(repository, gateway, undefined, interpreter);
   const server = createTenderServer(service, false, intake);
   servers.push(server);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -296,4 +437,100 @@ async function listen(
   if (!address || typeof address === 'string')
     throw new Error('Server did not bind to a TCP port.');
   return { origin: `http://127.0.0.1:${address.port}` };
+}
+
+async function listenWired(
+  repository: MemoryRepository,
+  gateway: CountingGateway,
+): Promise<{ origin: string; intake: IntakePackService; tenderService: TenderService }> {
+  const tenderService = new TenderService(repository, gateway, undefined, new EmptyInterpreter());
+  const intake = new IntakePackService(
+    new MemoryIntakePackRepository(),
+    new MemoryIntakeOriginalsStore(),
+    () => new Date(),
+    parseSelectablePdf,
+    createIntakeConfirmationHandoff(tenderService),
+  );
+  const origin = (await listen(repository, intake, gateway, new EmptyInterpreter())).origin;
+  return { origin, intake, tenderService };
+}
+
+async function registerHttpFixture(
+  origin: string,
+  packId: string,
+  fixturePackId: string,
+): Promise<void> {
+  const spec = catalog.specs.find((item) => item.packId === fixturePackId);
+  if (!spec) throw new Error(`Missing fixture pack ${fixturePackId}`);
+  for (const file of spec.files) {
+    if (file.kind === 'NOTE') {
+      await fetch(`${origin}/intake-packs/${packId}/notes`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: file.bytes.toString('utf8') }),
+      });
+      continue;
+    }
+    await fetch(`${origin}/intake-packs/${packId}/documents`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/pdf', 'x-file-name': file.fileName },
+      body: Buffer.from(file.bytes),
+    });
+  }
+}
+
+class CountingGateway implements PricingGateway {
+  calls = 0;
+  private readonly inner: MockPricingGateway;
+
+  constructor(repository: MemoryRepository) {
+    this.inner = new MockPricingGateway(repository);
+  }
+
+  async submit(input: {
+    tenderId: string;
+    runId: string;
+    route: PricingHandoff['route'];
+    handoffKey: string;
+  }): Promise<PricingHandoff> {
+    this.calls += 1;
+    return this.inner.submit(input);
+  }
+}
+
+class EmptyInterpreter implements TenderInterpreter {
+  readonly model = 'empty-test-model';
+
+  async interpret(request: IntakeRequest, traceId = randomUUID()) {
+    return {
+      output: {
+        summary: 'No additional interpreted facts.',
+        sourceAssessments: request.textSources.map((source) => ({
+          sourceId: source.sourceId,
+          relevance: 'NO_RELEVANT_FACTS' as const,
+          confidence: 1,
+          ambiguous: false,
+          explanation: 'Test interpreter does not extract facts from confirmation text.',
+          evidence: [
+            {
+              sourceId: source.sourceId,
+              quote: source.text.trim().slice(0, 80) || source.text.slice(0, 80),
+            },
+          ],
+        })),
+        observations: [],
+        siteAssociations: [],
+        conflicts: [],
+      },
+      trace: {
+        traceId,
+        model: this.model,
+        promptVersion: 'test-prompt-v1',
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: 1,
+        outcome: 'SUCCEEDED' as const,
+      },
+    };
+  }
 }

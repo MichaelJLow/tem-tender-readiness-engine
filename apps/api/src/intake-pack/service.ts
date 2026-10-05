@@ -7,15 +7,19 @@ import {
   applyParsedDocumentToIntakeDocument,
   buildIntakeExtraction,
   canAddIntakeDocument,
+  canConfirmIntakePackAtVersion,
   canPrepareIntakeDraft,
   canPutIntakeNote,
   classifyIntakeUpload,
   deriveIntakePackStatus,
   evaluateExtractionBounds,
+  intakeConfirmationIdentity,
   intakeLayerMayInvokePricing,
   prepareIntakeDraftFromEvidence,
+  snapshotDraftForConfirmation,
   storedIntakeByteSize,
   transitionIntakeDocument,
+  type IntakeConfirmation,
   type IntakeDocument,
   type IntakeDraft,
   type IntakeDraftPatchInput,
@@ -25,6 +29,9 @@ import {
   type IntakePackFailure,
   type ParsedIntakeDocument,
 } from '../../../../packages/domain/src/index.js';
+import { DEFAULT_INTAKE_PACK_ACTOR } from '../intake-pack-contracts.js';
+import { IdempotencyConflictError } from '../service.js';
+import type { IntakeConfirmationHandoff } from './confirmation-adapter.js';
 import { parseSelectablePdf } from './pdf-parser.js';
 import type { IntakeOriginalsStore } from './originals-store.js';
 import type { IntakePackRepository } from './repository.js';
@@ -55,6 +62,10 @@ export class IntakeDraftNotFoundError extends Error {
   override name = 'IntakeDraftNotFoundError';
 }
 
+export class IntakeConfirmationNotFoundError extends Error {
+  override name = 'IntakeConfirmationNotFoundError';
+}
+
 export class IntakePackService {
   private queue: Promise<void> = Promise.resolve();
 
@@ -63,6 +74,8 @@ export class IntakePackService {
     private readonly originals: IntakeOriginalsStore,
     private readonly now: () => Date = () => new Date(),
     private readonly parsePdf: typeof parseSelectablePdf = parseSelectablePdf,
+    private readonly confirmationHandoff?: IntakeConfirmationHandoff,
+    private readonly actor: string = DEFAULT_INTAKE_PACK_ACTOR,
   ) {}
 
   createPack(): Promise<IntakePack> {
@@ -387,6 +400,82 @@ export class IntakePackService {
     });
   }
 
+  confirm(input: {
+    packId: string;
+    expectedDraftVersion: number;
+    idempotencyKey: string;
+    correlationId: string;
+  }): Promise<{ pack: IntakePack; confirmation: IntakeConfirmation; replayed: boolean }> {
+    return this.enqueue(async () => {
+      this.assertConfirmationLayerCannotPrice();
+      const pack = await this.getPack(input.packId);
+      if (pack.confirmation) {
+        if (pack.confirmation.idempotencyKey !== input.idempotencyKey) {
+          throw new IntakePackConflictError(
+            {
+              code: 'ALREADY_CONFIRMED',
+              message: 'A confirmed Intake pack cannot be confirmed again.',
+              retryable: false,
+            },
+            pack,
+          );
+        }
+        const confirmation = await this.ensureConfirmationHandoff(pack, input.correlationId);
+        return {
+          pack: await this.getPack(pack.packId),
+          confirmation,
+          replayed: true,
+        };
+      }
+
+      const eligibility = canConfirmIntakePackAtVersion(pack, input.expectedDraftVersion);
+      if (!eligibility.ok) {
+        throw new IntakePackConflictError(
+          {
+            code: eligibility.code ?? 'NOT_CONFIRMABLE',
+            message: eligibility.reason,
+            retryable: false,
+          },
+          pack,
+        );
+      }
+
+      const identity = intakeConfirmationIdentity(pack.packId);
+      const timestamp = this.now().toISOString();
+      const snapshot = snapshotDraftForConfirmation({
+        confirmationId: identity.confirmationId,
+        pack,
+        actor: this.actor,
+        idempotencyKey: input.idempotencyKey,
+        tenderId: identity.tenderId,
+        customerId: pack.draft?.customer.customerId ?? identity.customerId,
+        brokerId: pack.draft?.broker.brokerId ?? identity.brokerId,
+        confirmedAt: timestamp,
+      });
+      const confirmed = await this.persistDerived({
+        ...pack,
+        confirmation: snapshot,
+        updatedAt: timestamp,
+      });
+      const confirmation = await this.ensureConfirmationHandoff(confirmed, input.correlationId);
+      return {
+        pack: await this.getPack(confirmed.packId),
+        confirmation,
+        replayed: false,
+      };
+    });
+  }
+
+  async getConfirmation(packId: string): Promise<IntakeConfirmation> {
+    const pack = await this.getPack(packId);
+    if (!pack.confirmation) {
+      throw new IntakeConfirmationNotFoundError(
+        `Intake pack ${packId} has no confirmation snapshot yet.`,
+      );
+    }
+    return pack.confirmation;
+  }
+
   private async ensureDraft(pack: IntakePack): Promise<IntakePack> {
     if (pack.draft) return pack;
     const eligible = canPrepareIntakeDraft(pack);
@@ -408,6 +497,58 @@ export class IntakePackService {
       draft,
       updatedAt: timestamp,
     });
+  }
+
+  private async ensureConfirmationHandoff(
+    pack: IntakePack,
+    correlationId: string,
+  ): Promise<IntakeConfirmation> {
+    const confirmation = pack.confirmation;
+    if (!confirmation) {
+      throw new Error('Confirmation snapshot is required before readiness handoff.');
+    }
+    if (confirmation.runId) return confirmation;
+    if (!this.confirmationHandoff) {
+      throw new Error('Intake pack confirmation handoff is not configured.');
+    }
+    this.assertConfirmationLayerCannotPrice();
+    try {
+      const handoff = await this.confirmationHandoff.submitConfirmed(
+        confirmation.submission,
+        correlationId,
+      );
+      const next = await this.persistDerived({
+        ...pack,
+        confirmation: {
+          ...confirmation,
+          tenderId: handoff.tenderId,
+          runId: handoff.runId,
+        },
+        updatedAt: this.now().toISOString(),
+      });
+      if (!next.confirmation) {
+        throw new Error('Confirmation snapshot was not persisted.');
+      }
+      return next.confirmation;
+    } catch (error) {
+      if (error instanceof IdempotencyConflictError) {
+        throw new IntakePackConflictError(
+          {
+            code: 'IDEMPOTENCY_CONFLICT',
+            message: 'The confirmation idempotency key was already used with a different request.',
+            retryable: false,
+          },
+          pack,
+        );
+      }
+      throw error;
+    }
+  }
+
+  private assertConfirmationLayerCannotPrice(): void {
+    if (intakeLayerMayInvokePricing('confirmation')) {
+      throw new Error('Intake pack confirmation must never invoke pricing.');
+    }
   }
 
   private assertDraftLayerCannotPrice(): void {

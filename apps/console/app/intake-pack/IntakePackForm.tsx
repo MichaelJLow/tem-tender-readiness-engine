@@ -617,7 +617,7 @@ export function IntakePackForm({ initialPackId }: Props) {
           <p className="source-copy">
             Extraction reads selectable PDF text only. Scanned pages become OCR_REQUIRED. When the
             pack is reviewable, open Review to inspect candidates beside the source page. Confirm
-            and readiness remain later tickets.
+            snapshots the reviewed draft into the existing case path.
           </p>
           {pack?.extraction ? (
             <div className="notice notice-info">
@@ -653,7 +653,7 @@ export function IntakePackForm({ initialPackId }: Props) {
             </div>
             <small className="action-note">
               Extract never calls pricing and never fills a tender form. Review opens when the pack
-              is REVIEWABLE; confirm is ENG-23.
+              is REVIEWABLE; Confirm on that screen hands off into the existing case.
             </small>
           </form>
           <p>

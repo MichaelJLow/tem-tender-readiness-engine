@@ -5,11 +5,14 @@ import { createTenderServer } from './server.js';
 import { TenderService } from './service.js';
 import { MastraTenderInterpreter } from './reasoning/interpreter.js';
 import { FileIntakeOriginalsStore } from './intake-pack/originals-store.js';
+import { parseSelectablePdf } from './intake-pack/pdf-parser.js';
 import {
   FileIntakePackStateStore,
   JsonFileIntakePackRepository,
 } from './intake-pack/repository.js';
 import { IntakePackService } from './intake-pack/service.js';
+import { createIntakeConfirmationHandoff } from './intake-pack/confirmation-adapter.js';
+import { intakePackActorFromEnv } from './intake-pack-contracts.js';
 
 const port = parsePort(process.env.PORT ?? '3000');
 const host = process.env.HOST ?? '127.0.0.1';
@@ -30,6 +33,10 @@ const service = new TenderService(
 const intakePackService = new IntakePackService(
   new JsonFileIntakePackRepository(new FileIntakePackStateStore(intakePackStatePath)),
   new FileIntakeOriginalsStore(intakePackOriginalsPath),
+  () => new Date(),
+  parseSelectablePdf,
+  createIntakeConfirmationHandoff(service),
+  intakePackActorFromEnv(),
 );
 const server = createTenderServer(
   service,

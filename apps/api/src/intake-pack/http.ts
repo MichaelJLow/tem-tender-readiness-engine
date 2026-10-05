@@ -1,12 +1,15 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { INTAKE_PACK_LIMITS } from '../../../../packages/domain/src/index.js';
 import {
+  ConfirmIntakePackRequestSchema,
+  ConfirmIntakePackResponseSchema,
   CreateIntakePackRequestSchema,
   PatchIntakeDraftRequestSchema,
   PutIntakeNotesRequestSchema,
   TriggerIntakeExtractionRequestSchema,
 } from '../intake-pack-contracts.js';
 import {
+  IntakeConfirmationNotFoundError,
   IntakeDocumentNotFoundError,
   IntakeDraftNotFoundError,
   IntakeExtractionNotFoundError,
@@ -167,6 +170,45 @@ export async function tryHandleIntakePackRequest(input: {
         return true;
       }
     }
+
+    const confirmMatch = path.match(/^\/intake-packs\/([^/]+)\/confirm$/);
+    if (input.request.method === 'POST' && confirmMatch?.[1]) {
+      const parsed = ConfirmIntakePackRequestSchema.safeParse(await readJsonBody(input.request));
+      if (!parsed.success) {
+        sendJson(input.response, 400, {
+          error: 'INVALID_INTAKE_CONFIRMATION',
+          correlationId: input.correlationId,
+        });
+        return true;
+      }
+      const result = await input.service.confirm({
+        packId: decodeURIComponent(confirmMatch[1]),
+        expectedDraftVersion: parsed.data.expectedDraftVersion,
+        idempotencyKey: parsed.data.idempotencyKey,
+        correlationId: input.correlationId,
+      });
+      sendJson(
+        input.response,
+        200,
+        ConfirmIntakePackResponseSchema.parse({
+          packId: result.pack.packId,
+          confirmation: result.confirmation,
+          tenderId: result.confirmation.tenderId,
+          runId: result.confirmation.runId,
+        }),
+      );
+      return true;
+    }
+
+    const confirmationMatch = path.match(/^\/intake-packs\/([^/]+)\/confirmation$/);
+    if (input.request.method === 'GET' && confirmationMatch?.[1]) {
+      sendJson(
+        input.response,
+        200,
+        await input.service.getConfirmation(decodeURIComponent(confirmationMatch[1])),
+      );
+      return true;
+    }
   } catch (error) {
     if (error instanceof BodyTooLargeError) {
       sendJson(input.response, 413, {
@@ -199,6 +241,13 @@ export async function tryHandleIntakePackRequest(input: {
     if (error instanceof IntakeDraftNotFoundError) {
       sendJson(input.response, 404, {
         error: 'INTAKE_DRAFT_NOT_FOUND',
+        correlationId: input.correlationId,
+      });
+      return true;
+    }
+    if (error instanceof IntakeConfirmationNotFoundError) {
+      sendJson(input.response, 404, {
+        error: 'INTAKE_CONFIRMATION_NOT_FOUND',
         correlationId: input.correlationId,
       });
       return true;

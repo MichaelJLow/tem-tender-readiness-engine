@@ -222,7 +222,7 @@ describe('Console Intake pack presentation', () => {
     ).toBe(false);
   });
 
-  it('treats extraction as the review-ready step without exposing confirm or assess', () => {
+  it('treats extraction as the review-ready step and confirm as later until the pack is reviewable', () => {
     expect(currentIntakePackFlowStep(undefined)).toBe('drop');
     expect(currentIntakePackFlowStep(pack({ status: 'RECEIVING' }))).toBe('drop');
     expect(currentIntakePackFlowStep(pack({ status: 'EXTRACTING' }))).toBe('extract');
@@ -241,6 +241,7 @@ describe('Console Intake pack presentation', () => {
         }),
       ),
     ).toBe('review');
+    expect(currentIntakePackFlowStep(pack({ status: 'CONFIRMED' }))).toBe('confirm');
     expect(currentIntakePackFlowStep(pack({ status: 'FAILED' }))).toBe('extract');
   });
 

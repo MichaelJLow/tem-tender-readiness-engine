@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   INTAKE_PACK_LIMITS,
   draftStructuredFieldsAreEmpty,
+  evaluateReadiness,
   intakeLayerMayInvokePricing,
+  type IntakeConfirmedSubmission,
 } from '../../../../packages/domain/src/index.js';
 import { buildIntakePackFixtureCatalog } from '../../../../scripts/intake-pack-fixtures.js';
+import type { IntakeConfirmationHandoff } from './confirmation-adapter.js';
 import { MemoryIntakeOriginalsStore } from './originals-store.js';
+import { parseSelectablePdf } from './pdf-parser.js';
 import { MemoryIntakePackRepository } from './repository.js';
 import { IntakeDraftNotFoundError, IntakePackConflictError, IntakePackService } from './service.js';
 
@@ -305,3 +309,152 @@ describe('Intake pack evidence-to-draft preparation', () => {
     ).rejects.toBeInstanceOf(IntakePackConflictError);
   });
 });
+
+describe('Intake pack confirmation adapter', () => {
+  it('snapshots an empty reviewed draft, hands off once, and does not treat confirm as ready', async () => {
+    const { handoff, submissions } = recordingHandoff();
+    const service = createConfirmService(handoff);
+    const created = await service.createPack();
+    await registerFixture(service, created.packId, 'pack-clean-single-site');
+    await service.extract(created.packId);
+    const draft = await service.getDraft(created.packId);
+    expect(draftStructuredFieldsAreEmpty(draft)).toBe(true);
+
+    const first = await service.confirm({
+      packId: created.packId,
+      expectedDraftVersion: draft.draftVersion,
+      idempotencyKey: `confirm:${created.packId}`,
+      correlationId: 'confirm-empty-001',
+    });
+    expect(first.replayed).toBe(false);
+    expect(first.pack.status).toBe('CONFIRMED');
+    expect(first.confirmation.actor).toBe('local-demo-operator');
+    expect(first.confirmation.runId).toBe('11111111-1111-4111-8111-111111111111');
+    expect(evaluateReadiness(first.confirmation.submission).route).toBe('NEEDS_INFORMATION');
+    expect(submissions).toHaveLength(1);
+
+    const replay = await service.confirm({
+      packId: created.packId,
+      expectedDraftVersion: draft.draftVersion,
+      idempotencyKey: `confirm:${created.packId}`,
+      correlationId: 'confirm-empty-001-retry',
+    });
+    expect(replay.replayed).toBe(true);
+    expect(replay.confirmation.confirmationId).toBe(first.confirmation.confirmationId);
+    expect(replay.confirmation.tenderId).toBe(first.confirmation.tenderId);
+    expect(replay.confirmation.runId).toBe(first.confirmation.runId);
+    expect(submissions).toHaveLength(1);
+  });
+
+  it('rejects a stale expectedDraftVersion before snapshot or handoff', async () => {
+    const { handoff, submissions } = recordingHandoff();
+    const service = createConfirmService(handoff);
+    const created = await service.createPack();
+    await registerFixture(service, created.packId, 'pack-clean-single-site');
+    await service.extract(created.packId);
+    await service.getDraft(created.packId);
+    await service.patchDraft(created.packId, {
+      expectedDraftVersion: 1,
+      fieldEdits: { customerLegalName: 'Northstar Foods Ltd' },
+    });
+
+    await expect(
+      service.confirm({
+        packId: created.packId,
+        expectedDraftVersion: 1,
+        idempotencyKey: `confirm:${created.packId}`,
+        correlationId: 'confirm-stale-001',
+      }),
+    ).rejects.toMatchObject({ failure: { code: 'DRAFT_STALE' } });
+    expect(submissions).toHaveLength(0);
+    expect((await service.getPack(created.packId)).status).toBe('REVIEWABLE');
+  });
+
+  it('hands off operator-edited fields without copying candidates, and rejects a second idempotency key', async () => {
+    const { handoff, submissions } = recordingHandoff();
+    const service = createConfirmService(handoff);
+    const created = await service.createPack();
+    await registerFixture(service, created.packId, 'pack-clean-single-site');
+    await service.extract(created.packId);
+    const prepared = await service.getDraft(created.packId);
+    const customer = prepared.candidates.find(
+      (candidate) => candidate.field === 'customerLegalName',
+    );
+    const edited = await service.patchDraft(created.packId, {
+      expectedDraftVersion: 1,
+      acceptedCandidateIds: customer ? [customer.candidateId] : [],
+      fieldEdits: {
+        customerLegalName: 'Northstar Foods Ltd',
+        brokerLegalName: 'Harbour Energy Partners',
+        sites: [
+          {
+            siteId: 'site-warehouse',
+            address: '10 Example Street, London',
+            meterIdentifier: '1234567890123',
+            annualConsumptionKwh: 24000,
+            contractEndDate: '2027-03-31',
+          },
+        ],
+      },
+    });
+
+    const confirmed = await service.confirm({
+      packId: created.packId,
+      expectedDraftVersion: edited.draftVersion,
+      idempotencyKey: `confirm:${created.packId}`,
+      correlationId: 'confirm-ready-fields-001',
+    });
+    expect(confirmed.confirmation.submission.tender.customer.legalName).toBe('Northstar Foods Ltd');
+    expect(confirmed.confirmation.submission.tender.sites[0]?.address).toBe(
+      '10 Example Street, London',
+    );
+    expect(evaluateReadiness(confirmed.confirmation.submission).route).toBe('READY_FOR_PRICING');
+    expect(intakeLayerMayInvokePricing('confirmation')).toBe(false);
+    expect(submissions).toHaveLength(1);
+
+    await expect(
+      service.confirm({
+        packId: created.packId,
+        expectedDraftVersion: edited.draftVersion,
+        idempotencyKey: `confirm:${created.packId}-other`,
+        correlationId: 'confirm-ready-fields-002',
+      }),
+    ).rejects.toMatchObject({ failure: { code: 'ALREADY_CONFIRMED' } });
+    expect(submissions).toHaveLength(1);
+    await expect(
+      service.patchDraft(created.packId, {
+        expectedDraftVersion: edited.draftVersion,
+        fieldEdits: { customerLegalName: 'Changed After Confirm Ltd' },
+      }),
+    ).rejects.toMatchObject({ failure: { code: 'ALREADY_CONFIRMED' } });
+  });
+});
+
+function createConfirmService(handoff: IntakeConfirmationHandoff): IntakePackService {
+  return new IntakePackService(
+    new MemoryIntakePackRepository(),
+    new MemoryIntakeOriginalsStore(),
+    () => new Date(),
+    parseSelectablePdf,
+    handoff,
+  );
+}
+
+function recordingHandoff(): {
+  handoff: IntakeConfirmationHandoff;
+  submissions: IntakeConfirmedSubmission[];
+} {
+  const submissions: IntakeConfirmedSubmission[] = [];
+  return {
+    submissions,
+    handoff: {
+      async submitConfirmed(submission) {
+        submissions.push(submission);
+        return {
+          tenderId: submission.tender.tenderId,
+          runId: '11111111-1111-4111-8111-111111111111',
+        };
+      },
+    },
+  };
+}
