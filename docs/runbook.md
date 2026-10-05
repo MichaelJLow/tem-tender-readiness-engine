@@ -101,10 +101,12 @@ route, or invoke pricing. Refresh to inspect Review history. Open the clean and
 missing-information cases to confirm they offer no review action. In
 Performance, compare the accepted baseline with the latest completed report;
 the Studio links are optional drill-down. The latest full report passed 9/9
-gates on 63 synthetic workflow cases, with 0 unsafe-ready outcomes, 0 non-ready
-pricing calls, 51/51 agent facts, and 51/51 workflow critical facts. The
-accepted baseline passed 7/7 gates on 63 cases, with 51/51 agent facts and
-49/51 workflow critical facts. The latest run is not the accepted baseline.
+gates on 63 synthetic workflow cases, with 0/44 golden-safety unsafe-ready
+outcomes, 0 non-ready pricing calls, 51/51 agent facts, and 51/51 workflow
+critical facts. The accepted baseline passed 7/7 gates on 63 cases, with 51/51
+agent facts and 49/51 workflow critical facts. The Performance card also shows
+the all-cases unsafe-ready count as 0/63; that is not a new threshold and is
+not a promotion of the later report. The latest run is not the accepted baseline.
 
 ## Milestone 3 live model smoke check
 

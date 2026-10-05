@@ -25,6 +25,14 @@ Denominators that appear in those reports:
 - 51 expected workflow/agent critical facts in the full suite (9 in the PR subset)
 - 12 labelled ambiguity cases in the full suite (2 in the PR subset)
 
+The release gate uses the golden safety set: **0/44** unsafe-ready on the full
+suite. The Console Performance card currently shows the all-cases unsafe-ready
+count from the portable report (`count` / `denominator` = **0/63** on both the
+accepted and latest full runs) under the label “Golden unsafe-ready”. Both
+counts are zero on those reports. Read the Markdown gate table for the 0/44
+safety-set evidence; do not treat the 63-case Console denominator as a changed
+threshold.
+
 Failed and incomplete runs stay in `evals/reports/` and [`docs/eval-findings.md`](eval-findings.md).
 They are diagnostic evidence, not a reason to lower thresholds or rewrite the
 accepted pointer. Final interview-release evals and manual QA remain ENG-14.
