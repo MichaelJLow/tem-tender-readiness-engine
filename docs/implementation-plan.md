@@ -447,9 +447,12 @@ Once Milestones 0–9 are complete, build a more realistic fully synthetic tende
 text, review a draft, confirm, and assess readiness through the existing tender
 path.
 
-**ENG-17 (this slice):** Zod contracts, limits, failure taxonomy, API surface
-sketch, and [ADR-005](adr/005-intake-pack-boundary.md). No upload UI, PDF
-parser, or Console page.
+**ENG-17 (contracts):** Zod contracts, limits, failure taxonomy, API surface
+sketch, and [ADR-005](adr/005-intake-pack-boundary.md).
+
+**ENG-21 (this Console slice):** Drop/upload + processing status only. PDFs and
+broker notes, pack limits, file statuses including visible failures, retry/remove
+where safe. No draft review, confirm, or readiness UI.
 
 ### Tasks
 
@@ -463,7 +466,8 @@ parser, or Console page.
 - [x] ENG-18 synthetic fixture set.
 - [x] ENG-19 bounded PDF registration and extraction.
 - [x] ENG-20 evidence-to-draft preparation (no silent field fill).
-- [ ] ENG-21/22 Console upload and draft-review UI.
+- [x] ENG-21 Console upload and processing-status UI.
+- [ ] ENG-22 Console draft-review UI.
 - [ ] ENG-23 confirmation adapter and readiness handoff.
 - [ ] ENG-24 safety, eval evidence, and runbook.
 

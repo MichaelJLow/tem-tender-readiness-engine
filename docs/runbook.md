@@ -7,7 +7,7 @@ This document describes the implemented local API, Console, Studio, n8n intake, 
 ## Local API
 
 - Start with `npm run dev:api` after `npm ci`.
-- Start the operations console in a second terminal with `npm run dev:console`; open `http://localhost:3001`. It reads the API at `TENDER_API_URL` (default `http://127.0.0.1:3000`) and the retained report files in `EVALS_DIR` (default `./evals`). Mastra Studio remains on `4113`. Use only synthetic tender data. The review mutation API is enabled only when `HOST` is loopback; the console's demo operator label is not production authentication.
+- Start the operations console in a second terminal with `npm run dev:console`; open `http://localhost:3001`. It reads the API at `TENDER_API_URL` (default `http://127.0.0.1:3000`) and the retained report files in `EVALS_DIR` (default `./evals`). The **Intake pack** page at `/intake-pack` registers synthetic PDFs and pasted notes through the intake-pack API; it does not submit a tender form or call pricing. Mastra Studio remains on `4113`. Use only synthetic tender data. The review mutation API is enabled only when `HOST` is loopback; the console's demo operator label is not production authentication.
 - To populate the local console with three repeatable synthetic examples, start the API and run `npm run demo:seed`. The clean example records one mocked handoff; the missing-information example records one synthetic `information-request:{runId}` receipt marked `NOT_SENT`; the conflicting-date example records neither. Re-running uses the fixture idempotency keys and returns the stored results.
 - Configure `PORT`, `HOST`, and `TENDER_STATE_PATH` with environment variables. Defaults are port `3000`, host `127.0.0.1` (loopback only), and `./data/tender-state.json`. Intake pack state defaults to `./data/intake-pack-state.json` and write-once originals to `./data/intake-pack-originals`. After extraction, `GET /intake-packs/:packId/draft` prepares a review-only draft from page text and notes; `PATCH` records operator edits. Neither fills structured readiness fields nor calls pricing. Confirm remains unwired. Set `HOST` explicitly only when the API must accept connections from another interface.
 - Structured-only requests do not call a model and do not need a model-provider key. Requests with `textSources` invoke the Mastra Tender Interpretation Agent. Set `OPENROUTER_API_KEY` to use OpenRouter (default model `openai/gpt-6-luna`), or set `OPENAI_API_KEY` to use OpenAI (default model `gpt-6-luna`). `OPENROUTER_MODEL` and `OPENAI_MODEL` override provider defaults. For another OpenAI-compatible provider, set `MODEL_API_KEY`, `MODEL_API_BASE_URL`, and `MODEL_ID`; these generic settings take precedence. Keep keys in an untracked `.env` file or deployment secrets.
@@ -108,6 +108,18 @@ agent facts and 49/51 workflow critical facts. The Performance card also shows
 the all-cases unsafe-ready count as 0/63; that is not a new threshold and is
 not a promotion of the later report. The latest run is not the accepted baseline.
 
+## Console Intake pack (Milestone 10 / ENG-21)
+
+Open `http://localhost:3001/intake-pack` with the local API running. This page
+is named **Intake pack**. Drop synthetic PDFs and paste broker notes; there is
+no tender form. Pack limits (7 PDFs, 8 MiB/file, 24 MiB pack, one notes field)
+are shown on the page. File statuses including `OCR_REQUIRED`, `CORRUPT`,
+`UNSUPPORTED`, `OVERSIZED`, and `EXTRACTION_FAILED` remain on the list. Remove
+applies only to files that never registered; registered files stay on the pack.
+Extract stores selectable text and does not open draft review, confirm, or
+readiness — those are later tickets. Use `fixtures/intake-packs/` for sample
+PDFs. The persistent notice on the page labels the data as synthetic.
+
 ## Milestone 3 live model smoke check
 
 Completed locally on 2026-09-26 using `OPENROUTER_API_KEY` and `openai/gpt-6-luna`: a synthetic tender with `textSources` returned `COMPLETED`, `READY_FOR_PRICING`, a successful interpretation, and a model trace. The pricing handoff was mocked. API logs contained run metadata but neither the key nor source text. Repeat this check after material model or prompt changes. Do not use real tender or customer data.
@@ -173,8 +185,10 @@ it is never reported as if the model or gateway write had succeeded.
 The local JSON repository is the implemented persistence boundary. The n8n
 intake and outcome workflow is documented in
 [`integrations/n8n/README.md`](../integrations/n8n/README.md); it does not own
-these API failure codes. Source document storage and parsing are not implemented,
-so this table does not claim failure codes for those future boundaries.
+these API failure codes. Intake pack document failures (`OCR_REQUIRED`,
+`CORRUPT`, `UNSUPPORTED`, `OVERSIZED`, `EXTRACTION_FAILED`, and pack-limit
+codes) stay visible on the Console **Intake pack** file list; they are never
+silently omitted. Those statuses are not tender-run routes.
 
 ## Recovery model
 

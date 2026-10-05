@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { NavItems } from './NavItems';
 import './styles.css';
 
 export const metadata: Metadata = {
@@ -30,14 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
               </span>
             </Link>
             <div className="nav-label">WORKSPACE</div>
-            <nav className="nav-list" aria-label="Main navigation">
-              <Link href="/" className="nav-item">
-                <span>▦</span> Queue
-              </Link>
-              <Link href="/performance" className="nav-item">
-                <span>◷</span> Performance
-              </Link>
-            </nav>
+            <NavItems />
             <div className="sidebar-bottom">
               <span className="online-dot" /> Local demo environment
               <small>Loopback API · synthetic data</small>
