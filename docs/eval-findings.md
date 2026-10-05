@@ -398,42 +398,17 @@ deterministic checks pass.**
   documentation landed on `main` after the 02:17 not-run attempt and did not
   change product sources.
 
-### ENG-14 trace investigation — 2026-10-05 (not landed)
+### ENG-14 trace investigation and clean release evals — 2026-10-05
 
-- A provider-backed full run was later described as failing only the
-  route-and-pricing gate (62/63) on `ready-two-site-meters-document`. The
-  before-report `full-2026-10-05T12-56-37.771Z` was never committed, so that
-  62/63 claim is not independently inspectable in this repository.
-- **Trace diagnosis recorded with the attempt:** the model returned two clear
-  meter observations and two clear site associations, one for each quoted
-  sentence. The deterministic evidence bridge compared every association from
-  the document against each observation, treated an association for the other
-  sentence as a contradiction, marked both facts ambiguous, and fired
-  `TDR-010` followed by `TDR-012`.
-- A targeted association-check change and regression tests were pushed to this
-  PR. That activated the credentialless **Reasoning change evidence** job.
-  `evals/pr-evidence.json` still points at `pr-2026-10-04T23-14-16.314Z`
-  (`gitSha` `04beba79285cf02b057ce98411b8dc7a191c7343`), which is not an
-  ancestor of this branch or of `main`. Those reasoning sources also changed
-  after that SHA, so grafting it into history would not satisfy
-  `verifySourceRevision`. This environment has no provider key, so
-  `npm run eval:pr` was not rerun.
-- The post-fix JSON `full-2026-10-05T13-30-54.275Z.json` was not valid
-  portable evidence: it began with a truncation banner, contained an
-  ellipsized object (`sourceId…400 tokens truncated…`), and recorded
-  `gitSha: "unknown"` because the run came from a `.git`-less archive.
-  Prettier rejected it. That JSON was removed. The Markdown summary
-  [`full-2026-10-05T13-30-54.275Z.md`](../evals/reports/full-2026-10-05T13-30-54.275Z.md)
-  is retained as a diagnostic narrative only: 63/63 routes, 0 unsafe-ready,
-  0 non-ready pricing, all 9 gates listed as pass.
-- **Disposition:** the association-check source change is **not** in this PR.
-  Product files under `apps/api/src/reasoning` match `main`. Do not promote
-  the 13:30 run, do not point `evals/release-evidence.json` at it, and do not
-  rewrite `evals/pr-evidence.json`. A maintainer with the configured OpenRouter
-  key can land the fix on a follow-up after `npm run eval:pr` from a clean
-  checkout.
+- **Trace-led defect:** the model emitted separate, supported meter observations and site associations for two sites in one document. Deterministic evidence reconciliation compared every association in the document with every observation, so a correct association for the other sentence looked contradictory. That marked both facts ambiguous and routed the passing case to `HUMAN_REVIEW`; the pricing guard correctly prevented handoff.
+- **Fix and regression:** association conflicts now require the observation citation and association citation to refer to the same claim. Unit coverage preserves the grouped and distinct per-site associations and keeps genuinely conflicting assignments in human review.
+- **First clean full run on PR revision `9fbf16f71cb5afef7b91ccabf74920a1feb116d3`:** [report](../evals/reports/full-2026-10-05T14-11-56.671Z.md). All 63 cases completed and all route, safety, ambiguity, and pricing-guard gates passed, but the suite was incomplete: the model omitted three labelled facts for `conflicting-three-date-values`, leaving agent facts at 48/51 and failing critical-fact-recall and the corresponding baseline gate. Retain this as diagnostic evidence.
+- **Same-revision rerun:** [report](../evals/reports/full-2026-10-05T14-22-22.835Z.md). On the same clean source SHA, all 63 cases completed and all 9 gates passed: routes 63/63, agent facts 51/51, unsafe-ready 0/44, and non-ready pricing calls 0. The previously failing `ready-two-site-meters-document` case returned `READY_FOR_PRICING` with one mock handoff.
+- **Interpretation:** the first result exposed model-output variability in a separate three-date case; the deterministic fix was unchanged between runs. We retained the failed report, reran with the accepted thresholds, and did not promote a new baseline.
+- **Release evidence:** `evals/release-evidence.json` selects the passing report and the manual-QA receipt for this same source revision. The accepted baseline remains `full-2026-09-26T23-53-52.654Z`.
 
 ## Follow-up log
+
 
 | Date       | Report                           | Finding / decision                                                                                                                                                                                                         | Status                                                                                                                                                                                                                         |
 | ---------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -450,4 +425,4 @@ deterministic checks pass.**
 | 2026-09-28 | final full release eval          | 63/63 cases; all 9 gates passed; 51/51 agent facts; accepted baseline preserved                                                                                                                                            | Milestone 4 full-eval acceptance met for the synthetic dataset                                                                                                                                                                 |
 | 2026-10-05 | ENG-12 reliability rehearsal     | Visible failure → no unsafe action → safe recovery recorded for provider timeout, invalid model output, persistence read/write, mocked gateway 500, duplicate webhook, and archive missing-object. No live model eval.     | Receipt: [`docs/reliability-rehearsal.md`](reliability-rehearsal.md). Accepted baseline unchanged. Latest results were not promoted.                                                                                           |
 | 2026-10-05 | ENG-14 final release attempt     | Clean full suite on `2e725d9` wrote an explicit `not_run` report: no provider key in this remote environment. Existing full reports are dirty and from older source revisions. Thresholds and accepted baseline unchanged. | Diagnostic report [`full-2026-10-05T02-17-47.688Z.md`](../evals/reports/full-2026-10-05T02-17-47.688Z.md). Manual QA: [`docs/release-qa/eng-14-manual-qa.json`](release-qa/eng-14-manual-qa.json). No `release-evidence.json`. |
-| 2026-10-05 | ENG-14 association-check attempt | Reasoning sources were changed without new PR eval evidence. `04beba79` is not an ancestor of HEAD. The 13:30 JSON was truncated and recorded `gitSha: unknown`.                                                           | Product change reverted to match `main`. Markdown summary retained as diagnostic only. Accepted baseline unchanged.                                                                                                            |
+| 2026-10-05 | ENG-14 clean release evals | Same clean PR revision was evaluated twice: the first run missed three model facts; the second passed all 9 gates. The trace-led association fix remained unchanged. | Passing report selected for release evidence; failed report retained as diagnostic; accepted baseline unchanged. |
