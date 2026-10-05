@@ -7,7 +7,9 @@ brokers, or tem data.
 This is the ENG-18 fixture set for Console **Intake pack**. ENG-19 uses the files
 and manifest to test bounded registration and selectable-text extraction.
 ENG-20 uses the same packs to prepare review-only drafts with candidates and
-provenance. Later Console tickets can attach the same packs in the UI.
+provenance. ENG-21/22 attach them in the Console. ENG-23 confirms a reviewed
+draft into `POST /tenders`. ENG-24 uses the same packs for safety, PDF
+failure-path, cross-site leakage, and reviewer-walkthrough tests.
 
 ## Layout
 
@@ -47,7 +49,7 @@ fixtures/intake-packs/
 Each pack has at most one broker note except `pack-notes-limit`, which exists to
 breach `INTAKE_PACK_LIMITS.maxNotes`.
 
-## How later tickets should consume them
+## How tests and the Console should consume them
 
 1. Read `manifest.json` and parse it with `IntakePackFixtureManifestSchema`.
 2. Load committed files from `packs/<directory>/<path>`.

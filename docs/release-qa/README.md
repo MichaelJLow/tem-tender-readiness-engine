@@ -1,3 +1,16 @@
+# Release QA receipts
+
+Milestone 9 / [ENG-14](https://linear.app/workwithlayer/issue/ENG-14/complete-final-release-evals-and-manual-demo-qa)
+is the V1 release-evidence packet below. Milestone 10 / [ENG-24](https://linear.app/workwithlayer/issue/ENG-24/intake-pack-safety-eval-evidence-and-runbook)
+adds Intake pack safety and Console QA as a **sibling** receipt. It does not
+replace ENG-14, retarget `evals/release-evidence.json`, or promote the accepted
+baseline.
+
+| Packet             | What it is                                                                |
+| ------------------ | ------------------------------------------------------------------------- |
+| ENG-14 (this file) | V1 full eval + stratified demo QA on source `9fbf16f`                     |
+| ENG-24             | Intake pack HTTP/Console QA; deterministic safety tests; runbook handover |
+
 # ENG-14 release QA receipt
 
 This is the Milestone 9 release-evidence packet for
@@ -11,9 +24,9 @@ The accepted baseline remains unchanged; the passing full report is selected for
 | Gate                            | Result                               | Evidence                                                                                                                                                      |
 | ------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Deterministic checks and builds | Pass                                 | `npm run check` (243 tests), `npm run build:api`, `npm run build:console`                                                                                     |
-| Full labelled release suite     | Pass — 9/9 gates                     | [`full-2026-10-05T14-22-22.835Z.md`](../../evals/reports/full-2026-10-05T14-22-22.835Z.md), source `9fbf16f` |
+| Full labelled release suite     | Pass — 9/9 gates                     | [`full-2026-10-05T14-22-22.835Z.md`](../../evals/reports/full-2026-10-05T14-22-22.835Z.md), source `9fbf16f`                                                  |
 | Manual stratified QA            | Completed for inspectable demo paths | This receipt, [`eng-14-manual-qa.json`](eng-14-manual-qa.json), [`stratified-http-evidence.json`](stratified-http-evidence.json), [screenshots](screenshots/) |
-| `evals/release-evidence.json`   | Selected                             | Passing full report plus the matching QA record; verified by `npm run evidence:release`                             |
+| `evals/release-evidence.json`   | Selected                             | Passing full report plus the matching QA record; verified by `npm run evidence:release`                                                                       |
 | Accepted baseline promotion     | **Not done**                         | `evals/accepted-baseline.json` still points at `full-2026-09-26T23-53-52.654Z`                                                                                |
 | Thresholds                      | Unchanged                            | `evals/thresholds.json`                                                                                                                                       |
 
@@ -101,4 +114,3 @@ The ENG-14 agent run reviewed the clean report, the same-revision diagnostic att
 - The first clean full run is retained as diagnostic evidence. No threshold or accepted-baseline changes were made.
 - The existing Console/API/archive walkthrough remains the manual evidence. The two-site document case was exercised in the passing full eval. The proposed deterministic association fix and its targeted regression test are not in the evaluated source or this PR; that investigation remains follow-up work. Live Console review, n8n runtime, and private S3 restore were not repeated on this revision; ENG-7 and ENG-4 remain those receipts.
 - Code-owner review is still required before merging. A passing full eval does not itself promote the accepted baseline.
-

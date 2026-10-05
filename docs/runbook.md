@@ -108,24 +108,155 @@ agent facts and 49/51 workflow critical facts. The Performance card also shows
 the all-cases unsafe-ready count as 0/63; that is not a new threshold and is
 not a promotion of the later report. The latest run is not the accepted baseline.
 
-## Console Intake pack (Milestone 10 / ENG-21 and ENG-22)
+## Console Intake pack (Milestone 10)
 
-Open `http://localhost:3001/intake-pack` with the local API running. This page
-is named **Intake pack**. Drop synthetic PDFs and paste broker notes; there is
-no tender form. Pack limits (7 PDFs, 8 MiB/file, 24 MiB pack, one notes field)
-are shown on the page. File statuses including `OCR_REQUIRED`, `CORRUPT`,
-`UNSUPPORTED`, `OVERSIZED`, and `EXTRACTION_FAILED` remain on the list. Remove
-applies only to files that never registered; registered files stay on the pack.
-Extract stores selectable text. When the pack is `REVIEWABLE`, open Review to
-inspect candidates beside the extracted PDF page or broker notes, resolve or
-leave conflicts, assign unassociated site facts, and save operator edits
-through `PATCH /intake-packs/:packId/draft`. Extraction never fills structured
-fields; accepted candidates are audit-only until the operator writes a value.
-A stale `expectedDraftVersion` returns `DRAFT_STALE`. The Console rebases only
-the fields the operator actually changed onto the latest draft and surfaces
-concurrent work; it does not resubmit an untouched full-site snapshot. Confirm
-and readiness remain later tickets. Use `fixtures/intake-packs/` for sample PDFs. The
-persistent notice on Drop and Review labels the data as synthetic.
+This is the post-V1 Console path for synthetic PDFs and pasted broker notes. It
+is not a second decision engine. The three layers stay:
+
+```text
+Drop PDFs + notes → Extract (immutable evidence)
+                 → Review (mutable draft; no silent field fill)
+                 → Confirm (immutable snapshot → existing POST /tenders)
+                 → existing readiness / optional interpretation / pricing guard
+```
+
+Confirm is **not** a ready route. Extraction, draft GET/PATCH, and confirm
+itself never call the mock pricing gateway. Only a later
+`READY_FOR_PRICING` result from the existing tender path may.
+
+### Pack preparation
+
+Use only labelled synthetic fixtures under `fixtures/intake-packs/`. Every
+committed note and selectable-text PDF includes `SYNTHETIC / DEMONSTRATION`.
+Do not add real customer, broker, or tem files.
+
+```sh
+npm run fixtures:intake-packs
+```
+
+That regenerates committed packs and `manifest.json`. Oversized blobs
+(`pack-oversized-file`, `pack-total-size`) are built in memory by tests and
+are gitignored. The inventory and expected provenance live in
+[`fixtures/intake-packs/README.md`](../fixtures/intake-packs/README.md).
+
+Representative packs for a reviewer walkthrough:
+
+| Pack                                                           | What to show                                               |
+| -------------------------------------------------------------- | ---------------------------------------------------------- |
+| `pack-clean-single-site`                                       | Happy-path extract → review → confirm                      |
+| `pack-clean-multi-site`                                        | Warehouse vs retail provenance; no cross-site leakage      |
+| `pack-conflicting-evidence`                                    | Two contract-end candidates; operator must write the value |
+| `pack-ambiguous-site-association`                              | “the Harbour site” stays unassociated                      |
+| `pack-scanned-ocr-required`                                    | Image-only PDF stays `OCR_REQUIRED`; OCR is out of scope   |
+| `pack-corrupt` / `pack-extraction-failed` / `pack-unsupported` | Failed files remain on the pack                            |
+
+### Local operation
+
+1. Start the API (`npm run dev:api`) and Console (`npm run dev:console`).
+2. Open `http://localhost:3001/intake-pack`. The page is named **Intake pack**.
+   There is no tender form first.
+3. Drop or choose synthetic PDFs and paste one broker-notes field. Pack limits
+   (7 PDFs, 8 MiB/file, 24 MiB pack, one notes field) are shown on the page.
+4. Extract stores selectable text. File statuses including `OCR_REQUIRED`,
+   `CORRUPT`, `UNSUPPORTED`, `OVERSIZED`, and `EXTRACTION_FAILED` stay visible.
+   Remove applies only to files that never registered.
+5. When the pack is `REVIEWABLE`, open Review. Candidates appear beside the
+   extracted PDF page or broker notes. Accepting a candidate is audit-only;
+   structured fields stay empty until the operator types or copies a value
+   into the draft and saves (`PATCH` with `expectedDraftVersion`).
+6. Confirm snapshots that draft version with the loopback demo operator
+   (`REVIEW_ACTOR` or `local-demo-operator`) and an idempotency key
+   `confirm:{packId}`. The Console redirects to existing case detail
+   (`/tenders/:runId`). Confirmed packs stay readable and read-only.
+
+A stale `expectedDraftVersion` returns `409 DRAFT_STALE`. The Console rebases
+only the fields the operator actually changed onto the latest draft. Retrying
+the same confirm key returns the same `confirmationId` / `tenderId` / `runId`.
+A different key after confirm returns `409 ALREADY_CONFIRMED`.
+
+Intake pack state defaults to `./data/intake-pack-state.json`; write-once
+originals default to `./data/intake-pack-originals`. They are separate from
+`TENDER_STATE_PATH`.
+
+### Supported PDF constraints and OCR deferral
+
+Selectable-text synthetic PDFs only. The extractor uses PDF.js operator lists
+([ADR-006](adr/006-intake-pack-pdf-extraction.md)). Scanned or image-only
+pages become `OCR_REQUIRED`. OCR is **not** implemented and must not be
+added in this milestone.
+
+Limits are `INTAKE_PACK_LIMITS` in `packages/domain`:
+
+| Bound                                      | Value                    |
+| ------------------------------------------ | ------------------------ |
+| PDFs per pack                              | 7                        |
+| Notes per pack                             | 1                        |
+| Per-file size                              | 8 MiB                    |
+| Pack size                                  | 24 MiB                   |
+| Pages per document / pack                  | 25 / 50                  |
+| Extracted chars per page / document / pack | 8,000 / 40,000 / 120,000 |
+
+Allowed upload media is `application/pdf` with a `.pdf` filename. JSON
+`POST /tenders` remains the 1 MiB body used for structured intake; PDF bytes
+are not that body.
+
+### Synthetic-data rules
+
+- Packs are created with `synthetic: true`. The domain schema rejects
+  `synthetic: false`.
+- Console Drop and Review show a persistent synthetic-data notice.
+- Fixtures, notes, traces, and evals must not include real tender content.
+- Failed files are never silently omitted.
+
+### Failure recovery
+
+Intake pack document and pack-limit failures are **not** tender-run routes.
+They stay on the Console file list. They do not call readiness or pricing.
+
+| Failure                                                                                       | Detection                                                       | Operator action                                                                                                          | Replay                                                  |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| `OCR_REQUIRED`                                                                                | Image-only / no selectable text                                 | Leave the file visible. Do not invent OCR text. Confirm still maps the document as `UNREADABLE` so TDR-011 can escalate. | Same pack; do not resubmit as if extracted.             |
+| `CORRUPT` / `EXTRACTION_FAILED` / `UNSUPPORTED` / `OVERSIZED`                                 | Visible file status + pack failure when the pack cannot proceed | Keep the file on the pack. Replace with a valid synthetic PDF on a new pack if needed.                                   | New pack. Do not delete originals to hide the failure.  |
+| `PACK_FILE_COUNT` / `PACK_TOTAL_SIZE` / `PAGE_LIMIT` / `EXTRACTED_TEXT_LIMIT` / `NOTES_LIMIT` | Pack-level `409` / `FAILED`                                     | Reduce files, pages, or notes to the published limits.                                                                   | New pack within limits.                                 |
+| `DRAFT_STALE`                                                                                 | HTTP `409` on PATCH or confirm                                  | Reload the draft. The Console rebases only dirty fields. Confirm the latest version.                                     | Same pack, current `draftVersion`.                      |
+| `ALREADY_CONFIRMED`                                                                           | HTTP `409` with a different confirm key                         | Open the existing case. Do not create a second tender.                                                                   | Same `confirm:{packId}` key returns the stored handoff. |
+| Incomplete confirm (`NEEDS_INFORMATION`)                                                      | Case detail after confirm                                       | Supply missing operator fields on a new pack, or treat as an information request on the case. Zero pricing handoffs.     | Confirm is not replayed into a second case.             |
+| Confirm → `HUMAN_REVIEW` (conflict, OCR, ambiguity)                                           | Case detail; review form when required                          | Record a disposition. Route stays `HUMAN_REVIEW`.                                                                        | Review audit only; no pricing.                          |
+
+After any Intake pack confirm, check tender state: non-ready cases must have
+zero mock pricing handoffs. A later structured `POST /tenders` of a clean
+tender may still record one API-owned handoff — that path is unchanged.
+
+### Reviewer walkthrough
+
+From a running local API and Console, using only `fixtures/intake-packs/`:
+
+1. Drop `pack-clean-single-site` (PDF + paste the note). Extract. Open Review.
+   Structured fields are empty. Write customer, broker, and the warehouse
+   site explicitly, Save, then Confirm. Land on case detail. Confirm did not
+   force `READY_FOR_PRICING`; if the case is not ready, handoffs stay `0`.
+2. Repeat with `pack-clean-multi-site`. Warehouse MPAN `1234567890123` must
+   not appear on the retail site; retail MPAN `2345678901234` must not appear
+   on the warehouse site.
+3. Drop `pack-scanned-ocr-required` or `pack-corrupt`. The failed file remains
+   listed. Extract does not invent text. Confirm of operator-typed fields with
+   an `OCR_REQUIRED` document is `HUMAN_REVIEW` and must not call pricing.
+4. On Review, save, then confirm with an outdated draft version (or a second
+   browser tab). Expect `DRAFT_STALE` / rebase, then a single confirm.
+5. Open Queue and confirm that Intake pack activity did not add a pricing
+   handoff unless a separate structured ready tender already existed.
+
+The HTTP matrix that records those routes and handoff counts is:
+
+```sh
+TENDER_API_URL=http://127.0.0.1:3000 \
+TENDER_STATE_PATH="$PWD/data/tender-state.json" \
+npx tsx scripts/run-intake-pack-qa.ts
+```
+
+Manual QA for this milestone is retained under
+[`docs/release-qa/`](release-qa/README.md). ENG-14 remains the V1 release
+packet; do not treat a later Intake pack walkthrough as a baseline promotion.
 
 ## Milestone 3 live model smoke check
 
@@ -305,7 +436,10 @@ This document is considered complete when each implemented failure path includes
 - safe replay procedure,
 - verification that no duplicate side effect occurred.
 
-Document storage and parsing remain unimplemented live boundaries. Archive
+Document storage and parsing for V1 JSON intake remain unimplemented live
+boundaries. Console Intake pack registration, selectable-text extraction,
+review-only drafts, and confirmation handoff are implemented as a separate
+surface; they do not replace `POST /tenders`. Archive
 read/missing-object failure is rehearsed as an archive/restore concern in
 [`reliability-rehearsal.md`](reliability-rehearsal.md); S3 is not in the live
 decision path. n8n transport and outcome handling use the synthetic workflow

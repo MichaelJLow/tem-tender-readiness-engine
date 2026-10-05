@@ -11,11 +11,11 @@ Testing is split into three layers so deterministic behaviour, model-dependent b
 These two pointers are intentionally different. A later passing report is **not**
 the accepted baseline.
 
-| Role | Pointer | Cases | Gates | Critical facts | Notes |
-| --- | --- | ---: | ---: | --- | --- |
-| Accepted baseline | [`evals/accepted-baseline.json`](../evals/accepted-baseline.json) → [`full-2026-09-26T23-53-52.654Z`](../evals/reports/full-2026-09-26T23-53-52.654Z.md) | 63 | 7/7 | Workflow 49/51; agent 51/51 | Reviewed Milestone 4 prototype reference. Dataset SHA-256 `b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708`. |
-| Latest passing full report | [`full-2026-10-05T14-22-22.835Z`](../evals/reports/full-2026-10-05T14-22-22.835Z.md) | 63 | 9/9 | Workflow 49/51; agent 51/51 | Clean source `9fbf16f`; compared with accepted baseline and selected for release evidence. Baseline not promoted. |
-| Latest committed PR evidence | [`evals/pr-evidence.json`](../evals/pr-evidence.json) → [`pr-2026-10-04T23-14-16.314Z`](../evals/reports/pr-2026-10-04T23-14-16.314Z.md) | 14 | 8/8 on the PR subset | Workflow 9/9; agent 9/9 | Smoke subset only. Dataset hash differs; baseline comparison is `not_comparable`. |
+| Role                         | Pointer                                                                                                                                                  | Cases |                Gates | Critical facts              | Notes                                                                                                                         |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----: | -------------------: | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Accepted baseline            | [`evals/accepted-baseline.json`](../evals/accepted-baseline.json) → [`full-2026-09-26T23-53-52.654Z`](../evals/reports/full-2026-09-26T23-53-52.654Z.md) |    63 |                  7/7 | Workflow 49/51; agent 51/51 | Reviewed Milestone 4 prototype reference. Dataset SHA-256 `b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708`. |
+| Latest passing full report   | [`full-2026-10-05T14-22-22.835Z`](../evals/reports/full-2026-10-05T14-22-22.835Z.md)                                                                     |    63 |                  9/9 | Workflow 49/51; agent 51/51 | Clean source `9fbf16f`; compared with accepted baseline and selected for release evidence. Baseline not promoted.             |
+| Latest committed PR evidence | [`evals/pr-evidence.json`](../evals/pr-evidence.json) → [`pr-2026-10-04T23-14-16.314Z`](../evals/reports/pr-2026-10-04T23-14-16.314Z.md)                 |    14 | 8/8 on the PR subset | Workflow 9/9; agent 9/9     | Smoke subset only. Dataset hash differs; baseline comparison is `not_comparable`.                                             |
 
 Denominators that appear in those reports:
 
@@ -254,6 +254,26 @@ flowchart LR
     E --> F["Regression suite"]
     F --> A
 ```
+
+## Milestone 10 Intake pack eval posture
+
+Intake pack extraction and draft preparation are deterministic TypeScript.
+They must be proven with unit and HTTP tests, not by expanding the labelled
+model dataset. Confirm maps extracted pages and notes onto the existing
+`textSources` (`DOCUMENT_TEXT` + `NOTE`) contract with **empty** readiness
+signals; the bounded interpreter after confirm is the same path already
+covered by the 63-case golden set.
+
+Do **not** add Intake pack rows to `evals/cases.ts` unless a reasoning,
+prompt, scorer, or threshold change actually needs a new labelled case.
+Adding cases would change the dataset hash and make the accepted baseline
+non-comparable. Zero unsafe-ready on the golden safety set remains the
+governing gate. `evals/accepted-baseline.json`, `evals/pr-evidence.json`,
+and `evals/release-evidence.json` stay as the V1 pointers unless those
+reasoning sources change.
+
+Manual Intake pack Console QA is retained under `docs/release-qa/` and does
+not promote a new accepted baseline.
 
 ## CI behaviour
 

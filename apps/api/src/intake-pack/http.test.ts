@@ -380,7 +380,7 @@ describe('Intake pack HTTP routes', () => {
     const confirmed = (await confirm.json()) as {
       tenderId: string;
       runId: string;
-      confirmation: { submission: Parameters<typeof evaluateReadiness>[0] };
+      confirmation: { submission: IntakeRequest };
     };
     expect(evaluateReadiness(confirmed.confirmation.submission).route).toBe('READY_FOR_PRICING');
     const snapshot = await tenders.snapshot();
@@ -420,6 +420,224 @@ describe('Intake pack HTTP routes', () => {
     });
     expect(tender.status).toBe(200);
     expect((await tenders.snapshot()).handoffs).toHaveLength(1);
+  });
+
+  it('keeps OCR_REQUIRED and EXTRACTION_FAILED files visible over HTTP without calling pricing or readiness', async () => {
+    const tenders = new MemoryRepository();
+    const gateway = new CountingGateway(tenders);
+    const { origin } = await listenWired(tenders, gateway);
+
+    for (const [fixturePackId, status] of [
+      ['pack-scanned-ocr-required', 'OCR_REQUIRED'],
+      ['pack-extraction-failed', 'EXTRACTION_FAILED'],
+    ] as const) {
+      const created = await fetch(`${origin}/intake-packs`, { method: 'POST' });
+      const pack = (await created.json()) as { packId: string };
+      await registerHttpFixture(origin, pack.packId, fixturePackId);
+      const extracted = await fetch(`${origin}/intake-packs/${pack.packId}/extractions`, {
+        method: 'POST',
+      });
+      expect(extracted.status).toBe(200);
+      const current = await fetch(`${origin}/intake-packs/${pack.packId}`);
+      const body = (await current.json()) as {
+        documents: Array<{ status: string; failure?: { code: string } }>;
+        draft?: unknown;
+      };
+      expect(body.documents.some((document) => document.status === status)).toBe(true);
+      expect(body.documents.some((document) => document.failure?.code === status)).toBe(true);
+      expect(body.draft).toBeUndefined();
+    }
+
+    expect(gateway.calls).toBe(0);
+    expect((await tenders.snapshot()).runs).toHaveLength(0);
+    expect((await tenders.snapshot()).handoffs).toHaveLength(0);
+  });
+
+  it('extracts and drafts a single-site pack over HTTP without creating a tender run or pricing handoff', async () => {
+    const tenders = new MemoryRepository();
+    const gateway = new CountingGateway(tenders);
+    const { origin } = await listenWired(tenders, gateway);
+    const created = await fetch(`${origin}/intake-packs`, { method: 'POST' });
+    const pack = (await created.json()) as { packId: string };
+    await registerHttpFixture(origin, pack.packId, 'pack-clean-single-site');
+    const extracted = await fetch(`${origin}/intake-packs/${pack.packId}/extractions`, {
+      method: 'POST',
+    });
+    expect(extracted.status).toBe(200);
+    const drafted = await fetch(`${origin}/intake-packs/${pack.packId}/draft`);
+    expect(drafted.status).toBe(200);
+    const draft = (await drafted.json()) as {
+      customer: Record<string, unknown>;
+      broker: Record<string, unknown>;
+      sites: unknown[];
+    };
+    expect(draft.customer).toEqual({});
+    expect(draft.broker).toEqual({});
+    expect(draft.sites).toEqual([]);
+    expect(gateway.calls).toBe(0);
+    expect((await tenders.snapshot()).runs).toHaveLength(0);
+    expect((await tenders.snapshot()).handoffs).toHaveLength(0);
+  });
+
+  it('does not leak warehouse evidence onto the retail site after multi-site extract, draft, and confirm', async () => {
+    const tenders = new MemoryRepository();
+    const gateway = new CountingGateway(tenders);
+    const { origin } = await listenWired(tenders, gateway);
+    const created = await fetch(`${origin}/intake-packs`, { method: 'POST' });
+    const pack = (await created.json()) as { packId: string };
+    await registerHttpFixture(origin, pack.packId, 'pack-clean-multi-site');
+    await fetch(`${origin}/intake-packs/${pack.packId}/extractions`, { method: 'POST' });
+
+    const drafted = await fetch(`${origin}/intake-packs/${pack.packId}/draft`);
+    expect(drafted.status).toBe(200);
+    const draft = (await drafted.json()) as {
+      draftVersion: number;
+      sites: unknown[];
+      candidates: Array<{ field: string; value: string; siteId?: string | null }>;
+    };
+    expect(draft.sites).toEqual([]);
+    const warehouseMeters = draft.candidates.filter(
+      (candidate) => candidate.field === 'meterIdentifier' && candidate.value === '1234567890123',
+    );
+    const retailMeters = draft.candidates.filter(
+      (candidate) => candidate.field === 'meterIdentifier' && candidate.value === '2345678901234',
+    );
+    expect(warehouseMeters.some((candidate) => candidate.siteId === 'site-warehouse')).toBe(true);
+    expect(retailMeters.some((candidate) => candidate.siteId === 'site-retail')).toBe(true);
+    expect(warehouseMeters.some((candidate) => candidate.siteId === 'site-retail')).toBe(false);
+    expect(retailMeters.some((candidate) => candidate.siteId === 'site-warehouse')).toBe(false);
+
+    const patched = await fetch(`${origin}/intake-packs/${pack.packId}/draft`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: draft.draftVersion,
+        fieldEdits: {
+          customerLegalName: 'Northstar Foods Ltd',
+          brokerLegalName: 'Harbour Energy Partners',
+          sites: [
+            {
+              siteId: 'site-warehouse',
+              address: '10 Example Street, London',
+              meterIdentifier: '1234567890123',
+              annualConsumptionKwh: 24000,
+              contractEndDate: '2027-03-31',
+            },
+            {
+              siteId: 'site-retail',
+              address: '22 Harbour Lane, Manchester',
+              meterIdentifier: '2345678901234',
+              annualConsumptionKwh: 18500,
+              contractEndDate: '2027-09-30',
+            },
+          ],
+        },
+      }),
+    });
+    expect(patched.status).toBe(200);
+
+    const confirm = await fetch(`${origin}/intake-packs/${pack.packId}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: 2,
+        idempotencyKey: `confirm:${pack.packId}`,
+      }),
+    });
+    expect(confirm.status).toBe(200);
+    const confirmed = (await confirm.json()) as {
+      runId: string;
+      confirmation: { submission: IntakeRequest };
+    };
+    const warehouse = confirmed.confirmation.submission.tender.sites.find(
+      (site) => site.siteId === 'site-warehouse',
+    );
+    const retail = confirmed.confirmation.submission.tender.sites.find(
+      (site) => site.siteId === 'site-retail',
+    );
+    expect(warehouse?.meterIdentifier).toBe('1234567890123');
+    expect(warehouse?.address).toBe('10 Example Street, London');
+    expect(retail?.meterIdentifier).toBe('2345678901234');
+    expect(retail?.address).toBe('22 Harbour Lane, Manchester');
+    expect(evaluateReadiness(confirmed.confirmation.submission).route).toBe('READY_FOR_PRICING');
+
+    const snapshot = await tenders.snapshot();
+    expect(snapshot.runs).toHaveLength(1);
+    expect(snapshot.runs[0]?.runId).toBe(confirmed.runId);
+    expect(snapshot.handoffs).toHaveLength(0);
+    expect(gateway.calls).toBe(0);
+
+    const secondKey = await fetch(`${origin}/intake-packs/${pack.packId}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: 2,
+        idempotencyKey: `confirm:${pack.packId}-other`,
+      }),
+    });
+    expect(secondKey.status).toBe(409);
+    expect(((await secondKey.json()) as { error: string }).error).toBe('ALREADY_CONFIRMED');
+    expect((await tenders.snapshot()).runs).toHaveLength(1);
+    expect((await tenders.snapshot()).handoffs).toHaveLength(0);
+    expect(gateway.calls).toBe(0);
+  });
+
+  it('confirms an OCR-required pack to HUMAN_REVIEW without calling pricing, then still allows a later ready tender handoff', async () => {
+    const tenders = new MemoryRepository();
+    const gateway = new CountingGateway(tenders);
+    const { origin } = await listenWired(tenders, gateway);
+    const created = await fetch(`${origin}/intake-packs`, { method: 'POST' });
+    const pack = (await created.json()) as { packId: string };
+    await registerHttpFixture(origin, pack.packId, 'pack-scanned-ocr-required');
+    await fetch(`${origin}/intake-packs/${pack.packId}/extractions`, { method: 'POST' });
+    await fetch(`${origin}/intake-packs/${pack.packId}/draft`);
+    const patched = await fetch(`${origin}/intake-packs/${pack.packId}/draft`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: 1,
+        fieldEdits: {
+          customerLegalName: 'Northstar Foods Ltd',
+          brokerLegalName: 'Harbour Energy Partners',
+          sites: [
+            {
+              siteId: 'site-warehouse',
+              address: '10 Example Street, London',
+              meterIdentifier: '1234567890123',
+              annualConsumptionKwh: 24000,
+              contractEndDate: '2027-03-31',
+            },
+          ],
+        },
+      }),
+    });
+    expect(patched.status).toBe(200);
+    expect(gateway.calls).toBe(0);
+
+    const confirm = await fetch(`${origin}/intake-packs/${pack.packId}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: 2,
+        idempotencyKey: `confirm:${pack.packId}`,
+      }),
+    });
+    expect(confirm.status).toBe(200);
+    const confirmed = (await confirm.json()) as {
+      confirmation: { submission: IntakeRequest };
+    };
+    expect(evaluateReadiness(confirmed.confirmation.submission).route).toBe('HUMAN_REVIEW');
+    expect((await tenders.snapshot()).handoffs).toHaveLength(0);
+    expect(gateway.calls).toBe(0);
+
+    const tender = await fetch(`${origin}/tenders`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(cleanTender),
+    });
+    expect(tender.status).toBe(200);
+    expect((await tenders.snapshot()).handoffs).toHaveLength(1);
+    expect(gateway.calls).toBe(1);
   });
 });
 
