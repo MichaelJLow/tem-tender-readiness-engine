@@ -5,8 +5,9 @@ company names are demonstration materials. They are not real tenders, customers,
 brokers, or tem data.
 
 This is the ENG-18 fixture set for Console **Intake pack**. ENG-19 uses the files
-and manifest to test bounded registration and selectable-text extraction. Later
-Console tickets can attach the same packs in the UI.
+and manifest to test bounded registration and selectable-text extraction.
+ENG-20 uses the same packs to prepare review-only drafts with candidates and
+provenance. Later Console tickets can attach the same packs in the UI.
 
 ## Layout
 
@@ -55,6 +56,8 @@ breach `INTAKE_PACK_LIMITS.maxNotes`.
    Do not commit the 8–24 MiB blobs.
 4. Assert extraction/status against `expectedStatus`, `expectedFailureCode`,
    `expectedPackFailureCode`, and — for multi-site — `expectedFacts[].provenance`.
+   Draft preparation should retain conflicting `expectedFacts` as separate
+   candidates and must not copy them onto structured draft fields.
 5. Do not treat these files as real customer evidence. Failed files must stay
    visible; they are never silently omitted.
 

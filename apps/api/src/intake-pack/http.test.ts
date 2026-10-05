@@ -187,6 +187,85 @@ describe('Intake pack HTTP routes', () => {
     expect(body.draft).toBeUndefined();
   });
 
+  it('prepares a review-only draft over HTTP without calling pricing or readiness', async () => {
+    const tenders = new MemoryRepository();
+    const intake = new IntakePackService(
+      new MemoryIntakePackRepository(),
+      new MemoryIntakeOriginalsStore(),
+    );
+    const { origin } = await listen(tenders, intake);
+    const spec = catalog.specs.find((item) => item.packId === 'pack-conflicting-evidence')!;
+    const created = await fetch(`${origin}/intake-packs`, { method: 'POST' });
+    const pack = (await created.json()) as { packId: string };
+    for (const file of spec.files) {
+      if (file.kind === 'NOTE') {
+        await fetch(`${origin}/intake-packs/${pack.packId}/notes`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text: file.bytes.toString('utf8') }),
+        });
+        continue;
+      }
+      await fetch(`${origin}/intake-packs/${pack.packId}/documents`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/pdf', 'x-file-name': file.fileName },
+        body: Buffer.from(file.bytes),
+      });
+    }
+    await fetch(`${origin}/intake-packs/${pack.packId}/extractions`, { method: 'POST' });
+
+    const missing = await fetch(`${origin}/intake-packs/unknown-pack/draft`);
+    expect(missing.status).toBe(404);
+
+    const drafted = await fetch(`${origin}/intake-packs/${pack.packId}/draft`);
+    expect(drafted.status).toBe(200);
+    const draft = (await drafted.json()) as {
+      draftVersion: number;
+      customer: Record<string, unknown>;
+      broker: Record<string, unknown>;
+      sites: unknown[];
+      candidates: Array<{
+        field: string;
+        value: string;
+        associationStatus: string;
+        siteId?: string | null;
+        accepted: boolean;
+        provenance: Array<{ sourceKind: string; pageNumber?: number; quote: string }>;
+      }>;
+    };
+    expect(draft.draftVersion).toBe(1);
+    expect(draft.customer).toEqual({});
+    expect(draft.broker).toEqual({});
+    expect(draft.sites).toEqual([]);
+    expect(
+      draft.candidates
+        .filter((candidate) => candidate.field === 'contractEndDate')
+        .map((candidate) => candidate.value),
+    ).toEqual(expect.arrayContaining(['2027-03-31', '30/09/2026']));
+    expect(draft.candidates[0]?.provenance[0]?.quote.length).toBeGreaterThan(0);
+
+    const patched = await fetch(`${origin}/intake-packs/${pack.packId}/draft`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        expectedDraftVersion: 1,
+        acceptedCandidateIds: [],
+        fieldEdits: {},
+      }),
+    });
+    expect(patched.status).toBe(200);
+    expect(((await patched.json()) as { draftVersion: number }).draftVersion).toBe(2);
+
+    const confirm = await fetch(`${origin}/intake-packs/${pack.packId}/confirm`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ expectedDraftVersion: 2, idempotencyKey: 'should-not-confirm' }),
+    });
+    expect(confirm.status).toBe(404);
+    expect((await tenders.snapshot()).handoffs).toHaveLength(0);
+    expect((await tenders.snapshot()).runs).toHaveLength(0);
+  });
+
   it('does not treat intake-pack extraction as a tender pricing submission', async () => {
     const tenders = new MemoryRepository();
     const { origin } = await listen(

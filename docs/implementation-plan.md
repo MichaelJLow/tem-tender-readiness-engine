@@ -462,7 +462,7 @@ parser, or Console page.
       `POST /tenders`.
 - [x] ENG-18 synthetic fixture set.
 - [x] ENG-19 bounded PDF registration and extraction.
-- [ ] ENG-20 evidence-to-draft preparation (no silent field fill).
+- [x] ENG-20 evidence-to-draft preparation (no silent field fill).
 - [ ] ENG-21/22 Console upload and draft-review UI.
 - [ ] ENG-23 confirmation adapter and readiness handoff.
 - [ ] ENG-24 safety, eval evidence, and runbook.

@@ -2,11 +2,13 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { INTAKE_PACK_LIMITS } from '../../../../packages/domain/src/index.js';
 import {
   CreateIntakePackRequestSchema,
+  PatchIntakeDraftRequestSchema,
   PutIntakeNotesRequestSchema,
   TriggerIntakeExtractionRequestSchema,
 } from '../intake-pack-contracts.js';
 import {
   IntakeDocumentNotFoundError,
+  IntakeDraftNotFoundError,
   IntakeExtractionNotFoundError,
   IntakePackConflictError,
   IntakePackNotFoundError,
@@ -144,6 +146,27 @@ export async function tryHandleIntakePackRequest(input: {
         return true;
       }
     }
+
+    const draftMatch = path.match(/^\/intake-packs\/([^/]+)\/draft$/);
+    if (draftMatch?.[1]) {
+      const packId = decodeURIComponent(draftMatch[1]);
+      if (input.request.method === 'GET') {
+        sendJson(input.response, 200, await input.service.getDraft(packId));
+        return true;
+      }
+      if (input.request.method === 'PATCH') {
+        const parsed = PatchIntakeDraftRequestSchema.safeParse(await readJsonBody(input.request));
+        if (!parsed.success) {
+          sendJson(input.response, 400, {
+            error: 'INVALID_INTAKE_DRAFT',
+            correlationId: input.correlationId,
+          });
+          return true;
+        }
+        sendJson(input.response, 200, await input.service.patchDraft(packId, parsed.data));
+        return true;
+      }
+    }
   } catch (error) {
     if (error instanceof BodyTooLargeError) {
       sendJson(input.response, 413, {
@@ -169,6 +192,13 @@ export async function tryHandleIntakePackRequest(input: {
     if (error instanceof IntakeExtractionNotFoundError) {
       sendJson(input.response, 404, {
         error: 'INTAKE_EXTRACTION_NOT_FOUND',
+        correlationId: input.correlationId,
+      });
+      return true;
+    }
+    if (error instanceof IntakeDraftNotFoundError) {
+      sendJson(input.response, 404, {
+        error: 'INTAKE_DRAFT_NOT_FOUND',
         correlationId: input.correlationId,
       });
       return true;

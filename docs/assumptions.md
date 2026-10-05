@@ -104,7 +104,7 @@ The implemented prototype demonstrates that it can:
 - expose technical failures and recover without duplicate side effects,
 - archive and restore synthetic evidence through a private S3 snapshot.
 
-Any hours-reclaimed calculation remains illustrative and is not presented as real customer data. Final evals and manual QA are recorded in [`evals/release-evidence.json`](../evals/release-evidence.json) and [`docs/release-qa/`](release-qa/README.md). Tag `v1.0.0` exists. Console Intake pack is Milestone 10 ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)); contracts are [ADR-005](adr/005-intake-pack-boundary.md).
+Any hours-reclaimed calculation remains illustrative and is not presented as real customer data. Final evals and manual QA are recorded in [`evals/release-evidence.json`](../evals/release-evidence.json) and [`docs/release-qa/`](release-qa/README.md). Tag `v1.0.0` exists. Console Intake pack is Milestone 10 ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)); contracts are [ADR-005](adr/005-intake-pack-boundary.md); selectable-text extraction is [ADR-006](adr/006-intake-pack-pdf-extraction.md); evidence-to-draft preparation is review-only.
 
 ## Verified limitations
 
@@ -114,7 +114,7 @@ Any hours-reclaimed calculation remains illustrative and is not presented as rea
 | Persistence | One JSON file, one API process. Not a concurrent database. |
 | Authentication | Loopback review mutations and a demo operator label. |
 | Pricing | Mock gateway only; API-owned; n8n never initiates it. |
-| Documents | Structured records plus already-extracted text on V1. Intake pack PDF contracts exist (ADR-005); upload and parsing are not implemented. |
+| Documents | Structured records plus already-extracted text on V1. Intake pack PDF registration, selectable-text extraction, and review-only draft preparation exist; Console upload UI and confirmation are not implemented. |
 | Data | Synthetic fixtures and reports only. |
 | Evals | Accepted baseline and latest passing full report are distinct. Latest is not promoted. |
 | AWS | Private S3 archive verified. Promotional credit balance/expiry unverified. OIDC not implemented. |
