@@ -125,7 +125,7 @@ describe('Intake pack fixtures', () => {
         pack.expectedPackFailureCode ? [pack.expectedPackFailureCode] : [],
       ),
     );
-    expect(codes).toEqual(
+    expect([...codes]).toEqual(
       expect.arrayContaining([
         'PACK_FILE_COUNT',
         'PACK_TOTAL_SIZE',
