@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "sourceSha": "186dba5efc91c0cdac46f05e44dd0f6d1d3fb748",
+  "completedAt": "2026-10-05T22:06:08Z",
+  "performedBy": "Cursor agent bc-a70112f1-ddff-5612-b73a-76a2ef9adc0e (scripted HTTP + browser capture)",
+  "reviewer": null,
+  "ciUrl": "https://github.com/MichaelJLow/tem-tender-readiness-engine/actions/runs/37376974868",
+  "pullRequestUrl": "https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/32",
+  "synthetic": true,
+  "api": "http://127.0.0.1:3000",
+  "console": "http://127.0.0.1:3001",
+  "statePath": "data/eng24-qa/tender-state.json",
+  "checklist": {
+    "intakeDropNoTenderForm": true,
+    "singleSiteExtractReviewConfirm": true,
+    "noSilentFieldFill": true,
+    "multiSiteNoLeakage": true,
+    "ocrRequiredVisible": true,
+    "staleConfirmRejected": true,
+    "confirmDoesNotForceReady": true,
+    "draftExtractionNeverPriced": true,
+    "pricingGuardReadyOnly": true
+  },
+  "observed": {
+    "emptyReviewCustomer": "",
+    "emptyReviewBroker": "",
+    "confirmCase": {
+      "runId": "ab899251-2ba0-4efc-bb0e-e051e14808c0",
+      "tenderId": "tender-pack-1e6937e2-c6ff-4e4b-94f4-2648092a3a44",
+      "route": null,
+      "status": "FAILED",
+      "failureCode": "MODEL_PROVIDER_FAILED"
+    },
+    "ocr": {
+      "fileStillListed": true,
+      "status": "OCR_REQUIRED",
+      "extractedCharacters": 0
+    },
+    "multiSite": {
+      "warehouseMeter": "1234567890123",
+      "retailMeter": "2345678901234",
+      "warehouseLeakedToRetail": false,
+      "retailLeakedToWarehouse": false
+    },
+    "queueAfterWalkthrough": {
+      "totalCases": 7,
+      "readyForPricing": 1,
+      "failedIntakeConfirms": 6,
+      "handoffs": 1,
+      "readyTenderId": "tender-clean-001"
+    }
+  },
+  "notes": "Disposable local API on loopback with isolated tender/intake-pack state. Capture was scripted HTTP + browser automation by the Cursor agent named in performedBy; reviewer is unset pending Mike attestation. HTTP matrix is docs/release-qa/eng-24-intake-http-evidence.json. runStatus, runRoute, and failureCode on empty-draft-confirm, multi-site-no-leakage, and ocr-required-visible were joined from GET /tenders items at capture time 2026-10-05T21:38Z; the recorder did not emit those keys then, and this evidence file was not regenerated so IDs stay aligned with screenshots. scripts/run-intake-pack-qa.ts now looks up GET /tenders/{runId}. Console captures are docs/release-qa/screenshots/eng-24-*.png. Extraction left customer and broker fields empty. Operator-typed warehouse values confirmed into POST /tenders. This environment has no model-provider key, so confirm with mapped textSources failed visibly as MODEL_PROVIDER_FAILED (retryable: false after exhausted provider attempts) with no business route and no extra mock pricing handoff. Replaying confirm returns that same failed run. Deterministic tests still cover NEEDS_INFORMATION / HUMAN_REVIEW with EmptyInterpreter. Stale confirm returned HTTP 409 DRAFT_STALE. Only the structured clean tender (tender-clean-001) reached READY_FOR_PRICING and recorded the single handoff. OCR_REQUIRED stayed listed with 0 extracted characters. Warehouse MPAN 1234567890123 did not appear on the retail review bucket; retail MPAN 2345678901234 did not appear on the warehouse bucket. No labelled eval rerun; evals/pr-evidence.json and evals/release-evidence.json were not retargeted. All fixtures are synthetic."
+}

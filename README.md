@@ -2,7 +2,7 @@
 
 A production-style tender readiness automation for business energy. It combines deterministic TypeScript rules, a bounded evidence-only agent, human review audit, labelled evals, a local operations console, credential-free n8n intake, and a private S3 evidence archive.
 
-> **Project status:** local V1 is tagged `v1.0.0`. Clone the repository, run the demo, and read the retained eval/QA receipts. Hosted runtime, concurrent database, authentication, and real pricing/data remain deferred. Console **Intake pack** (Milestone 10 / [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)) is post-V1: contracts, synthetic fixtures, bounded selectable-text extraction, review-only evidence-to-draft preparation, Console Drop/upload, draft review, and confirmation handoff into the existing case path are in place ([ADR-005](docs/adr/005-intake-pack-boundary.md), [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md)). Intake pack safety/eval evidence remains ENG-24.
+> **Project status:** local V1 is tagged `v1.0.0`. Clone the repository, run the demo, and read the retained eval/QA receipts. Hosted runtime, concurrent database, authentication, and real pricing/data remain deferred. Console **Intake pack** (Milestone 10 / [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)) is post-V1 and complete through confirmation, safety tests, and runbook handover ([ADR-005](docs/adr/005-intake-pack-boundary.md), [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md)). Confirm is not a ready route. Extraction and drafts cannot fill structured readiness fields or call pricing.
 
 ## What it does
 
@@ -98,7 +98,7 @@ These are current, inspected limits — not a backlog slogan:
 - Promotional AWS credit balance/expiry is an account-administration follow-up, not an archive-correctness gate.
 - A documented cross-site association-check product fix was investigated during ENG-14 and is **not landed**; landing it would invalidate eval SHA `9fbf16f`.
 - Live n8n and live private S3 were not re-run on that eval SHA. [ENG-7](docs/milestone-7-verification.md) and [ENG-4](docs/milestone-6-verification.md) remain those receipts.
-- The `v1.0.0` git tag exists. Console Intake pack stays Milestone 10 ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)): contracts in [ADR-005](docs/adr/005-intake-pack-boundary.md); selectable-text extraction in [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md); review-only draft GET/PATCH is wired; Console Drop/upload, draft review, and confirmation handoff are live. Confirm is not a ready route.
+- The `v1.0.0` git tag exists. Console Intake pack is Milestone 10 ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/console-intake-pack-pdf-notes-extract-review-assess)): contracts in [ADR-005](docs/adr/005-intake-pack-boundary.md); selectable-text extraction in [ADR-006](docs/adr/006-intake-pack-pdf-extraction.md); review-only drafts, Console Drop/upload, draft review, confirmation handoff, safety tests, and runbook handover are live. Confirm is not a ready route. OCR remains out of scope.
 
 ## Reviewer walkthrough
 
@@ -133,19 +133,23 @@ Follow these commands from a fresh clone. They use synthetic data only.
 
    The clean case records one mocked handoff. The missing-information case records one `information-request:{runId}` receipt marked `NOT_SENT`. The conflicting-date case records neither. Authentic Console captures are in [the screenshot set](docs/screenshots/operations-console/README.md).
 
-3. **n8n intake**
+3. **Intake pack (optional Milestone 10)**
+
+   Open `http://localhost:3001/intake-pack`. Drop a synthetic pack from `fixtures/intake-packs/`, extract, review (fields stay empty until you type them), and confirm. Confirm redirects to existing case detail and does not force `READY_FOR_PRICING`. Failed files such as `OCR_REQUIRED` stay visible. Walkthrough: [runbook Intake pack](docs/runbook.md#console-intake-pack-milestone-10). QA receipt: [docs/release-qa](docs/release-qa/README.md).
+
+4. **n8n intake**
 
    Import the credential-free workflow and run the fixture matrix in [the n8n walkthrough](integrations/n8n/README.md) (ready, missing information, human review, duplicate, pending, and failure). The recorded live-runtime evidence is in the [Milestone 7 receipt](docs/milestone-7-verification.md). Live n8n was not re-run on eval SHA `9fbf16f`.
 
-4. **Archive and restore**
+5. **Archive and restore**
 
    Prepare a snapshot from seeded local state, then restore it into a fresh directory. Commands are in the [archive/restore runbook](docs/runbook.md#milestone-6-archive-and-restore). Live private-S3 evidence is in the [Milestone 6 receipt](docs/milestone-6-verification.md).
 
-5. **Failure and recovery**
+6. **Failure and recovery**
 
    Visible failure → no unsafe action → safe recovery is recorded in the [reliability rehearsal](docs/reliability-rehearsal.md) and the [runbook](docs/runbook.md#failure-scenarios-rehearsed).
 
-6. **Assess evals**
+7. **Assess evals**
 
    Read the accepted baseline and the selected release report linked above. The Console Performance page shows the same distinction. Do not promote the later passing report over `evals/accepted-baseline.json`.
 

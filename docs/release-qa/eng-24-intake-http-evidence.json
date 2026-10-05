@@ -1,0 +1,90 @@
+{
+  "startedAt": "2026-10-05T21:38:36.098Z",
+  "synthetic": true,
+  "api": "http://127.0.0.1:3000",
+  "runFieldsProvenance": {
+    "fields": ["runStatus", "runRoute", "failureCode"],
+    "joinedFrom": "GET /tenders list items (status, route, failure.code)",
+    "joinedAt": "2026-10-05T21:38:40.254Z",
+    "note": "empty-draft-confirm, multi-site-no-leakage, and ocr-required-visible include runStatus, runRoute, and failureCode joined from the live API after the recorder finished. The committed recorder at capture time did not emit those keys. scripts/run-intake-pack-qa.ts now looks up GET /tenders/{runId}. This file was not regenerated so pack and run IDs stay aligned with the Console screenshots."
+  },
+  "cases": [
+    {
+      "id": "empty-draft-confirm",
+      "packId": "pack-640d3703-9bd5-47a5-bd70-6702d2f7232a",
+      "draftCustomer": {},
+      "confirmStatus": 200,
+      "runId": "c93a9aa4-96eb-49a3-9ba4-1863f876cc18",
+      "confirmedLegalName": "",
+      "runStatus": "FAILED",
+      "runRoute": null,
+      "failureCode": "MODEL_PROVIDER_FAILED"
+    },
+    {
+      "id": "multi-site-no-leakage",
+      "packId": "pack-396f9ebf-7e6c-4c01-a3b0-f62288f8f0bc",
+      "warehouseResolved": true,
+      "retailResolved": true,
+      "warehouseLeakedToRetail": false,
+      "retailLeakedToWarehouse": false,
+      "confirmedWarehouseMeter": "1234567890123",
+      "confirmedRetailMeter": "2345678901234",
+      "confirmStatus": 200,
+      "runId": "1b814317-b46a-4457-b72c-be6796164b1a",
+      "runStatus": "FAILED",
+      "runRoute": null,
+      "failureCode": "MODEL_PROVIDER_FAILED"
+    },
+    {
+      "id": "ocr-required-visible",
+      "packId": "pack-e7e87243-0ee0-465d-969c-0a585ed36d32",
+      "extractStatus": 200,
+      "documentStatuses": ["OCR_REQUIRED"],
+      "confirmStatus": 200,
+      "runId": "fdf3e6b4-33d9-4123-abb0-3862edbe48dd",
+      "runStatus": "FAILED",
+      "runRoute": null,
+      "failureCode": "MODEL_PROVIDER_FAILED"
+    },
+    {
+      "id": "stale-confirm-rejected",
+      "packId": "pack-7d5fea45-d4f2-45c0-a1bb-6ded2eac6668",
+      "confirmStatus": 409,
+      "error": "DRAFT_STALE"
+    },
+    {
+      "id": "existing-ready-path-still-prices",
+      "readyStatus": 200,
+      "readyRoute": "READY_FOR_PRICING",
+      "handoffsBeforeReadyTender": 0,
+      "handoffsAfterReadyTender": 1
+    }
+  ],
+  "finishedAt": "2026-10-05T21:38:40.254Z",
+  "snapshot": {
+    "runCount": 4,
+    "routes": [
+      {
+        "tenderId": "tender-clean-001",
+        "route": "READY_FOR_PRICING",
+        "status": "COMPLETED"
+      },
+      {
+        "tenderId": "tender-pack-e7e87243-0ee0-465d-969c-0a585ed36d32",
+        "route": null,
+        "status": "FAILED"
+      },
+      {
+        "tenderId": "tender-pack-396f9ebf-7e6c-4c01-a3b0-f62288f8f0bc",
+        "route": null,
+        "status": "FAILED"
+      },
+      {
+        "tenderId": "tender-pack-640d3703-9bd5-47a5-bd70-6702d2f7232a",
+        "route": null,
+        "status": "FAILED"
+      }
+    ],
+    "handoffCount": 1
+  }
+}

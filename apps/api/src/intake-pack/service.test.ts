@@ -278,6 +278,44 @@ describe('Intake pack evidence-to-draft preparation', () => {
     expect(draftStructuredFieldsAreEmpty(draft)).toBe(true);
   });
 
+  it('keeps multi-site warehouse and retail facts on their own sites after draft preparation', async () => {
+    const service = createService();
+    const created = await service.createPack();
+    await registerFixture(service, created.packId, 'pack-clean-multi-site');
+    await service.extract(created.packId);
+    const draft = await service.getDraft(created.packId);
+
+    expect(draftStructuredFieldsAreEmpty(draft)).toBe(true);
+    const warehouseMeters = draft.candidates.filter(
+      (candidate) => candidate.field === 'meterIdentifier' && candidate.value === '1234567890123',
+    );
+    const retailMeters = draft.candidates.filter(
+      (candidate) => candidate.field === 'meterIdentifier' && candidate.value === '2345678901234',
+    );
+    expect(
+      warehouseMeters.some(
+        (candidate) =>
+          candidate.siteId === 'site-warehouse' && candidate.associationStatus === 'RESOLVED',
+      ),
+    ).toBe(true);
+    expect(
+      retailMeters.some(
+        (candidate) =>
+          candidate.siteId === 'site-retail' && candidate.associationStatus === 'RESOLVED',
+      ),
+    ).toBe(true);
+    expect(
+      draft.candidates.some(
+        (candidate) => candidate.siteId === 'site-retail' && candidate.value === '1234567890123',
+      ),
+    ).toBe(false);
+    expect(
+      draft.candidates.some(
+        (candidate) => candidate.siteId === 'site-warehouse' && candidate.value === '2345678901234',
+      ),
+    ).toBe(false);
+  });
+
   it('does not prepare a draft before extraction and does not copy accepted values', async () => {
     const service = createService();
     const created = await service.createPack();
@@ -427,6 +465,46 @@ describe('Intake pack confirmation adapter', () => {
         fieldEdits: { customerLegalName: 'Changed After Confirm Ltd' },
       }),
     ).rejects.toMatchObject({ failure: { code: 'ALREADY_CONFIRMED' } });
+  });
+
+  it('maps an OCR-required document onto HUMAN_REVIEW after confirm and does not treat confirm as ready', async () => {
+    const { handoff, submissions } = recordingHandoff();
+    const service = createConfirmService(handoff);
+    const created = await service.createPack();
+    await registerFixture(service, created.packId, 'pack-scanned-ocr-required');
+    await service.extract(created.packId);
+    const draft = await service.getDraft(created.packId);
+    expect(draftStructuredFieldsAreEmpty(draft)).toBe(true);
+
+    const edited = await service.patchDraft(created.packId, {
+      expectedDraftVersion: draft.draftVersion,
+      fieldEdits: {
+        customerLegalName: 'Northstar Foods Ltd',
+        brokerLegalName: 'Harbour Energy Partners',
+        sites: [
+          {
+            siteId: 'site-warehouse',
+            address: '10 Example Street, London',
+            meterIdentifier: '1234567890123',
+            annualConsumptionKwh: 24000,
+            contractEndDate: '2027-03-31',
+          },
+        ],
+      },
+    });
+
+    const confirmed = await service.confirm({
+      packId: created.packId,
+      expectedDraftVersion: edited.draftVersion,
+      idempotencyKey: `confirm:${created.packId}`,
+      correlationId: 'confirm-ocr-001',
+    });
+    expect(confirmed.confirmation.submission.tender.documents[0]?.processingStatus).toBe(
+      'UNREADABLE',
+    );
+    expect(evaluateReadiness(confirmed.confirmation.submission).route).toBe('HUMAN_REVIEW');
+    expect(intakeLayerMayInvokePricing('confirmation')).toBe(false);
+    expect(submissions).toHaveLength(1);
   });
 });
 

@@ -2,9 +2,10 @@
 
 ## Status
 
-Accepted for Milestone 10 contracts. PDF upload, extraction, Console pages, and
-the confirmation adapter are later ENG-16 children. This decision records the
-boundary now so those tickets share one inspectable contract.
+Accepted. Milestone 10 children ENG-17 through ENG-24 implement this boundary:
+contracts, synthetic fixtures, selectable-text extraction, review-only drafts,
+Console Drop/review, confirmation handoff, safety tests, and runbook handover.
+OCR remains out of scope.
 
 ## Context
 
@@ -61,7 +62,7 @@ confirms the pack.
   `OVERSIZED`, `EXTRACTION_FAILED`). They are never silently omitted. On
   confirm they map onto the existing document processing statuses so TDR-011
   can still block or escalate.
-- Persist Intake packs in the local API JSON repository in later tickets. Do
+- Persist Intake packs in the local API JSON repository. Do
   not introduce a new database, queue, or auth system for this milestone.
 
 ### Relationship to POST /tenders
@@ -136,7 +137,9 @@ synthetic PDFs and notes.
   ticket. That is a persistence change under this ADR, not a new store.
   ENG-19 stores pack metadata in `data/intake-pack-state.json` and original
   PDF bytes write-once under `data/intake-pack-originals`. Parser choice is
-  [ADR-006](006-intake-pack-pdf-extraction.md).
+  [ADR-006](006-intake-pack-pdf-extraction.md). ENG-24 records the operator
+  runbook and the tests that prove extraction/draft never call readiness or
+  pricing.
 - Operators will see failed files and empty structured fields until they
   accept or type values. Unnecessary `NEEDS_INFORMATION` / `HUMAN_REVIEW`
   after confirm is accepted; an unsafe ready route is not.

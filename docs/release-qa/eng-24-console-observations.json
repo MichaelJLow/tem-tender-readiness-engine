@@ -1,0 +1,101 @@
+{
+  "startedAt": "2026-10-05T22:05:57.206Z",
+  "synthetic": true,
+  "consoleUrl": "http://127.0.0.1:3001",
+  "api": "http://127.0.0.1:3000",
+  "steps": [
+    {
+      "name": "eng-24-01-intake-drop.png",
+      "note": "Empty Intake pack Drop page with synthetic notice",
+      "url": "http://127.0.0.1:3001/intake-pack",
+      "title": "Tender readiness | Operations",
+      "path": "/workspace/docs/release-qa/screenshots/eng-24-01-intake-drop.png"
+    },
+    {
+      "name": "eng-24-02-single-site-extracted.png",
+      "note": "Single-site PDF extracted; Open review available; no tender form",
+      "url": "http://127.0.0.1:3001/intake-pack/pack-1e6937e2-c6ff-4e4b-94f4-2648092a3a44",
+      "title": "Tender readiness | Operations",
+      "path": "/workspace/docs/release-qa/screenshots/eng-24-02-single-site-extracted.png"
+    },
+    {
+      "name": "eng-24-03-review-empty-fields.png",
+      "note": "Review fields empty after extract (customer=\"\", broker=\"\")",
+      "url": "http://127.0.0.1:3001/intake-pack/pack-1e6937e2-c6ff-4e4b-94f4-2648092a3a44/review",
+      "title": "Tender readiness | Operations",
+      "path": "/workspace/docs/release-qa/screenshots/eng-24-03-review-empty-fields.png"
+    },
+    {
+      "name": "eng-24-04-review-operator-saved.png",
+      "note": "Operator typed values saved; Confirm enabled",
+      "url": "http://127.0.0.1:3001/intake-pack/pack-1e6937e2-c6ff-4e4b-94f4-2648092a3a44/review",
+      "title": "Tender readiness | Operations",
+      "path": "/workspace/docs/release-qa/screenshots/eng-24-04-review-operator-saved.png"
+    },
+    {
+      "name": "eng-24-05-confirm-case-detail.png",
+      "note": "Confirm landed on existing case detail; confirm did not force READY_FOR_PRICING",
+      "url": "http://127.0.0.1:3001/tenders/ab899251-2ba0-4efc-bb0e-e051e14808c0",
+      "title": "Tender readiness | Operations",
+      "path": "/workspace/docs/release-qa/screenshots/eng-24-05-confirm-case-detail.png"
+    },
+    {
+      "name": "eng-24-06-ocr-required.png",
+      "note": "Scanned PDF remains listed with OCR_REQUIRED; no invented text",
+      "url": "http://127.0.0.1:3001/intake-pack/pack-14555a59-e2ae-4f22-9b7c-5010b4e43af5",
+      "title": "Tender readiness | Operations",
+      "path": "/workspace/docs/release-qa/screenshots/eng-24-06-ocr-required.png"
+    },
+    {
+      "name": "eng-24-07-multi-warehouse.png",
+      "note": "Warehouse review bucket; check MPAN 1234567890123 vs retail 2345678901234",
+      "url": "http://127.0.0.1:3001/intake-pack/pack-fc3a48f4-84c5-444c-b3b8-0122520b89d7/review",
+      "title": "Tender readiness | Operations",
+      "path": "/workspace/docs/release-qa/screenshots/eng-24-07-multi-warehouse.png"
+    },
+    {
+      "name": "eng-24-08-multi-retail.png",
+      "note": "Retail review bucket; warehouse MPAN must not be assigned here",
+      "url": "http://127.0.0.1:3001/intake-pack/pack-fc3a48f4-84c5-444c-b3b8-0122520b89d7/review",
+      "title": "Tender readiness | Operations",
+      "path": "/workspace/docs/release-qa/screenshots/eng-24-08-multi-retail.png"
+    },
+    {
+      "name": "eng-24-09-queue.png",
+      "note": "Queue after Intake pack confirms plus one structured ready tender",
+      "url": "http://127.0.0.1:3001/",
+      "title": "Tender readiness | Operations",
+      "path": "/workspace/docs/release-qa/screenshots/eng-24-09-queue.png"
+    }
+  ],
+  "emptyReviewFields": {
+    "emptyCustomer": "",
+    "emptyBroker": ""
+  },
+  "confirmCase": {
+    "url": "http://127.0.0.1:3001/tenders/ab899251-2ba0-4efc-bb0e-e051e14808c0",
+    "hasReady": false,
+    "hasFailed": true,
+    "hasModelProviderFailed": true,
+    "excerpt": "Tender readiness\nOperations workspace\nWORKSPACE\n▦\nQueue\n▤\nIntake pack\n◷\nPerformance\n Local demo environment\nLoopback API · synthetic data\nOperations\nD\nDemo operator\n← Back to queue\nTENDER DETAIL\ntender-pack-1e6937e2-c6ff-4e4b-94f4-2648092a3a44\nRun ab899251-2ba0-4efc-bb0e-e051e14808c0 · Received 5 Oct 2026, 22:06\nCustomer Northstar Foods Ltd · Broker Harbour Energy Partners\nBusiness route\nNo final route\nProcessing status\nFAILED\nMODEL_PROVIDER_FAILED\nTender interpretation exhausted 3 provider attempts. This failure is terminal.\nReadiness checks\n\nNo completed readiness result is available.\n\nSubmitted tender facts\nsite-warehouse · Address\n10 Example Street, London\nsite-warehouse · Meter identifier\n1234567890123\nsite-warehouse · Annual consumption\n24,000\nsite-warehouse · Contract end\n2027-03-31\nDocument · doc-78f873ce-0457-4b67-8cff-7beb60ad0d34\nnorthstar-electricity-contract.pdf\nSource evidence\ndocument-text:doc-78f873ce-0457-4b67-8cff-7beb60ad0d34 · DOCUMENT_TEXT\n\nSYNTHETIC / DEMONSTRATION\nNot a real tender. Not tem customer, broker, or meter data.\nFixture pack: pack-clean-single-site\nSYNTHETIC-LOCATOR pack-clean-single-site page-1\nCustomer: Northstar Foods Ltd\nBroker: Harbour Energy "
+  },
+  "ocr": {
+    "url": "http://127.0.0.1:3001/intake-pack/pack-14555a59-e2ae-4f22-9b7c-5010b4e43af5",
+    "hasOcrRequired": true,
+    "fileStillListed": true
+  },
+  "multiWarehouse": {
+    "hasWarehouseMeter": true,
+    "leakedRetailMeter": false
+  },
+  "multiRetail": {
+    "hasRetailMeter": true,
+    "leakedWarehouseMeter": false
+  },
+  "queue": {
+    "url": "http://127.0.0.1:3001/",
+    "excerpt": "Tender readiness\nOperations workspace\nWORKSPACE\n▦\nQueue\n▤\nIntake pack\n◷\nPerformance\n Local demo environment\nLoopback API · synthetic data\nOperations\nD\nDemo operator\nTENDER OPERATIONS\nQueue\n\nMonitor incoming tenders and work through cases that need a decision.\n\n7 total cases\nOpen human reviews\n0\nRequire operator attention\nReady for pricing\n1\nAutomatic route only\nAll tender runs\n7\nStored in local API state\nAll cases\n\nBusiness route, processing status, and review state are shown separately.\n\nView eval performance →\nAll cases\nOpen reviews\nAll routes\nREADY FOR PRICING\nNEEDS INFORMATION\nHUMAN REVIEW\nDUPLICATE\nTENDER\tBUSINESS ROUTE\tPROCESSING\tREVIEW\tRECEIVED\t\ntender-pack-1e6937e2-c6ff-4e4b-94f4-2648092a3a44\nRun ab899251\n\tNo final route\tFAILED\t—\t5 Oct 2026, 22:06\tOpen case →\ntender-pack-7eac92cb-bc32-4e65-ba39-1e44d02d5e33\nRun 00720d9c\n\tNo final route\tFAILED\t—\t5 Oct 2026, 22:05\tOpen case →\ntender-pack-368b72c7-99fd-4767-a84c-1ced50c78464\nRun 7fc5a294\n\tNo final route\tFAILED\t—\t5 Oct 2026, 21:52\tOpen case →\ntender-clean-001\nRun 19590b52\n\tREADY FOR PRICING\tCOMPLETED\t—\t5 Oct 2026, 21:38\tOpen case →\ntender-pack-e7e87243-0ee0-465d-969c-0a585ed36d32\nRun fdf3e6b4\n\tNo final route\tFAILED\t—\t5 Oct 2026, 21:38\tOpen case →\ntender-pack-396f9ebf-7e6c-4c01-a3b0-f62288f8f0bc\nRun 1b814317\n\tNo final route\tFAILED\t—\t5 Oct 2026, 21:38\tOpen case →\ntender-pack-640d3703-9bd5-47a5-bd70-6702d2f7232a\nRun c93a9aa4\n\tNo final route\tFAILED\t—\t5 Oct 2026, 21:38\tOpen case →\n\nLocal demonstration using synthetic tender da"
+  },
+  "ok": true,
+  "finishedAt": "2026-10-05T22:06:08.842Z"
+}

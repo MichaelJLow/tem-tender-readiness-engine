@@ -469,12 +469,15 @@ Confirm is not a ready route. Console Confirm redirects to case detail.
 - [x] ENG-21 Console upload and processing-status UI.
 - [x] ENG-22 Console draft-review UI.
 - [x] ENG-23 confirmation adapter and readiness handoff.
-- [ ] ENG-24 safety, eval evidence, and runbook.
+- [x] ENG-24 safety, eval evidence, and runbook.
 
 ### Acceptance criteria
 
 Contracts are testable. Drafts and extraction cannot invoke pricing. Only a
-confirmed snapshot may become an `IntakeRequest`.
+confirmed snapshot may become an `IntakeRequest`. Confirm is not a ready route.
+Safety, integration, and PDF failure-path tests plus the Intake pack runbook
+are in ENG-24. Zero unsafe-ready remains the governing eval gate; the labelled
+dataset is unchanged because extraction/draft are deterministic.
 
 ---
 

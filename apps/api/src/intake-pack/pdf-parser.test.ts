@@ -72,6 +72,17 @@ describe('selectable-text PDF parser', () => {
     expect(parsed.pages).toHaveLength(INTAKE_PACK_LIMITS.maxPagesPerDocument + 1);
   });
 
+  it('marks empty bytes and a truncated header as CORRUPT', async () => {
+    const empty = await parseSelectablePdf({ documentId: 'doc-empty', bytes: new Uint8Array() });
+    expect(empty.outcome).toBe('CORRUPT');
+
+    const truncated = await parseSelectablePdf({
+      documentId: 'doc-header-only',
+      bytes: new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]),
+    });
+    expect(truncated.outcome).toBe('CORRUPT');
+  });
+
   it('does not treat a committed non-PDF as selectable text', async () => {
     const bytes = new Uint8Array(
       await readFile(

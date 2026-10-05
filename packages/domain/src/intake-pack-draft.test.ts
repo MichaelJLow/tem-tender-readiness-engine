@@ -252,6 +252,149 @@ describe('prepareIntakeDraftFromEvidence', () => {
     expect(draft.sites).toEqual([]);
   });
 
+  it('does not leak warehouse meter, consumption, or date onto the retail site', () => {
+    const draft = prepareIntakeDraftFromEvidence({
+      packId: 'pack-001',
+      updatedAt: NOW,
+      extraction: extraction([
+        page(
+          'doc-warehouse',
+          1,
+          [
+            'SYNTHETIC / DEMONSTRATION',
+            'Customer: Northstar Foods Ltd',
+            'Warehouse site address: 10 Example Street, London',
+            'Warehouse MPAN 1234567890123',
+            'Warehouse annual consumption 24000 kWh',
+            'Warehouse contract end date 2027-03-31',
+          ].join('\n'),
+        ),
+        page(
+          'doc-retail',
+          1,
+          [
+            'SYNTHETIC / DEMONSTRATION',
+            'Customer: Northstar Foods Ltd',
+            'Retail site address: 22 Harbour Lane, Manchester',
+            'Retail MPAN 2345678901234',
+            'Retail annual consumption 18500 kWh',
+            'Retail contract end date 2027-09-30',
+          ].join('\n'),
+        ),
+        page(
+          'doc-mixed',
+          1,
+          [
+            'Warehouse MPAN 1234567890123',
+            'Retail MPAN 2345678901234',
+            'Warehouse contract end date 2027-03-31',
+            'Retail contract end date 2027-09-30',
+          ].join('\n'),
+        ),
+      ]),
+      notes: [
+        note(
+          [
+            'Warehouse: 10 Example Street, London, MPAN 1234567890123.',
+            'Retail: 22 Harbour Lane, Manchester, MPAN 2345678901234.',
+          ].join('\n'),
+        ),
+      ],
+    });
+
+    expect(draftStructuredFieldsAreEmpty(draft)).toBe(true);
+
+    const warehouseMeters = draft.candidates.filter(
+      (candidate) => candidate.field === 'meterIdentifier' && candidate.value === '1234567890123',
+    );
+    const retailMeters = draft.candidates.filter(
+      (candidate) => candidate.field === 'meterIdentifier' && candidate.value === '2345678901234',
+    );
+    expect(warehouseMeters.length).toBeGreaterThan(0);
+    expect(retailMeters.length).toBeGreaterThan(0);
+    expect(
+      warehouseMeters.some(
+        (candidate) =>
+          candidate.siteId === 'site-warehouse' && candidate.associationStatus === 'RESOLVED',
+      ),
+    ).toBe(true);
+    expect(
+      retailMeters.some(
+        (candidate) =>
+          candidate.siteId === 'site-retail' && candidate.associationStatus === 'RESOLVED',
+      ),
+    ).toBe(true);
+    expect(warehouseMeters.some((candidate) => candidate.siteId === 'site-retail')).toBe(false);
+    expect(retailMeters.some((candidate) => candidate.siteId === 'site-warehouse')).toBe(false);
+
+    const warehouseDates = draft.candidates.filter(
+      (candidate) => candidate.field === 'contractEndDate' && candidate.value === '2027-03-31',
+    );
+    const retailDates = draft.candidates.filter(
+      (candidate) => candidate.field === 'contractEndDate' && candidate.value === '2027-09-30',
+    );
+    expect(
+      warehouseDates.some(
+        (candidate) =>
+          candidate.siteId === 'site-warehouse' && candidate.associationStatus === 'RESOLVED',
+      ),
+    ).toBe(true);
+    expect(
+      retailDates.some(
+        (candidate) =>
+          candidate.siteId === 'site-retail' && candidate.associationStatus === 'RESOLVED',
+      ),
+    ).toBe(true);
+    expect(warehouseDates.some((candidate) => candidate.siteId === 'site-retail')).toBe(false);
+    expect(retailDates.some((candidate) => candidate.siteId === 'site-warehouse')).toBe(false);
+
+    const warehouseConsumption = draft.candidates.filter(
+      (candidate) => candidate.field === 'annualConsumptionKwh' && candidate.value === '24000',
+    );
+    const retailConsumption = draft.candidates.filter(
+      (candidate) => candidate.field === 'annualConsumptionKwh' && candidate.value === '18500',
+    );
+    expect(
+      warehouseConsumption.some(
+        (candidate) =>
+          candidate.siteId === 'site-warehouse' && candidate.associationStatus === 'RESOLVED',
+      ),
+    ).toBe(true);
+    expect(
+      retailConsumption.some(
+        (candidate) =>
+          candidate.siteId === 'site-retail' && candidate.associationStatus === 'RESOLVED',
+      ),
+    ).toBe(true);
+    expect(warehouseConsumption.some((candidate) => candidate.siteId === 'site-retail')).toBe(
+      false,
+    );
+    expect(retailConsumption.some((candidate) => candidate.siteId === 'site-warehouse')).toBe(
+      false,
+    );
+
+    expect(
+      draft.candidates.some(
+        (candidate) =>
+          candidate.siteId === 'site-retail' &&
+          (candidate.value === '1234567890123' ||
+            candidate.value === '24000' ||
+            candidate.value === '2027-03-31' ||
+            candidate.value.includes('10 Example Street')),
+      ),
+    ).toBe(false);
+    expect(
+      draft.candidates.some(
+        (candidate) =>
+          candidate.siteId === 'site-warehouse' &&
+          (candidate.value === '2345678901234' ||
+            candidate.value === '18500' ||
+            candidate.value === '2027-09-30' ||
+            candidate.value.includes('Harbour Lane')),
+      ),
+    ).toBe(false);
+  });
+
   it('leaves unlabeled note meters unassociated when no site cue is present', () => {
     const draft = prepareIntakeDraftFromEvidence({
       packId: 'pack-001',
