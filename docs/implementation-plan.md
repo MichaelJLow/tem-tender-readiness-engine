@@ -378,15 +378,15 @@ text only.
 
 - [x] Implement idempotency for intake and downstream handoff.
 - [x] Test duplicate webhook delivery.
-- [ ] Add retry policy for transient failures.
-- [ ] Distinguish retryable and terminal failures.
-- [ ] Add explicit error taxonomy.
-- [ ] Add safe replay/retry operation.
-- [ ] Add structured logging and audit events.
+- [x] Add retry policy for transient failures.
+- [x] Distinguish retryable and terminal failures.
+- [x] Add explicit error taxonomy.
+- [x] Add safe replay/retry operation.
+- [x] Add structured logging and audit events.
 - [ ] Add GitHub Actions for format/lint, typecheck, tests, eval smoke suite, and build.
 - [ ] Add stable-release workflow with full evals and manual QA.
 - [ ] Use GitHub-to-AWS OIDC where practical.
-- [ ] Rehearse OpenAI failure, storage failure, downstream `500`, and duplicate webhook.
+- [x] Rehearse OpenAI failure, storage failure, downstream `500`, and duplicate webhook.
 
 ### Acceptance criteria
 

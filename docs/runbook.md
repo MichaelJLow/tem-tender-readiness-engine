@@ -249,17 +249,27 @@ handoffs on exhaustion. Success after retry and restart recovery record one
 handoff only. Provider terminal/invalid-output tests record zero handoffs.
 These are synthetic verification counts, not production customer evidence.
 
-## Failure scenarios to rehearse
+## Failure scenarios rehearsed
 
-Before the stable interview release, document and test the real recovery procedure for:
+The ENG-12 operational rehearsal is recorded in
+[`reliability-rehearsal.md`](reliability-rehearsal.md). It uses existing ENG-8,
+ENG-9, and ENG-10 guarantees plus disposable synthetic fixtures. The accepted
+eval baseline was not changed.
 
-1. configured model-provider timeout/transient failure
-2. invalid model output
-3. mocked pricing gateway failure
-4. duplicate API delivery
-5. state read failure
-6. state write failure, including while a failure record is being saved
-7. malformed, oversized, or unsupported API transport input
+| Case                           | Setup                                                                                                       | Observable signal                                                                                           | Retryability                                                       | Operator / replay action                                                                                  | Before → after counts                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Provider timeout / unavailable | Inject a retryable `MODEL_PROVIDER_FAILED` on a text-bearing clean tender and hold backoff after attempt 1. | Failed run, no route, failed model trace.                                                                   | Retryable until the three-attempt budget is exhausted.             | Restore the provider and continue/replay the same idempotency key.                                        | `runs=1`, `handoffs=0` → `runs=1`, `handoffs=1`                             |
+| Malformed model output         | Inject schema-invalid interpreter output on idempotency key `rehearsal-invalid-output`.                     | HTTP `500`, `MODEL_OUTPUT_INVALID`, no route.                                                               | Terminal for that output.                                          | Do not auto-replay. Fix prompt/schema and obtain a controlled resubmission. Same-key replay stays failed. | `runs=1`, `handoffs=0` unchanged                                            |
+| Persistence read / write       | Inject store read then write faults on empty disposable state.                                              | `STATE_READ_FAILED` / `STATE_WRITE_FAILED`. No run while storage is down.                                   | Retryable after storage recovery. Not retried automatically.       | Preserve the file, restore access, replay the same key.                                                   | `runs=0`, `handoffs=0` → `runs=1`, `handoffs=1`                             |
+| Mocked downstream `500`        | Submit the n8n clean fixture to `POST /tenders` with a failing gateway; hold backoff after attempt 1.       | `GET /tenders` and case detail show `FAILED` + retained `READY_FOR_PRICING`. n8n records `TECHNICAL_ERROR`. | Retryable after the first failed attempt.                          | Restore the mocked gateway and let the retry/replay complete. n8n never calls pricing.                    | `runs=1`, `handoffs=0` → `runs=1`, `handoffs=1`; replay remains one handoff |
+| Duplicate webhook              | Deliver `integrations/n8n/fixtures/clean.json` twice.                                                       | Second delivery is `replayed=true` with the same `runId` and `PRICING_HANDOFF_RECORDED`.                    | Not a failure.                                                     | Repeat the unchanged fixture.                                                                             | `runs=1`, `handoffs=1` unchanged                                            |
+| Archive missing object         | Prepare a synthetic snapshot, then restore with the state member missing.                                   | Restore fails before creating the destination. Live API state is untouched.                                 | Archive/restore concern only. S3 is not in the live decision path. | Repair or replace the snapshot; use a new destination. Do not resubmit live tenders.                      | Live counts unchanged: three seeded runs, one ready handoff                 |
+
+Transport input failures (`API_TRANSPORT_FAILED`) remain in the taxonomy table
+above. The complete visible recovery is the mocked downstream `500`: the
+Console-readable `GET /tenders` queue and case detail show `FAILED` with zero
+handoffs, then `COMPLETED` with one API-owned handoff after the gateway is
+restored.
 
 ## Runbook completion criteria
 
@@ -272,8 +282,10 @@ This document is considered complete when each implemented failure path includes
 - safe replay procedure,
 - verification that no duplicate side effect occurred.
 
-Add document storage and parsing failure cases when those boundaries exist.
-Rehearse n8n transport and outcome handling using the synthetic workflow
+Document storage and parsing remain unimplemented live boundaries. Archive
+read/missing-object failure is rehearsed as an archive/restore concern in
+[`reliability-rehearsal.md`](reliability-rehearsal.md); S3 is not in the live
+decision path. n8n transport and outcome handling use the synthetic workflow
 fixtures documented in [`integrations/n8n/README.md`](../integrations/n8n/README.md).
 
 ## Milestone 6 archive and restore
