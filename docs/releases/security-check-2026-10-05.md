@@ -73,6 +73,16 @@ expects archive preparation to refuse it.
 - GitHub’s review list on PR #23 is empty even though `MichaelJLow` merged it.
   CODEOWNERS review of this packaging PR should avoid those protected paths.
 
+## Local packaging checks (ENG-15)
+
+On this packaging branch, after `npm ci`:
+
+| Command | Result |
+| --- | --- |
+| `npm run check` (format, lint, typecheck, 243 tests) | Pass |
+| `npm run build:api` / `npm run build:console` | Pass |
+| `npm run evidence:release` | **Fail** — `9fbf16f` is not an ancestor of HEAD after the PR #23 squash. Relevant product-source diff vs that SHA is empty. Pointer files were not changed. |
+
 ## Verdict
 
 Published paths on the reviewed `main` HEAD do not contain credentials,
