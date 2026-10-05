@@ -17,6 +17,5 @@
     "technicalRetryReplay": true,
     "pricingGuard": true
   },
-  "notes": "The stratified synthetic Console/API/archive walkthrough was originally completed on source 2e725d91c8aad75319a15630779c3420810e689c. For this release candidate, the deterministic evidence-association fix was revalidated with npm run check (243 tests), API and Console builds, and the provider-backed full eval on clean source 9fbf16f71cb5afef7b91ccabf74920a1feb116d3. The exact ready-two-site-meters-document case passed READY_FOR_PRICING with one mock handoff; all nine full-eval gates passed. The existing Console/API/archive observations remain the manual walkthrough evidence; the Console review flow, live n8n runtime, and live private S3 restore were not repeated on this revision. ENG-7 and ENG-4 remain the live runtime receipts. No thresholds or accepted baseline were changed."
+  "notes": "The stratified synthetic Console/API/archive walkthrough was originally completed on source 2e725d91c8aad75319a15630779c3420810e689c. The provider-backed full eval used clean source 9fbf16f71cb5afef7b91ccabf74920a1feb116d3, whose apps/api/src/reasoning files match main. The exact ready-two-site-meters-document case passed READY_FOR_PRICING with one mock handoff; all nine full-eval gates passed. The existing Console/API/archive observations remain the manual walkthrough evidence; the Console review flow, live n8n runtime, and live private S3 restore were not repeated on this revision. ENG-7 and ENG-4 remain the live runtime receipts. No thresholds or accepted baseline were changed."
 }
-
