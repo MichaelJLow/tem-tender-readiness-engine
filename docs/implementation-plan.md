@@ -432,12 +432,45 @@ the accepted baseline was not promoted.
 An engineer can review the repository without verbal context and the demo can be run repeatedly without fragile manual setup.
 
 **ENG-13 / ENG-14:** reviewer docs, selected full eval, and manual QA are on
-`main`. ENG-15 packages notes and the security receipt. Milestone 9 is not
-complete until the confirmed `v1.0.0` tag exists. ENG-16 stays optional.
+`main`. ENG-15 packages notes and the security receipt. Tag `v1.0.0` exists.
+ENG-16 is Milestone 10 (Console Intake pack), not a V1 blocker.
 
 ### Optional portfolio extension after all milestones
 
 Once Milestones 0–9 are complete, build a more realistic fully synthetic tender pack for the demo: a submission form, broker note, and supporting PDF documents with single-site, multi-site, and conflicting-evidence examples. Add a PDF-to-text intake step that feeds extracted text into the existing bounded interpretation flow. Extend the eval fixtures and checks to cover extraction failures, document-to-site attribution, and the existing pricing safety guard. This follow-on is outside Milestone 9 acceptance.
+
+---
+
+## Milestone 10 - Console Intake pack
+
+**Goal:** let an operator drop synthetic PDFs, paste notes, extract selectable
+text, review a draft, confirm, and assess readiness through the existing tender
+path.
+
+**ENG-17 (this slice):** Zod contracts, limits, failure taxonomy, API surface
+sketch, and [ADR-005](adr/005-intake-pack-boundary.md). No upload UI, PDF
+parser, or Console page.
+
+### Tasks
+
+- [x] Define pack, document, extraction, candidate, provenance, draft,
+      confirmation, and failure-taxonomy schemas in `packages/domain`.
+- [x] Encode file-count, size, page, and extracted-text limits.
+- [x] Record document statuses including `OCR_REQUIRED`, `CORRUPT`,
+      `UNSUPPORTED`, `OVERSIZED`, and `EXTRACTION_FAILED`.
+- [x] Decide the evidence → draft → confirmed boundary and the relationship to
+      `POST /tenders`.
+- [ ] ENG-18 synthetic fixture set.
+- [ ] ENG-19 bounded PDF registration and extraction.
+- [ ] ENG-20 evidence-to-draft preparation (no silent field fill).
+- [ ] ENG-21/22 Console upload and draft-review UI.
+- [ ] ENG-23 confirmation adapter and readiness handoff.
+- [ ] ENG-24 safety, eval evidence, and runbook.
+
+### Acceptance criteria
+
+Contracts are testable. Drafts and extraction cannot invoke pricing. Only a
+confirmed snapshot may become an `IntakeRequest`.
 
 ---
 

@@ -18,6 +18,7 @@ import {
   TenderSchema,
   MeterSiteAssociationSchema,
   ProcessingRecordSchema,
+  TextSourceSchema,
 } from './schemas.js';
 
 export type TenderRoute = z.infer<typeof TenderRouteSchema>;
@@ -38,5 +39,6 @@ export type ReadinessInput = z.infer<typeof ReadinessInputSchema>;
 export type RuleId = z.infer<typeof RuleIdSchema>;
 export type RuleResult = z.infer<typeof RuleResultSchema>;
 export type ReadinessResult = z.infer<typeof ReadinessResultSchema>;
+export type TextSource = z.infer<typeof TextSourceSchema>;
 
 export type Rule = (input: ReadinessInput) => RuleResult;

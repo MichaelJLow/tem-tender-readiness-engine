@@ -140,7 +140,11 @@ The implemented demo is local:
 - n8n `1.112.6` normalizes a webhook envelope and records synthetic integration receipts; it does not own routing or pricing
 - GitHub Actions runs format, lint, typecheck, tests, API/Console builds, and committed reasoning-evidence checks
 
-Hosting, concurrent database state, production authentication, GitHub-to-AWS OIDC, real pricing/data, and PDF intake remain deferred.
+Hosting, concurrent database state, production authentication, GitHub-to-AWS OIDC, and real pricing/data remain deferred.
+
+## Intake pack (Milestone 10)
+
+V1 intake remains `POST /tenders` with structured fields and already-extracted text. Milestone 10 adds a Console **Intake pack** path for synthetic PDFs and pasted notes. Contracts live in `packages/domain` (`INTAKE_PACK_LIMITS` and related Zod schemas). The three layers are immutable extracted evidence, a mutable review draft, and a confirmed submission. Only confirmation may map onto the existing `IntakeRequest` and enter the tender service. Extraction and drafts cannot fill structured readiness fields or invoke pricing. See [ADR-005](adr/005-intake-pack-boundary.md). Upload UI, PDF parsing, and confirmation wiring are later tickets.
 
 ## Demo persistence and evidence archive
 

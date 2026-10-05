@@ -179,11 +179,13 @@ V1 deliberately does not invent a universal source hierarchy. If two credible so
 
 > **No case may invoke the pricing gateway unless the final business route is `READY_FOR_PRICING`.**
 
-This invariant must be enforced in code and covered by automated tests.
+This invariant must be enforced in code and covered by automated tests. Intake pack extraction, drafts, and confirmation snapshots cannot call the gateway; only a later `READY_FOR_PRICING` result from the existing tender path may.
 
 ## Domain input boundary
 
 The domain evaluator accepts validated tender records plus explicit evidence signals for duplicate matches, extracted date facts, document/site associations, meter/site associations, and critical-fact confidence. These signals are inputs to deterministic policy; they do not select a route themselves. The current implementation has no model, persistence, or integration dependency.
+
+Intake pack (Milestone 10) is a separate front door: immutable extracted evidence and a mutable review draft must not populate those structured fields or signals. Only a confirmed snapshot may become a `ReadinessInput` / `IntakeRequest`. See [ADR-005](adr/005-intake-pack-boundary.md).
 
 ## Idempotency invariant
 
