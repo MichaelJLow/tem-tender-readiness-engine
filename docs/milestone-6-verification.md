@@ -95,9 +95,9 @@ The implementation and live S3 evidence were merged to `main` in
 [PR #14](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/14).
 The restored-Console acceptance evidence was merged in
 [PR #16](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/16).
-ENG-4 records the reconciled milestone status in a separate reviewable PR; it
-must not be marked Done until that PR has successful CI, user approval, and
-merge evidence.
+ENG-4 recorded the reconciled milestone status in
+[PR #17](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/17),
+merged to `main` as `116eb9f`.
 
 The promotional AWS credit balance/expiry was not available to the repository
 CLI verification and remains a non-blocking account-administration follow-up.

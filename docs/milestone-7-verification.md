@@ -3,9 +3,11 @@
 ## Purpose and status
 
 This receipt distinguishes inspectable repository checks from an actual n8n
-execution. The fresh-import execution matrix has now passed in a real n8n `1.112.6`
+execution. The fresh-import execution matrix passed in a real n8n `1.112.6`
 runtime. Unit tests remain supporting contract evidence rather than a substitute
-for the recorded n8n executions. Milestone 7 is **awaiting PR review and merge**.
+for the recorded n8n executions. Milestone 7 is **accepted** after
+[PR #19](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/19)
+merged to `main` as `12f4c6c`. Document registration/upload remains deferred.
 
 ## Versioned inputs
 
@@ -19,8 +21,8 @@ for the recorded n8n executions. Milestone 7 is **awaiting PR review and merge**
   `human-review.json`, `pending.json`, and `duplicate.json`
 
 The source revision above contains the corrected export used for the recorded
-executions. Add the merge commit during review so the receipt also points to the
-immutable accepted history.
+executions. The immutable accepted history on `main` is merge commit `12f4c6c`
+([PR #19](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/19)).
 
 ## Automated evidence recorded on 4 October 2026
 
@@ -90,10 +92,9 @@ implementation blocker remains.
 - [x] Export rechecked for credentials, secrets, real recipients/customer data,
       and machine-specific credential IDs.
 - [x] Pull request URL recorded: https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/19.
-- [ ] Merge commit recorded and substituted for the starting revision: pending.
+- [x] Merge commit recorded: `12f4c6c` on `main`.
 - [x] Execution state confirms the API owns the sole `READY_FOR_PRICING` handoff.
 - [x] Implementation review completed with no remaining code or documentation blocker.
 
-The implementation and live-runtime checks are ready for review. Record the PR
-URL, merge it, and record the merge SHA before marking
-Milestone 7 complete.
+Milestone 7 is accepted for the implemented local contract. Document
+registration/upload and PDF intake remain deferred.

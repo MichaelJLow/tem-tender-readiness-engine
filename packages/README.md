@@ -1,3 +1,3 @@
 # Packages
 
-Reusable domain and infrastructure packages live here. The domain core is introduced in Milestone 1.
+- [`domain/`](domain/) is the deterministic tender-readiness core. It has no dependency on AI providers, AWS, n8n, or UI code.

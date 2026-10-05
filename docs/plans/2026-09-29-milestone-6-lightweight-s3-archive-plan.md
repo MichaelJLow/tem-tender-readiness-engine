@@ -1,5 +1,7 @@
 # Milestone 6 — Lightweight AWS evidence archive
 
+> Historical planning record. Current archive behaviour is in the runbook, ADR-003, and `docs/milestone-6-verification.md`.
+
 ## Outcome
 
 Add one useful, inexpensive AWS element to the synthetic demo: a private S3 bucket containing reproducible snapshots of local tender state, accepted and latest eval reports, and any synthetic source files used in the walkthrough. Keep the Tender API, Mastra Studio, and Operations Console running locally. A snapshot can be downloaded into a fresh local path and used to reproduce the queue, review history, and Performance view.

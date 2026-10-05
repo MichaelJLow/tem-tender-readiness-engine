@@ -233,8 +233,10 @@ synthetic dataset; review and merge of the current branch remain separate.
 
 ## Milestone 5 - Operations console
 
-Implementation planning and the first local console/API slice are tracked in
+The historical planning record is
 [`2026-09-28-milestone-5-operations-console-plan.md`](plans/2026-09-28-milestone-5-operations-console-plan.md).
+Current operator behaviour is in the [runbook](runbook.md) and
+[ADR-002](adr/002-local-review-state-and-console-boundary.md).
 
 **Completed (2026-09-30):** the local Next.js console, queue/case detail,
 human-review event path, and read-only eval performance view are implemented
@@ -287,8 +289,10 @@ A reviewer can understand why a case was blocked and resolve it without reading 
 
 **Goal:** demonstrate a small, useful AWS storage boundary for the synthetic
 portfolio demo without moving the live API or Operations Console off the local
-single-process setup. The detailed plan is
+single-process setup. The historical planning record is
 [Milestone 6 lightweight S3 archive](plans/2026-09-29-milestone-6-lightweight-s3-archive-plan.md).
+Current archive behaviour is in the [runbook](runbook.md#milestone-6-archive-and-restore)
+and [ADR-003](adr/003-private-s3-demo-snapshots.md).
 
 The earlier S3 + database + runtime + hosted Console scope was narrowed at the
 user's request. S3 is an archive for synthetic source files, tender-state
@@ -345,7 +349,7 @@ remains an explicit, non-blocking account-administration follow-up.
 
 - [x] Build tender intake webhook workflow.
 - [x] Normalize transport-level inputs.
-- [ ] Register/upload supporting documents.
+- [ ] Register/upload supporting documents. Deferred; optional PDF intake is ENG-16.
 - [x] Call Tender Readiness API.
 - [x] Record returned business route without duplicating the routing policy.
 - [x] `READY_FOR_PRICING` → observe the API-owned mocked pricing handoff.
@@ -357,12 +361,12 @@ remains an explicit, non-blocking account-administration follow-up.
 ### Acceptance criteria
 
 The n8n canvas contains integration orchestration, not a hidden second implementation of business policy. The export, automated contract checks, and
-fresh-runtime execution matrix are complete in the
-[Milestone 7 verification receipt](milestone-7-verification.md). Milestone
-acceptance remains open only for PR review, merge, and recording the immutable
-merge evidence. Document registration/upload is outside the implemented local
-contract: the workflow accepts structured data and already-extracted document
-text only.
+fresh-runtime execution matrix are recorded in the
+[Milestone 7 verification receipt](milestone-7-verification.md).
+[PR #19](https://github.com/MichaelJLow/tem-tender-readiness-engine/pull/19)
+merged that evidence to `main` as `12f4c6c`. Document registration/upload is
+outside the implemented local contract and remains deferred: the workflow
+accepts structured data and already-extracted document text only.
 
 ### Suggested branch
 
@@ -383,14 +387,19 @@ text only.
 - [x] Add explicit error taxonomy.
 - [x] Add safe replay/retry operation.
 - [x] Add structured logging and audit events.
-- [ ] Add GitHub Actions for format/lint, typecheck, tests, eval smoke suite, and build.
-- [ ] Add stable-release workflow with full evals and manual QA.
-- [ ] Use GitHub-to-AWS OIDC where practical.
-- [x] Rehearse OpenAI failure, storage failure, downstream `500`, and duplicate webhook.
+- [x] Add GitHub Actions for format/lint, typecheck, tests, API/Console builds, and committed reasoning-evidence checks.
+- [ ] Select stable-release evidence (`evals/release-evidence.json` plus manual QA). The workflow exists; ENG-14 owns the evidence pointer.
+- [ ] Use GitHub-to-AWS OIDC. Not implemented; archive upload uses a local AWS CLI profile. Deferred with hosted runtime.
+- [x] Rehearse provider timeout, invalid model output, storage failure, downstream `500`, duplicate webhook, and archive missing-object.
 
 ### Acceptance criteria
 
 At least one failure can be demonstrated end to end: visible failure → no unsafe action → safe recovery.
+
+**Accepted (2026-10-05):** ENG-8, ENG-9, ENG-10, ENG-11, and ENG-12 are merged.
+The [reliability rehearsal](reliability-rehearsal.md) records the visible
+recovery story. CI is [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+The release-evidence workflow is present but has no selected pointer yet.
 
 ### Suggested branch
 
@@ -404,22 +413,26 @@ At least one failure can be demonstrated end to end: visible failure → no unsa
 
 ### Tasks
 
-- [ ] Cut stable release/tag.
-- [ ] Finish README and architecture diagram.
-- [ ] Add local setup and deployment instructions.
-- [ ] Document key architecture decisions.
-- [ ] Add known limitations and realistic future improvements.
-- [ ] Remove dead code and experimental paths.
-- [ ] Run secrets/security check.
-- [ ] Run full tests and eval suite.
-- [ ] Complete manual QA.
-- [ ] Capture clean screenshots.
-- [ ] Prepare happy path, missing information, human review, and technical failure demo fixtures.
-- [ ] Verify every displayed metric is real project output or clearly labelled illustrative.
+- [ ] Cut stable release/tag. Owned by ENG-15; do not tag from this documentation change.
+- [x] Finish README and architecture diagram for the implemented local V1.
+- [x] Add local setup, n8n import, archive/restore, and recovery instructions. Hosted deployment remains deferred.
+- [x] Document key architecture decisions in `docs/adr/`.
+- [x] Add known limitations and realistic future improvements.
+- [x] Remove or mark stale planning paths; keep failure and eval findings.
+- [ ] Run the tracked secrets/security review for the tagged release (ENG-15).
+- [ ] Run the final full eval suite and retain release evidence (ENG-14). Do not promote latest results over the accepted baseline here.
+- [ ] Complete stratified manual QA (ENG-14).
+- [x] Capture clean Console screenshots. Existing authentic set: [operations-console](screenshots/operations-console/README.md).
+- [x] Prepare happy path, missing information, human review, pending, duplicate, and technical-failure fixtures under `integrations/n8n/fixtures/` and `tests/fixtures/`.
+- [x] Verify displayed eval metrics are retained report output, with latest and accepted labelled separately.
 
 ### Acceptance criteria
 
 An engineer can review the repository without verbal context and the demo can be run repeatedly without fragile manual setup.
+
+**ENG-13 (this documentation pass):** reviewer-facing docs and receipts now
+describe the implemented local V1. Milestone 9 is not complete until ENG-14
+and ENG-15 finish evals, manual QA, and the tag.
 
 ### Optional portfolio extension after all milestones
 
@@ -427,7 +440,10 @@ Once Milestones 0–9 are complete, build a more realistic fully synthetic tende
 
 ---
 
-## Seven-day focus
+## Original delivery sketch
+
+The table below was the original seven-day planning sketch. It is not a remaining
+schedule and not evidence that Milestone 9 is finished.
 
 | Day | Primary goal                     | Must-have outcome                                 |
 | --- | -------------------------------- | ------------------------------------------------- |
@@ -439,4 +455,7 @@ Once Milestones 0–9 are complete, build a more realistic fully synthetic tende
 | 6   | n8n + reliability + CI           | integrated workflow, retries, observable failure  |
 | 7   | Hardening + presentation         | stable release, docs, screenshots, rehearsed demo |
 
-The sequence is intentionally flexible. If infrastructure threatens eval quality or system reliability, reduce infrastructure scope rather than weakening the core demonstration.
+The sequence stayed flexible. Infrastructure was narrowed to a private S3
+archive rather than hosted runtime so eval quality and the pricing guard were
+not weakened. Historical planning notes live under [`docs/plans/`](plans/README.md)
+and are not current status.

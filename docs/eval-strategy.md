@@ -6,6 +6,30 @@ Prove the automation is safe and useful before it can trigger a downstream prici
 
 Testing is split into three layers so deterministic behaviour, model-dependent behaviour, and human judgment are not conflated.
 
+## Accepted baseline vs latest passing report
+
+These two pointers are intentionally different. A later passing report is **not**
+the accepted baseline.
+
+| Role | Pointer | Cases | Gates | Critical facts | Notes |
+| --- | --- | ---: | ---: | --- | --- |
+| Accepted baseline | [`evals/accepted-baseline.json`](../evals/accepted-baseline.json) → [`full-2026-09-26T23-53-52.654Z`](../evals/reports/full-2026-09-26T23-53-52.654Z.md) | 63 | 7/7 | Workflow 49/51; agent 51/51 | Reviewed Milestone 4 prototype reference. Dataset SHA-256 `b99e956923d65884a7eb6fe42ee13ca9c0e87b85456cfbb26b9d928ed2a50708`. |
+| Latest passing full report | [`full-2026-09-28T19-39-31.237Z`](../evals/reports/full-2026-09-28T19-39-31.237Z.md) | 63 | 9/9 | Workflow 51/51; agent 51/51 | Completed and compared with the accepted baseline. **Not promoted.** Same dataset hash. |
+| Latest committed PR evidence | [`evals/pr-evidence.json`](../evals/pr-evidence.json) → [`pr-2026-10-04T23-14-16.314Z`](../evals/reports/pr-2026-10-04T23-14-16.314Z.md) | 14 | 8/8 on the PR subset | Workflow 9/9; agent 9/9 | Smoke subset only. Dataset hash differs; baseline comparison is `not_comparable`. |
+
+Denominators that appear in those reports:
+
+- 63 labelled workflow cases in the full suite; 14 in the PR subset
+- 44 golden safety cases in the full suite (11 in the PR subset)
+- 22 labelled `HUMAN_REVIEW` cases in the full suite (5 in the PR subset)
+- 51 expected workflow/agent critical facts in the full suite (9 in the PR subset)
+- 12 labelled ambiguity cases in the full suite (2 in the PR subset)
+
+Failed and incomplete runs stay in `evals/reports/` and [`docs/eval-findings.md`](eval-findings.md).
+They are diagnostic evidence, not a reason to lower thresholds or rewrite the
+accepted pointer. Final interview-release evals and manual QA remain ENG-14.
+`evals/release-evidence.json` and `docs/release-qa/` are not selected yet.
+
 ## 1. Deterministic automated tests
 
 Use Vitest for behaviour that should always be repeatable:
@@ -269,9 +293,12 @@ Manual-QA records use this reviewable shape (all checklist values must be `true`
 full eval suite
 → metric gate
 → manual QA sign-off
-→ deploy
-→ smoke test
+→ release-evidence pointer
+→ tag (ENG-15)
 ```
+
+There is no hosted deploy in V1. The `Release evidence` workflow verifies a
+selected full report and manual-QA record; it does not run live model calls.
 
 ## Deployment blockers
 

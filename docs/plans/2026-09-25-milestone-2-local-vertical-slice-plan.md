@@ -1,5 +1,7 @@
 # Milestone 2: Local vertical slice plan
 
+> Historical planning record. Current status is in `docs/implementation-plan.md` and the runbook. Several “current state” sentences below describe the repository on 2026-09-25.
+
 ## Outcome
 
 A synthetic tender can be submitted to a local HTTP API, validated, evaluated by the existing deterministic domain package, recorded locally, and handed to a mocked pricing gateway only when its final route is `READY_FOR_PRICING`. The API exposes technical status and the rule evidence needed to understand the decision.
