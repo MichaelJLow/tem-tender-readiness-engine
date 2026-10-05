@@ -99,6 +99,6 @@ The ENG-14 agent run reviewed the clean report, the same-revision diagnostic att
 
 - The passing full report is selected in `evals/release-evidence.json`; `npm run evidence:release` verified it and the matching QA record for source `9fbf16f71cb5afef7b91ccabf74920a1feb116d3`.
 - The first clean full run is retained as diagnostic evidence. No threshold or accepted-baseline changes were made.
-- The existing Console/API/archive walkthrough remains the manual evidence. The changed model-driven two-site document path was exercised in the passing full eval and deterministic regression test. Live Console review, n8n runtime, and private S3 restore were not repeated on this revision; ENG-7 and ENG-4 remain those receipts.
+- The existing Console/API/archive walkthrough remains the manual evidence. The two-site document case was exercised in the passing full eval. The proposed deterministic association fix and its targeted regression test are not in the evaluated source or this PR; that investigation remains follow-up work. Live Console review, n8n runtime, and private S3 restore were not repeated on this revision; ENG-7 and ENG-4 remain those receipts.
 - Code-owner review is still required before merging. A passing full eval does not itself promote the accepted baseline.
 
