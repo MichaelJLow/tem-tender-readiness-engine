@@ -1,0 +1,38 @@
+{
+  "correlationId": "n8n-duplicate-001",
+  "request": {
+    "tender": {
+      "tenderId": "tender-n8n-clean-001",
+      "idempotencyKey": "intake-n8n-duplicate-001",
+      "customer": {
+        "customerId": "customer-n8n-001",
+        "legalName": "Synthetic Orchard Foods Ltd"
+      },
+      "broker": {
+        "brokerId": "broker-n8n-001",
+        "legalName": "Synthetic Energy Partners"
+      },
+      "sites": [
+        {
+          "siteId": "site-n8n-001",
+          "address": "10 Example Street, London",
+          "meterIdentifier": "1234567890123",
+          "annualConsumptionKwh": 24000,
+          "contractEndDate": "2027-03-31"
+        }
+      ],
+      "documents": []
+    },
+    "signals": {
+      "dateFacts": [],
+      "documentSiteAssociations": [],
+      "meterSiteAssociations": [],
+      "criticalFacts": [],
+      "duplicate": {
+        "matchesActiveTender": false,
+        "idempotencyKeyPreviouslyProcessed": false
+      }
+    },
+    "textSources": []
+  }
+}

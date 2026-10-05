@@ -26,6 +26,12 @@ fixtures, Docker host-gateway setup, and verification commands live in
 synthetic integration outcomes. The API continues to own validation,
 idempotency, readiness rules, interpretation, and the pricing guard.
 
+The [Milestone 7 verification receipt](milestone-7-verification.md) records the
+source revision, exact checks, and live-runtime evidence gate. Do not mark the
+milestone complete from unit tests alone: import the tracked JSON into a fresh
+pinned n8n runtime, execute every scenario, and attach the resulting execution
+evidence and merged PR before closing the milestone.
+
 Keep n8n's editor bound to loopback. Do not expose it, the operations Console,
 or review endpoints publicly. Containerized n8n reaches the host API through the
 documented host-gateway name rather than `localhost`; a host-installed n8n can

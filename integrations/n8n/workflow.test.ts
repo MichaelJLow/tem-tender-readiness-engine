@@ -24,6 +24,10 @@ interface WorkflowExport {
 const root = new URL('.', import.meta.url);
 const workflow = readJson<WorkflowExport>('tender-intake.workflow.json');
 const clean = readJson<JsonRecord>('fixtures/clean.json');
+const duplicate = readJson<JsonRecord>('fixtures/duplicate.json');
+const humanReview = readJson<JsonRecord>('fixtures/human-review.json');
+const needsInformation = readJson<JsonRecord>('fixtures/needs-information.json');
+const pending = readJson<JsonRecord>('fixtures/pending.json');
 const textBearing = readJson<JsonRecord>('fixtures/text-bearing.json');
 
 function readJson<T>(relativePath: string): T {
@@ -92,6 +96,7 @@ describe('n8n tender intake export', () => {
     expect(exportText).not.toContain('TDR-');
     expect(exportText).not.toContain('systemPrompt');
     expect(exportText).not.toMatch(/api[_-]?key/i);
+    expect(exportText).not.toMatch(/credential/i);
     expect(
       workflow.nodes.filter((candidate) => candidate.type === 'n8n-nodes-base.httpRequest'),
     ).toHaveLength(1);
@@ -104,7 +109,9 @@ describe('n8n tender intake export', () => {
     const submit = node('Submit to Tender API');
     expect(submit.parameters.url).toContain('TENDER_API_URL');
     expect(submit.parameters.url).toContain('/tenders');
-    expect(submit.parameters.body).toContain('Normalize Transport');
+    expect(submit.parameters.contentType).toBe('json');
+    expect(submit.parameters.specifyBody).toBe('json');
+    expect(submit.parameters.jsonBody).toContain('Normalize Transport');
     expect(JSON.stringify(submit.parameters.headerParameters)).toContain('X-Correlation-ID');
     expect(JSON.stringify(submit.parameters.options)).toContain('neverError');
     expect(submit.retryOnFail ?? false).toBe(false);
@@ -323,6 +330,25 @@ describe('n8n tender intake export', () => {
 });
 
 describe('n8n transport fixtures and normalization', () => {
+  it.each([
+    ['clean', clean],
+    ['needs information', needsInformation],
+    ['human review', humanReview],
+    ['pending', pending],
+    ['duplicate', duplicate],
+  ])(
+    'keeps the synthetic %s walkthrough fixture inside the API contract',
+    async (_name, fixture) => {
+      expect(IntakeRequestSchema.parse(fixture.request)).toEqual(fixture.request);
+      await expect(normalize(fixture)).resolves.toMatchObject({
+        ok: true,
+        correlationId: fixture.correlationId,
+        request: fixture.request,
+      });
+      expect(JSON.stringify(fixture)).toMatch(/n8n|Synthetic|synthetic/);
+    },
+  );
+
   it('normalizes the clean fixture without changing its API request', async () => {
     expect(IntakeRequestSchema.parse(clean.request)).toEqual(clean.request);
     await expect(normalize(clean)).resolves.toMatchObject({

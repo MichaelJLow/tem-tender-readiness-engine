@@ -343,20 +343,26 @@ remains an explicit, non-blocking account-administration follow-up.
 
 ### Tasks
 
-- [ ] Build tender intake webhook workflow.
-- [ ] Normalize transport-level inputs.
+- [x] Build tender intake webhook workflow.
+- [x] Normalize transport-level inputs.
 - [ ] Register/upload supporting documents.
-- [ ] Call Tender Readiness API.
-- [ ] Branch on returned business route.
-- [ ] `READY_FOR_PRICING` → mocked pricing handoff.
-- [ ] `NEEDS_INFORMATION` → mocked information-request event.
-- [ ] `HUMAN_REVIEW` → review queue only.
-- [ ] `DUPLICATE` → stop cleanly.
-- [ ] Export workflow JSON into the repo.
+- [x] Call Tender Readiness API.
+- [x] Record returned business route without duplicating the routing policy.
+- [x] `READY_FOR_PRICING` → observe the API-owned mocked pricing handoff.
+- [x] `NEEDS_INFORMATION` → mocked, non-delivering information-request receipt.
+- [x] `HUMAN_REVIEW` → link the existing review case only.
+- [x] `DUPLICATE` → stop cleanly.
+- [x] Export credential-free workflow JSON into the repo.
 
 ### Acceptance criteria
 
-The n8n canvas contains integration orchestration, not a hidden second implementation of business policy.
+The n8n canvas contains integration orchestration, not a hidden second implementation of business policy. The export, automated contract checks, and
+fresh-runtime execution matrix are complete in the
+[Milestone 7 verification receipt](milestone-7-verification.md). Milestone
+acceptance remains open only for PR review, merge, and recording the immutable
+merge evidence. Document registration/upload is outside the implemented local
+contract: the workflow accepts structured data and already-extracted document
+text only.
 
 ### Suggested branch
 

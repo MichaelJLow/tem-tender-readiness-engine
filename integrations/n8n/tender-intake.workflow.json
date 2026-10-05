@@ -74,9 +74,7 @@
           ]
         },
         "sendBody": true,
-        "contentType": "raw",
-        "rawContentType": "application/json",
-        "body": "={{ JSON.stringify($('Normalize Transport').item.json.request) }}",
+        "contentType": "json",
         "options": {
           "response": {
             "response": {
@@ -85,7 +83,9 @@
               "responseFormat": "json"
             }
           }
-        }
+        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Normalize Transport').item.json.request) }}"
       },
       "id": "35280978-a177-4758-a931-ae670a2230cb",
       "name": "Submit to Tender API",
