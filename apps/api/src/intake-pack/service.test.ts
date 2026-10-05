@@ -51,6 +51,7 @@ describe('Intake pack registration and extraction', () => {
     const { pack, extraction } = await service.extract(created.packId);
 
     expect(intakeLayerMayInvokePricing('extraction')).toBe(false);
+    expect(pack.status).toBe('REVIEWABLE');
     expect(pack.draft).toBeUndefined();
     expect(pack.confirmation).toBeUndefined();
     expect(pack.documents.map((document) => document.status)).toEqual(['EXTRACTED']);

@@ -196,9 +196,18 @@ export function storedIntakeByteSize(byteSize: number): number {
 export function deriveIntakePackStatus(pack: IntakePack): IntakePackStatus {
   if (pack.confirmation || pack.status === 'CONFIRMED') return 'CONFIRMED';
   if (pack.failure) return 'FAILED';
-  if (pack.extraction || pack.documents.some((document) => document.status === 'EXTRACTING')) {
-    return 'EXTRACTING';
-  }
+
+  const extractInProgress = pack.documents.some(
+    (document) => document.status === 'VALIDATING' || document.status === 'EXTRACTING',
+  );
+  if (extractInProgress) return 'EXTRACTING';
+
+  const extractionFinished =
+    pack.extraction !== undefined ||
+    (pack.documents.length > 0 &&
+      pack.documents.every((document) => !isIntakeDocumentInProgress(document.status)));
+  if (extractionFinished) return 'REVIEWABLE';
+
   if (pack.documents.length > 0 || pack.notes.length > 0) return 'RECEIVING';
   return 'CREATED';
 }

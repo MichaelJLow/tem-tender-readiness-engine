@@ -235,4 +235,47 @@ describe('intake pack extraction bounds', () => {
       ),
     ).toBe('FAILED');
   });
+
+  it('stays RECEIVING until extraction starts, EXTRACTING while in progress, then REVIEWABLE', () => {
+    expect(deriveIntakePackStatus(pack())).toBe('CREATED');
+    expect(deriveIntakePackStatus(pack({ documents: [document({ status: 'UPLOADED' })] }))).toBe(
+      'RECEIVING',
+    );
+    expect(deriveIntakePackStatus(pack({ documents: [document({ status: 'VALIDATING' })] }))).toBe(
+      'EXTRACTING',
+    );
+    expect(deriveIntakePackStatus(pack({ documents: [document({ status: 'EXTRACTING' })] }))).toBe(
+      'EXTRACTING',
+    );
+    expect(
+      deriveIntakePackStatus(
+        pack({
+          documents: [document({ status: 'EXTRACTED' })],
+          extraction: {
+            extractionId: 'extraction-001',
+            packId: 'pack-001',
+            createdAt: NOW,
+            immutable: true,
+            pages: [
+              {
+                documentId: 'doc-001',
+                pageNumber: 1,
+                text: 'Customer: Northstar Foods Ltd',
+                charCount: 'Customer: Northstar Foods Ltd'.length,
+                selectableText: true,
+              },
+            ],
+            documents: [
+              {
+                documentId: 'doc-001',
+                status: 'EXTRACTED',
+                pageCount: 1,
+                extractedCharCount: 'Customer: Northstar Foods Ltd'.length,
+              },
+            ],
+          },
+        }),
+      ),
+    ).toBe('REVIEWABLE');
+  });
 });
