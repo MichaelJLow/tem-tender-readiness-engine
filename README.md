@@ -2,7 +2,7 @@
 
 A production-style tender readiness automation for business energy. It combines deterministic TypeScript rules, a bounded evidence-only agent, human review audit, labelled evals, a local operations console, credential-free n8n intake, and a private S3 evidence archive.
 
-> **Project status:** implemented local V1. An engineer can clone this repository, run the demo, and assess the recorded evidence without the original chat history. Hosted runtime, concurrent database, authentication, real pricing/data, and optional PDF intake remain deferred. The public interview tag and final release-eval sign-off are separate follow-on work ([ENG-14](https://linear.app/workwithlayer/issue/ENG-14/complete-final-release-evals-and-manual-demo-qa), [ENG-15](https://linear.app/workwithlayer/issue/ENG-15/review-and-tag-the-stable-public-interview-release)).
+> **Project status:** local V1 is implemented and packaged for a public interview snapshot. Clone the repository, run the demo, and read the retained eval/QA receipts. Proposed tag `v1.0.0` is documented in [the release notes](docs/releases/v1.0.0.md); it is created only after that packaging lands and the target SHA is confirmed. Hosted runtime, concurrent database, authentication, real pricing/data, and optional PDF intake ([ENG-16](https://linear.app/workwithlayer/issue/ENG-16/optional-add-realistic-synthetic-tender-packs-and-bounded-pdf-to-text)) remain deferred.
 
 ## What it does
 
@@ -72,7 +72,7 @@ The project separates:
 | Pointer | Report | What it is |
 | --- | --- | --- |
 | Accepted baseline | [`evals/accepted-baseline.json`](evals/accepted-baseline.json) → [`full-2026-09-26T23-53-52.654Z`](evals/reports/full-2026-09-26T23-53-52.654Z.md) | Reviewed Milestone 4 prototype reference. 63 cases; 7 gates; workflow facts 49/51; agent facts 51/51. |
-| Latest passing full report | [`full-2026-09-28T19-39-31.237Z`](evals/reports/full-2026-09-28T19-39-31.237Z.md) | Later completed run that **passed 9/9 gates**. 63 cases; workflow facts 51/51; agent facts 51/51; 0/44 unsafe-ready. Compared with the accepted baseline; **not promoted**. |
+| Selected release evidence | [`evals/release-evidence.json`](evals/release-evidence.json) → [`full-2026-10-05T14-22-22.835Z`](evals/reports/full-2026-10-05T14-22-22.835Z.md) | Clean source `9fbf16f`; 63 cases; **passed 9/9 gates**; workflow facts 49/51; agent facts 51/51; 0/44 unsafe-ready. Compared with the accepted baseline; **not promoted**. |
 | Latest committed PR evidence | [`evals/pr-evidence.json`](evals/pr-evidence.json) → [`pr-2026-10-04T23-14-16.314Z`](evals/reports/pr-2026-10-04T23-14-16.314Z.md) | 14-case smoke subset. Not a full-release baseline. |
 
 Thresholds in [`evals/thresholds.json`](evals/thresholds.json) are unchanged: 0 unsafe-ready cases, ≥95% `HUMAN_REVIEW` recall, ≥95% critical-fact precision/recall, and no more than a 1 percentage-point safety drop against a comparable accepted baseline. Empty denominators fail the corresponding gate. See [eval strategy](docs/eval-strategy.md) and [eval findings](docs/eval-findings.md).
@@ -96,7 +96,9 @@ These are current, inspected limits — not a backlog slogan:
 - S3 is a private archive. Restoring copies evidence; it does not reprocess tenders or call pricing. Studio traces stay in a separate local store.
 - Hosted API/Console, a concurrent database, GitHub-to-AWS OIDC, real customer/broker data, and real pricing remain deferred.
 - Promotional AWS credit balance/expiry is an account-administration follow-up, not an archive-correctness gate.
-- Final interview-release evals, manual QA sign-off, and a git tag remain [ENG-14](https://linear.app/workwithlayer/issue/ENG-14/complete-final-release-evals-and-manual-demo-qa) / [ENG-15](https://linear.app/workwithlayer/issue/ENG-15/review-and-tag-the-stable-public-interview-release).
+- A documented cross-site association-check product fix was investigated during ENG-14 and is **not landed**; landing it would invalidate eval SHA `9fbf16f`.
+- Live n8n and live private S3 were not re-run on that eval SHA. [ENG-7](docs/milestone-7-verification.md) and [ENG-4](docs/milestone-6-verification.md) remain those receipts.
+- The `v1.0.0` git tag is prepared in [the release notes](docs/releases/v1.0.0.md) and is not created until the packaging PR merges and the target SHA is confirmed. Optional PDF intake stays [ENG-16](https://linear.app/workwithlayer/issue/ENG-16/optional-add-realistic-synthetic-tender-packs-and-bounded-pdf-to-text).
 
 ## Reviewer walkthrough
 
@@ -133,7 +135,7 @@ Follow these commands from a fresh clone. They use synthetic data only.
 
 3. **n8n intake**
 
-   Import the credential-free workflow and run the fixture matrix in [the n8n walkthrough](integrations/n8n/README.md). The recorded live-runtime evidence is in the [Milestone 7 receipt](docs/milestone-7-verification.md).
+   Import the credential-free workflow and run the fixture matrix in [the n8n walkthrough](integrations/n8n/README.md) (ready, missing information, human review, duplicate, pending, and failure). The recorded live-runtime evidence is in the [Milestone 7 receipt](docs/milestone-7-verification.md). Live n8n was not re-run on eval SHA `9fbf16f`.
 
 4. **Archive and restore**
 
@@ -145,7 +147,9 @@ Follow these commands from a fresh clone. They use synthetic data only.
 
 6. **Assess evals**
 
-   Read the accepted and latest reports linked above. The Console Performance page shows the same distinction. Do not promote the later passing report over `evals/accepted-baseline.json`.
+   Read the accepted baseline and the selected release report linked above. The Console Performance page shows the same distinction. Do not promote the later passing report over `evals/accepted-baseline.json`.
+
+The five interview-demo stories (ready, missing information, human review, duplicate, visible failure and recovery) are summarised with evidence links in [the v1.0.0 notes](docs/releases/v1.0.0.md#demo-coverage).
 
 ## Local development
 
@@ -191,3 +195,6 @@ Structured-only requests do not call a model. Requests with `textSources` need a
 - [Operations Console screenshots](docs/screenshots/operations-console/README.md)
 - [n8n integration](integrations/README.md)
 - [Architecture decision records](docs/adr/README.md)
+- [v1.0.0 release notes](docs/releases/v1.0.0.md)
+- [ENG-15 secrets and security check](docs/releases/security-check-2026-10-05.md)
+- [ENG-14 release QA receipt](docs/release-qa/README.md)
